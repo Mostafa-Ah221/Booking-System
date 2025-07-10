@@ -1,0 +1,16 @@
+//  const [formData, setFormData] = useState({
+//     name: '',
+//     type:'',
+//     work_space_id:'',
+//     hours: '0',
+//     duration_cycle: '',
+//     duration_period: '',
+//     price: {
+//       type: 'free',
+//       amount: '0'
+//     },
+//     meetingMode: {
+//       type: 'online',
+//       location: 'none'
+//     }
+//   });
