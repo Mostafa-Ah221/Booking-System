@@ -42,7 +42,7 @@ const SettingsPage = () => {
 
           <div className="mb-6">
             <h3 className="font-medium mb-1">Date Format</h3>
-            <p className="text-gray-600 text-sm mb-2">Select the date and time format to be used for your Zoho account activity.</p>
+            <p className="text-gray-600 text-sm mb-2">Select the date and time format to be used for your Appoint Roll account activity.</p>
             <div className="relative">
               <div 
                 className="border rounded-md p-2 flex justify-between items-center cursor-pointer"
@@ -135,7 +135,7 @@ const SettingsPage = () => {
             <div className="flex justify-between items-center">
               <div>
                 <h4 className="font-medium">Newsletter subscription</h4>
-                <p className="text-gray-600 text-sm">Receive marketing communication regarding Zoho's products, services, and events from Zoho and its regional partners.</p>
+                <p className="text-gray-600 text-sm">Receive marketing communication regarding Appoint Roll's products, services, and events from Appoint Roll and its regional partners.</p>
               </div>
               <label className="inline-flex items-center cursor-pointer">
                 <input 
@@ -169,7 +169,7 @@ const SettingsPage = () => {
 
         <div className="bg-white rounded-md shadow-sm mb-4 p-4">
           <h2 className="text-lg font-medium mb-1">Linked Accounts</h2>
-          <p className="text-gray-600 mb-4">View and manage the list of accounts that are linked with your Zoho account.</p>
+          <p className="text-gray-600 mb-4">View and manage the list of accounts that are linked with your Appoint Roll account.</p>
           
           <div className="border-b pb-4 mb-4">
             <div className="flex items-center">
@@ -222,7 +222,7 @@ const SettingsPage = () => {
                 <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"></path>
               </svg>
             </div>
-            <p className="text-gray-600 text-center mb-4">Closing your Zoho Account will permanently delete all your account information and you will no longer be able to use any of the Zoho services.</p>
+            <p className="text-gray-600 text-center mb-4">Closing your Appoint Roll Account will permanently delete all your account information and you will no longer be able to use any of the Appoint Roll services.</p>
             <button className="bg-red-500 text-white px-4 py-2 rounded-md">Close Account</button>
           </div>
         </div>

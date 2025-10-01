@@ -8,21 +8,25 @@ import {
   UserRound,
   Users,
   User,
-  FileText
+  FileText,
+  ShieldUser,
 } from 'lucide-react';
-import NewAppointment from './NewAppointment';
 import UnavailabilityForm from './UnavailabilityForm';
 import SpecialWorking from './SpecialWorking';
 import WorkspaceModal from './ModelsForAdd/NewWorkspace';
 import InviteRecModal from './ModelsForAdd/InviteRecModal';
 import AddCustomerModal from './ModelsForAdd/AddCustomer';
-import AddResourceModal from './ModelsForAdd/AddResource';
+// import AddResourceModal from './ModelsForAdd/AddResource';
+import RoleModal from './ModelsForAdd/NewRoleModal';
+import { usePermission } from "../../hooks/usePermission";
+import AddAppointment from '../Appointments/AddAppointment';
+import AddStaff from './ModelsForAdd/AddStaff';
 
 const AddNewMenu = () => {
-  const [openForm, setOpenForm] = useState(null); // يمكن أن يكون "appointment" أو "unavailability" أو null
+  const [openForm, setOpenForm] = useState(null);
 
   const toggleForm = (formName) => {
-    setOpenForm(openForm === formName ? null : formName); // تبديل الحالة عند النقر
+    setOpenForm(openForm === formName ? null : formName); 
   };
 
   const handleClose = () => {
@@ -30,14 +34,76 @@ const AddNewMenu = () => {
   };
 
   const menuItems = [
-    { icon: Calendar, text: 'Appointment', color: 'bg-orange-50 text-orange-500', form: 'appointment' },
-    { icon: Clock, text: 'Unavailability', color: 'bg-blue-50 text-blue-500', form: 'unavailability' },
-    { icon: Clock, text: 'Special Working Hours', color: 'bg-purple-50 text-purple-500', form: 'special_working' },
-    { icon: Building2, text: 'Workspace', color: 'bg-green-50 text-green-500', form: "workspace_modal" },
-    { icon: UserRound, text: 'Interview', color: 'bg-pink-50 text-pink-500', link: "/create_interview" }, // تعديل هنا
-    { icon: Users, text: 'Recruiter', color: 'bg-teal-50 text-teal-500', form: "Invite_rec_modal" },
-    { icon: User, text: 'Customer', color: 'bg-red-50 text-red-500', form: "add_cust_modal" },
-    { icon: FileText, text: 'Resource', color: 'bg-indigo-50 text-indigo-500', form: "add_resourse_model" }
+    { 
+      icon: Calendar, 
+      text: 'Appointment', 
+      color: 'bg-orange-50 text-orange-500', 
+      form: 'appointment',
+      requiredPermission: "add appointment"  
+    },
+    // { 
+    //   icon: Clock, 
+    //   text: 'Unavailability', 
+    //   color: 'bg-blue-50 text-blue-500', 
+    //   form: 'unavailability',
+    //   // requiredPermission: "create unavailability"
+    // },
+    // { 
+    //   icon: Clock, 
+    //   text: 'Special Working Hours', 
+    //   color: 'bg-purple-50 text-purple-500', 
+    //   form: 'special_working',
+    //   // requiredPermission: "create special working hours"
+    // },
+    { 
+      icon: Building2, 
+      text: 'Workspace', 
+      color: 'bg-green-50 text-green-500', 
+      form: "workspace_modal",
+      // requiredPermission: "create workspace"
+    },
+    { 
+      icon: UserRound, 
+      text: 'Interview', 
+      color: 'bg-pink-50 text-pink-500', 
+      link: "/create_interview",
+      requiredPermission: "create interview"
+    },
+    { 
+      icon: Users, 
+      text: 'Recruiter', 
+      color: 'bg-teal-50 text-teal-500', 
+      form: "Invite_rec_modal",
+      requiredPermission: "create staff"
+    },
+    { 
+      icon: User, 
+      text: 'Customer', 
+      color: 'bg-red-50 text-red-500', 
+      form: "add_cust_modal",
+      requiredPermission: "create clients"
+    },
+    { 
+      icon: Users, 
+      text: 'Staff', 
+      color: 'bg-red-50 text-red-500', 
+      form: "add_staff_modal",
+      requiredPermission: "create staff"
+    },
+    // { 
+    //   icon: FileText, 
+    //   text: 'Resource', 
+    //   color: 'bg-indigo-50 text-indigo-500', 
+    //   form: "add_resourse_model",
+    //   // requiredPermission: "create resource"
+    // },
+    { 
+      icon: ShieldUser, 
+      text: 'Roles', 
+      color: 'bg-indigo-50 text-indigo-500', 
+      form: "add_roles_model",
+      requiredPermission: "create roles"
+    }
   ];
 
   return (
@@ -47,38 +113,46 @@ const AddNewMenu = () => {
           <FiChevronUp className="fill-white text-4xl" />
         </span>
 
-        <h2 className="text-lg font-semibold mb-4 pb-1">Add New</h2>
+        <h2 className="font-semibold mb-4 pb-1">Add New</h2>
         <hr />
 
-        <div className="space-y-2 mt-4">
-          {menuItems.map((item, index) => (
-            <React.Fragment key={index}>
-              {item.link ? (
-                <Link to={item.link} className="flex items-center p-1 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200">
-                  <div className={`p-2 rounded-lg ${item.color}`}>
-                    <item.icon className="w-5 h-5" />
+        <div className="space-y-2 mt-4 text-sm">
+          {menuItems.map((item, index) => {
+            const hasPermission = item.requiredPermission 
+              ? usePermission(item.requiredPermission) 
+              : true;
+
+            if (!hasPermission) return null;
+
+            return (
+              <React.Fragment key={index}>
+                {item.link ? (
+                  <Link to={item.link} className="flex items-center p-1 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200">
+                    <div className={`p-2 rounded-lg ${item.color}`}>
+                      <item.icon className="w-5 h-5" />
+                    </div>
+                    <span className="ml-3 text-gray-700">{item.text}</span>
+                  </Link>
+                ) : (
+                  <div
+                    className="flex items-center p-1 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200"
+                    onClick={() => item.form && toggleForm(item.form)}
+                  >
+                    <div className={`p-2 rounded-lg ${item.color}`}>
+                      <item.icon className="w-5 h-5" />
+                    </div>
+                    <span className="ml-3 text-gray-700">{item.text}</span>
                   </div>
-                  <span className="ml-3 text-gray-700">{item.text}</span>
-                </Link>
-              ) : (
-                <div
-                  className="flex items-center p-1 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200"
-                  onClick={() => item.form && toggleForm(item.form)}
-                >
-                  <div className={`p-2 rounded-lg ${item.color}`}>
-                    <item.icon className="w-5 h-5" />
-                  </div>
-                  <span className="ml-3 text-gray-700">{item.text}</span>
-                </div>
-              )}
-              {index === 2 && <hr />}
-            </React.Fragment>
-          ))}
+                )}
+                {index === 2 && <hr />}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 
       {/* Forms */}
-      <NewAppointment 
+      <AddAppointment
         isOpen={openForm === 'appointment'} 
         onClose={handleClose}
       />
@@ -103,8 +177,16 @@ const AddNewMenu = () => {
         isOpen={openForm === 'add_cust_modal'}
         onClose={handleClose}
       />
-      <AddResourceModal
+      <AddStaff
+        isOpen={openForm === 'add_staff_modal'}
+        onClose={handleClose}
+      />
+      {/* <AddResourceModal
         isOpen={openForm === 'add_resourse_model'}
+        onClose={handleClose}
+      /> */}
+      <RoleModal
+        isOpen={openForm === 'add_roles_model'}
         onClose={handleClose}
       />
     </>

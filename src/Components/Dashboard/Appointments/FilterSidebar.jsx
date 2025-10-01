@@ -1,61 +1,64 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X, ChevronDown, Search } from 'lucide-react';
+import { getCustomers} from "../../../redux/apiCalls/CustomerCallApi";
 
 const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
   const [selectedInterviews, setSelectedInterviews] = useState([]);
   const [selectedWorkspaces, setSelectedWorkspaces] = useState([]);
+  const [selectedClients, setSelectedClients] = useState([]);
   const [selectedAppointmentStatus, setSelectedAppointmentStatus] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [workspaceSearchKeyword, setWorkspaceSearchKeyword] = useState('');
+  const [clientSearchKeyword, setClientSearchKeyword] = useState('');
   
   // State for collapsible sections
   const [openSections, setOpenSections] = useState({
     interviews: false,
     workspaces: false,
+    clients: false,
     appointmentStatus: false
   });
 
   const dispatch = useDispatch();
-  const { appointments = [] } = useSelector(state => state.appointments || {});
+  
+  // استخدام البيانات من Redux state بدلاً من appointments
+  const { interviews = [] } = useSelector(state => state.interview || {});
+  const { workspaces = [] } = useSelector(state => state.workspace || {});
+  const { customers = [] } = useSelector(state => state.customers || {});
+// console.log(workspaces);
+// console.log(customers);
 
-  // Extract unique interviews and workspaces from appointments data
-  const appointmentsArray = Array.isArray(appointments.appointments) ? appointments.appointments : 
-                            Array.isArray(appointments) ? appointments : [];
+  // Fetch customers data
+  useEffect(() => {
+    dispatch(getCustomers());
+  }, [dispatch]);
 
-  // Get unique interviews
-  const uniqueInterviews = appointmentsArray.reduce((acc, appointment) => {
-    const existingInterview = acc.find(item => item.id === appointment.interview_id);
-    if (!existingInterview) {
-      acc.push({
-        id: appointment.interview_id,
-        name: appointment.interview_name,
-        initial: appointment.interview_name.substring(0, 2).toUpperCase()
-      });
-    }
-    return acc;
-  }, []);
+  const formattedInterviews = Array.isArray(interviews) ? interviews.map(interview => ({
+    id: interview.id,
+    name: interview.name || interview.title || 'Untitled Interview',
+    initial: (interview.name || interview.title || 'UI').substring(0, 2).toUpperCase()
+  })) : [];
 
-  // Get unique workspaces
-  const uniqueWorkspaces = appointmentsArray.reduce((acc, appointment) => {
-    const existingWorkspace = acc.find(item => item.id === appointment.work_space_id);
-    if (!existingWorkspace) {
-      acc.push({
-        id: appointment.work_space_id,
-        name: appointment.work_space_name,
-        initial: appointment.work_space_name.substring(0, 1).toUpperCase()
-      });
-    }
-    return acc;
-  }, []);
+  const formattedWorkspaces = Array.isArray(workspaces) ? workspaces.map(workspace => ({
+    id: workspace.id,
+    name: workspace.name || workspace.title || 'Untitled Workspace',
+    initial: (workspace.name || workspace.title || 'UW').substring(0, 1).toUpperCase()
+  })) : [];
+
+  const formattedClients = Array.isArray(customers?.clients) ? customers?.clients.map(client => ({
+    id: client.id,
+    name: client.name || client.title || 'Untitled Client',
+    initial: (client.name || client.title || 'UC').substring(0, 1).toUpperCase()
+  })) : [];
 
   // Appointment statuses
   const appointmentStatuses = [
     { id: 'upcoming', name: 'Upcoming', color: 'bg-green-500' },
-    { id: 'past', name: 'Past', color: 'bg-gray-500' },
-    { id: 'ongoing', name: 'Ongoing', color: 'bg-blue-500' }, 
     { id: 'rescheduled', name: 'Rescheduled', color: 'bg-yellow-500' },
+    { id: 'ongoing', name: 'Ongoing', color: 'bg-blue-500' }, 
     { id: 'completed', name: 'Completed', color: 'bg-teal-500' },
+    { id: 'past', name: 'Past', color: 'bg-gray-500' },
     { id: 'cancelled', name: 'Cancelled', color: 'bg-red-500' }
   ];
 
@@ -64,18 +67,22 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
     if (currentFilters) {
       setSelectedInterviews(currentFilters.interviews || []);
       setSelectedWorkspaces(currentFilters.workspaces || []);
+      setSelectedClients(currentFilters.clients || []);
       setSelectedAppointmentStatus(currentFilters.appointmentStatus || '');
     }
   }, [currentFilters]);
 
   // Filter interviews based on search
-  const filteredInterviews = uniqueInterviews.filter(interview =>
+  const filteredInterviews = formattedInterviews.filter(interview =>
     interview.name.toLowerCase().includes(searchKeyword.toLowerCase())
   );
 
   // Filter workspaces based on search
-  const filteredWorkspaces = uniqueWorkspaces.filter(workspace =>
+  const filteredWorkspaces = formattedWorkspaces.filter(workspace =>
     workspace.name.toLowerCase().includes(workspaceSearchKeyword.toLowerCase())
+  );
+  const filteredClients = formattedClients.filter(client =>
+    client.name.toLowerCase().includes(clientSearchKeyword.toLowerCase())
   );
 
   const handleInterviewToggle = (interviewId) => {
@@ -94,6 +101,14 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
     );
   };
 
+  const handleClientToggle = (clientId) => {
+    setSelectedClients(prev => 
+      prev.includes(clientId) 
+        ? prev.filter(id => id !== clientId)
+        : [...prev, clientId]
+    );
+  };
+
   const toggleSection = (section) => {
     setOpenSections(prev => ({
       ...prev,
@@ -105,6 +120,7 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
     const filters = {
       interviews: selectedInterviews,
       workspaces: selectedWorkspaces,
+      clients: selectedClients,
       appointmentStatus: selectedAppointmentStatus
     };
     
@@ -115,9 +131,11 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
     // Reset to current filters or empty
     setSelectedInterviews(currentFilters?.interviews || []);
     setSelectedWorkspaces(currentFilters?.workspaces || []);
+    setSelectedClients(currentFilters?.clients || []);
     setSelectedAppointmentStatus(currentFilters?.appointmentStatus || '');
     setSearchKeyword('');
     setWorkspaceSearchKeyword('');
+    setClientSearchKeyword('');
     onClose();
   };
 
@@ -125,9 +143,11 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
   const handleClearAll = () => {
     setSelectedInterviews([]);
     setSelectedWorkspaces([]);
+    setSelectedClients([]);
     setSelectedAppointmentStatus('');
     setSearchKeyword('');
     setWorkspaceSearchKeyword('');
+    setClientSearchKeyword('');
   };
 
   if (!isOpen) return null;
@@ -168,7 +188,7 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
             {/* Interviews Section */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Interviews
+                Interviews ({formattedInterviews.length})
               </label>
               <div className="border border-gray-300 rounded-lg">
                 <div 
@@ -228,7 +248,7 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
                         ))
                       ) : (
                         <div className="p-3 text-sm text-gray-500 text-center">
-                          No interviews found
+                          {formattedInterviews.length === 0 ? 'No interviews available' : 'No interviews found'}
                         </div>
                       )}
                     </div>
@@ -240,7 +260,7 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
             {/* Workspaces Section */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Workspaces
+                Workspaces ({formattedWorkspaces.length})
               </label>
               <div className="border border-gray-300 rounded-lg">
                 <div 
@@ -300,7 +320,79 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
                         ))
                       ) : (
                         <div className="p-3 text-sm text-gray-500 text-center">
-                          No workspaces found
+                          {formattedWorkspaces.length === 0 ? 'No workspaces available' : 'No workspaces found'}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Clients Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Clients ({formattedClients.length})
+              </label>
+              <div className="border border-gray-300 rounded-lg">
+                <div 
+                  className="p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => toggleSection('clients')}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">
+                      {selectedClients.length} client{selectedClients.length !== 1 ? 's' : ''} selected
+                    </span>
+                    <ChevronDown 
+                      size={16} 
+                      className={`text-gray-500 transition-transform duration-200 ${
+                        openSections.clients ? 'rotate-180' : ''
+                      }`} 
+                    />
+                  </div>
+                </div>
+                
+                {openSections.clients && (
+                  <>
+                    {/* Search */}
+                    <div className="p-3 border-t border-gray-200">
+                      <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search clients"
+                          value={clientSearchKeyword}
+                          onChange={(e) => setClientSearchKeyword(e.target.value)}
+                          className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Client List */}
+                    <div className="max-h-48 overflow-y-auto border-t border-gray-200">
+                      {filteredClients.length > 0 ? (
+                        filteredClients.map(client => (
+                          <div key={client.id} className="flex items-center p-3 hover:bg-gray-50">
+                            <input
+                              type="checkbox"
+                              id={`client-${client.id}`}
+                              checked={selectedClients.includes(client.id)}
+                              onChange={() => handleClientToggle(client.id)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <div className="flex items-center ml-3">
+                              <div className="w-6 h-6 bg-green-500 rounded text-white text-xs flex items-center justify-center font-medium mr-2">
+                                {client.initial}
+                              </div>
+                              <label htmlFor={`client-${client.id}`} className="text-sm text-gray-700 cursor-pointer">
+                                {client.name}
+                              </label>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-3 text-sm text-gray-500 text-center">
+                          {formattedClients.length === 0 ? 'No clients available' : 'No clients found'}
                         </div>
                       )}
                     </div>

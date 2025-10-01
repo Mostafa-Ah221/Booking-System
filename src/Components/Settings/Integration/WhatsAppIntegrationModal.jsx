@@ -27,7 +27,7 @@ const LoadingComponent = ({ onClose }) => {
 
 // Provider configurations
 const PROVIDER_CONFIGS = {
-  'WhatsApp Business': {
+  'WhatsApp_Business': {
     title: 'WhatsApp Business API Configuration',
     fields: [
       { key: 'phone_number_id', placeholder: 'Phone Number ID', type: 'text' },
@@ -36,7 +36,7 @@ const PROVIDER_CONFIGS = {
       { key: 'webhook_verify_token', placeholder: 'Webhook Verify Token', type: 'text' }
     ]
   },
-  'WhatsApp Business API': {
+  'WhatsApp_Business': {
     title: 'WhatsApp Business API Configuration',
     fields: [
       { key: 'phone_number_id', placeholder: 'Phone Number ID', type: 'text' },

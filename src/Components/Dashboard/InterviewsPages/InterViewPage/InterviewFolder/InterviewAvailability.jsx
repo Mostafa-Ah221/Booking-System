@@ -1,41 +1,43 @@
-import React, { useState, useCallback } from 'react';
-import CalendarSection from './CalendarSection';
-import TimeSection from './TimeSection';
-import ReadOnlyView from './ReadOnlyView';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { updateAvailability, updateUnAvailability } from '../../../../../redux/apiCalls/interviewCallApi';
+import { fetchAllInterviews,editInterviewById, updateAvailability, updateUnAvailability } from '../../../../../redux/apiCalls/interviewCallApi';
 import { useDispatch, useSelector } from 'react-redux';
+import toast from "react-hot-toast";
+import ReadOnlyView from './ReadOnlyView';
+import { editWorkspaceById} from '../../../../../redux/apiCalls/workspaceCallApi';
 
 const InterviewAvailability = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('available-times');
-  const [availabilityMode, setAvailabilityMode] = useState('available'); // 'available' or 'unavailable'
-  const [showTabs, setShowTabs] = useState(false); // Control tabs visibility
+  const [availabilityMode, setAvailabilityMode] = useState('available');
+  const [activeSection, setActiveSection] = useState(null);
   const [timeZone] = useState('Africa/Cairo - EET (+02:00)');
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDates, setSelectedDates] = useState([
-    { date: "2025-03-25" },
-    { date: "2025-03-26" },
-    { date: "2025-04-01" },
-    { date: "2025-04-02" }
-  ]);
+  const [isTimeSectionDisabled, setIsTimeSectionDisabled] = useState(true);
+  
+  const [selectedAvailableDates, setSelectedAvailableDates] = useState([]);
+  const [selectedUnAvailableDates, setSelectedUnAvailableDates] = useState([]);
+  
   const [selectedTimeDropdown, setSelectedTimeDropdown] = useState(null);
   const { id } = useOutletContext();
   const dispatch = useDispatch();
-  const { interview, loading } = useSelector(state => state.interview);
   
-  const [weekDays, setWeekDays] = useState([
-    { day_id: 1, day_name: 'Monday', timeSlots: [{ from: "09:00", to: "18:00" }], isChecked: false },
-    { day_id: 2, day_name: 'Tuesday', timeSlots: [{ from: "09:00", to: "18:00" }], isChecked: false },
-    { day_id: 3, day_name: 'Wednesday', timeSlots: [{ from: "09:00", to: "17:00" }], isChecked: true },
-    { day_id: 4, day_name: 'Thursday', timeSlots: [{ from: "09:00", to: "18:00" }], isChecked: false },
-    { day_id: 5, day_name: 'Friday', timeSlots: [
-      { from: "04:00", to: "02:00" },
-      { from: "10:00", to: "12:00" }
-    ], isChecked: true },
-    { day_id: 6, day_name: 'Saturday', timeSlots: [{ from: "09:00", to: "18:00" }], isChecked: false },
-    { day_id: 7, day_name: 'Sunday', timeSlots: [{ from: "09:00", to: "18:00" }], isChecked: false }
-  ]);
+  const { interview } = useSelector(state => state.interview);
+  const { workspace } = useSelector(state => state.workspace);
+  
+  const [weekDays, setWeekDays] = useState([]);
+console.log(interview?.workspace_id);
+// console.log(workspace);
+
+useEffect(() => {
+  dispatch(fetchAllInterviews());
+}, [dispatch]);
+
+useEffect(() => {
+  if (interview?.workspace_id) {
+    dispatch(editWorkspaceById(interview?.workspace_id));
+  }
+}, [dispatch, interview?.workspace_id]);
 
   const formatDate = useCallback((date) => date.toISOString().split('T')[0], []);
 
@@ -49,12 +51,7 @@ const InterviewAvailability = () => {
   const formatDateRanges = useCallback((dates) => {
     if (!dates.length) return [];
     
-    const sortedDates = [...dates].sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      return dateA - dateB;
-    });
-
+    const sortedDates = [...dates].sort((a, b) => new Date(a.date) - new Date(b.date));
     const ranges = [];
     let currentRange = null;
 
@@ -75,296 +72,267 @@ const InterviewAvailability = () => {
     return ranges;
   }, [isConsecutiveDate]);
 
-  // دالة حفظ الأوقات المتاحة
+  const getSelectedDates = useCallback(() => {
+    return availabilityMode === 'available' ? selectedAvailableDates : selectedUnAvailableDates;
+  }, [availabilityMode, selectedAvailableDates, selectedUnAvailableDates]);
+
+  const handleDateClick = useCallback((dates) => {
+    if (availabilityMode === 'available') {
+      setSelectedAvailableDates(dates);
+    } else {
+      setSelectedUnAvailableDates(dates);
+    }
+  }, [availabilityMode]);
+
   const handleSaveAvailableTimes = useCallback(async (formData) => {
     try {
-      console.log('Saving available times:', formData);
+      const availableTimesData = formData?.available_times;
       
-      const payload = {
-        available_times: formData.available_times
-      };
-
+      if (!availableTimesData || !Array.isArray(availableTimesData) || availableTimesData.length === 0) {
+        throw new Error('No available times provided');
+      }
+      
+      const payload = { available_times: availableTimesData };
       const result = await dispatch(updateAvailability(id, payload));
       
-      if (result?.success || (result?.message && !result?.error)) {
-        alert('تم حفظ الأوقات المتاحة بنجاح!');
-        console.log(result);
-        
+      if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
+        toast.success('Available times saved successfully!');
+        setIsTimeSectionDisabled(true);
         setIsEditing(false);
-        return { success: true, message: result.message };
+        await dispatch(editInterviewById(id));
+        return { success: true };
       } else {
-        throw new Error(result?.message || "فشل في حفظ الأوقات");
+        throw new Error(result?.message || result?.error || 'Save failed');
       }
     } catch (error) {
-      console.error("خطأ في حفظ الأوقات:", error);
-      alert(`خطأ في حفظ الأوقات: ${error.message}`);
-      return {      
-        success: false, 
-        message: error.message || "فشل في حفظ الأوقات" 
-      };            
+      toast.error(`Error saving available times: ${error.message}`);
+      return { success: false, error: error.message };
     }
   }, [dispatch, id]);
 
-  // دالة حفظ الأوقات غير المتاحة
   const handleSaveUnAvailableTimes = useCallback(async (formData) => {
     try {
-      console.log('Saving unavailable times:', formData);
+      const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
       
-      const payload = {
-        un_available_times: formData.available_times // نفس الهيكل بس اسم مختلف
-      };
-
+      if (!unAvailableTimes || unAvailableTimes.length === 0) {
+        throw new Error('No unavailable times provided');
+      }
+      
+      const payload = { un_available_times: unAvailableTimes };
       const result = await dispatch(updateUnAvailability(id, payload));
       
-      if (result?.success || (result?.message && !result?.error)) {
-        alert('تم حفظ الأوقات غير المتاحة بنجاح!');
+      if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
+        toast.success('Unavailable times saved successfully!');
+        setIsTimeSectionDisabled(true);
         setIsEditing(false);
-        return { success: true, message: result.message };
+        return { success: true };
       } else {
-        throw new Error(result?.message || "فشل في حفظ الأوقات غير المتاحة");
+        throw new Error(result?.message || result?.error || 'Save failed');
       }
     } catch (error) {
-      console.error("خطأ في حفظ الأوقات غير المتاحة:", error);
-      alert(`خطأ في حفظ الأوقات غير المتاحة: ${error.message}`);
-      return {      
-        success: false, 
-        message: error.message || "فشل في حفظ الأوقات غير المتاحة" 
-      };            
+
+      toast.error(`Error saving unavailable times: ${error.message}`);
+      return { success: false, error: error.message };
     }
   }, [dispatch, id]);
 
-  // دالة حفظ التواريخ المتاحة
   const handleSaveAvailableDates = useCallback(async (formData) => {
     try {
-      console.log('Saving available dates:', formData);
+    
       
-      if (!formData.available_dates || formData.available_dates.length === 0) {
-        throw new Error("لا توجد تواريخ محددة للحفظ");
-      }
-  
-      const payload = {
-        available_dates: formData.available_dates
-      };
-  
+      const payload = { available_dates: formData.available_dates };
       const result = await dispatch(updateAvailability(id, payload));
-      console.log('API Result:', result);
       
       if (result?.success || result?.message === "Updated Successfully") {
-        alert('تم حفظ التواريخ المتاحة بنجاح!');
+        toast.success('Available dates saved successfully!');
         
         const newSelectedDates = [];
         formData.available_dates.forEach(range => {
-          const startDate = new Date(range.from);
-          const endDate = new Date(range.to);
-          const currentDate = new Date(startDate);
-          
-          while (currentDate <= endDate) {
-            newSelectedDates.push({ 
-              date: currentDate.toISOString().split('T')[0] 
-            });
-            currentDate.setDate(currentDate.getDate() + 1);
+          const start = new Date(range.from);
+          const end = new Date(range.to);
+          for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+            newSelectedDates.push({ date: d.toISOString().split('T')[0] });
           }
         });
-        
-        setSelectedDates(newSelectedDates);
-        return { success: true, message: result.message };
+        setSelectedAvailableDates(newSelectedDates);
+        setIsEditing(false);
+        return { success: true };
       } else {
-        throw new Error(result?.message || "فشل في حفظ التواريخ");
+        
+        throw new Error(result?.message || "Save failed");
       }
     } catch (error) {
-      console.error("خطأ في حفظ التواريخ:", error);
-      throw error;
+      
+      toast.error(`Error saving available dates: ${error.message}`);
+      return { success: false };
     }
   }, [dispatch, id]);
 
-  // دالة حفظ التواريخ غير المتاحة
   const handleSaveUnAvailableDates = useCallback(async (formData) => {
     try {
-      console.log('Saving unavailable dates:', formData);
+      const unAvailableDates = formData.un_available_dates || formData.available_dates || [];
       
-      if (!formData.available_dates || formData.available_dates.length === 0) {
-        throw new Error("لا توجد تواريخ محددة للحفظ");
+      
+      
+      const validDates = unAvailableDates.every(dateRange => dateRange.from && dateRange.to);
+      if (!validDates) {
+        throw new Error("Invalid date range format");
       }
-  
-      const payload = {
-        un_available_dates: formData.available_dates // نفس الهيكل بس اسم مختلف
-      };
-  
-      const result = await dispatch(updateUnAvailability(id, payload));
-      console.log('API Result:', result);
       
-      if (result?.success || result?.message === "Updated Successfully") {
-        alert('تم حفظ التواريخ غير المتاحة بنجاح!');
+      const payload = { un_available_dates: unAvailableDates };
+      const result = await dispatch(updateUnAvailability(id, payload));
+      
+      if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
+        toast.success('Unavailable dates saved successfully!');
         
         const newSelectedDates = [];
-        formData.available_dates.forEach(range => {
-          const startDate = new Date(range.from);
-          const endDate = new Date(range.to);
-          const currentDate = new Date(startDate);
-          
-          while (currentDate <= endDate) {
-            newSelectedDates.push({ 
-              date: currentDate.toISOString().split('T')[0] 
-            });
-            currentDate.setDate(currentDate.getDate() + 1);
+        unAvailableDates.forEach(range => {
+          const start = new Date(range.from);
+          const end = new Date(range.to);
+          for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+            newSelectedDates.push({ date: d.toISOString().split('T')[0] });
           }
         });
-        
-        setSelectedDates(newSelectedDates);
-        return { success: true, message: result.message };
+        setSelectedUnAvailableDates(newSelectedDates);
+        setIsEditing(false);
+        return { success: true };
       } else {
-        throw new Error(result?.message || "فشل في حفظ التواريخ غير المتاحة");
+        throw new Error(result?.message || result?.error || "Save failed");
       }
     } catch (error) {
-      console.error("خطأ في حفظ التواريخ غير المتاحة:", error);
-      throw error;
+      toast.error(`Error saving unavailable dates: ${error.message}`);
+      console.log(error);
+      
+      return { success: false, error: error.message };
     }
   }, [dispatch, id]);
 
-  // دالة موحدة لحفظ الأوقات حسب النوع
   const handleSaveTimes = useCallback((formData) => {
-    if (availabilityMode === 'available') {
+    const currentMode = activeTab.includes('unavailable') ? 'unavailable' : 'available';
+    
+    const timesData = formData.available_times || formData.un_available_times;
+    if (!timesData || timesData.length === 0) {
+      toast.error('Please select at least one day and time slot');
+      return Promise.resolve({ success: false, error: 'No times data' });
+    }
+    
+    if (currentMode === 'available') {
       return handleSaveAvailableTimes(formData);
     } else {
-      return handleSaveUnAvailableTimes(formData);
+      const transformedData = {
+        un_available_times: formData.available_times || formData.un_available_times || []
+      };
+      return handleSaveUnAvailableTimes(transformedData);
     }
-  }, [availabilityMode, handleSaveAvailableTimes, handleSaveUnAvailableTimes]);
+  }, [activeTab, handleSaveAvailableTimes, handleSaveUnAvailableTimes]);
 
-  // دالة موحدة لحفظ التواريخ حسب النوع
   const handleSaveDates = useCallback((formData) => {
-    if (availabilityMode === 'available') {
+    const currentMode = activeTab.includes('unavailable') ? 'unavailable' : 'available';
+    
+    if (currentMode === 'available') {
       return handleSaveAvailableDates(formData);
     } else {
-      return handleSaveUnAvailableDates(formData);
+      const transformedData = {
+        un_available_dates: formData.available_dates || formData.un_available_dates || []
+      };
+      return handleSaveUnAvailableDates(transformedData);
     }
-  }, [availabilityMode, handleSaveAvailableDates, handleSaveUnAvailableDates]);
+  }, [activeTab, handleSaveAvailableDates, handleSaveUnAvailableDates]);
 
   const handleTabChange = useCallback((tab) => {
     setActiveTab(tab);
-    setShowTabs(true); // Show tabs when any tab is clicked
     
-    // تحديد نوع الـ availability حسب التاب
-    if (tab === 'available-times' || tab === 'available-dates') {
-      setAvailabilityMode('available');
-    } else if (tab === 'unavailable-times' || tab === 'unavailable-dates') {
-      setAvailabilityMode('unavailable');
+    let newMode = 'available';
+    if (tab.includes('unavailable')) {
+      newMode = 'unavailable';
+    } else if (tab.includes('available')) {
+      newMode = 'available';
     }
     
-    // Automatically enter edit mode if switching to dates or unavailable modes
-    if ((tab === 'available-dates' || tab === 'unavailable-dates' || tab === 'unavailable-times') && !isEditing) {
-      setIsEditing(true);
+    setAvailabilityMode(newMode);
+  }, []);
+
+  useEffect(() => {
+    // Effect to handle availability mode changes
+  }, [availabilityMode, activeTab]);
+
+  const getCurrentAvailabilityMode = useCallback(() => {
+    if (activeTab.includes('unavailable')) {
+      return 'unavailable';
     }
-    
-    setSelectedTimeDropdown(null);
-  }, [isEditing]);
+    if (activeTab.includes('available')) {
+      return 'available';
+    }
+    return availabilityMode;
+  }, [activeTab, availabilityMode]);
 
   const handleMonthChange = useCallback((direction) => {
-    setCurrentMonth(prev => new Date(
-      prev.getFullYear(), 
-      prev.getMonth() + (direction === 'prev' ? -1 : 1), 
-      1
-    ));
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + (direction === 'prev' ? -1 : 1), 1));
   }, []);
 
-  // Handle cancel and return to read-only view
   const handleCancel = useCallback(() => {
     setIsEditing(false);
-    setAvailabilityMode('available');
+    setIsTimeSectionDisabled(true);
+    setActiveSection(null);
     setActiveTab('available-times');
-    setShowTabs(false); // Hide tabs when canceling
+    setAvailabilityMode('available');
   }, []);
 
-  // Handle edit button click
   const handleEdit = useCallback(() => {
+    setActiveSection('working-hours');
     setIsEditing(true);
-    setShowTabs(true); // Show tabs when editing
+    setIsTimeSectionDisabled(false);
+    setActiveTab('available-times');
+    setAvailabilityMode('available');
   }, []);
 
-  // Render the appropriate view based on state
-  if (isEditing || activeTab === 'available-dates' || activeTab === 'unavailable-dates') {
-    return (
-      <div className="max-w-4xl mx-auto border rounded-md overflow-hidden">
-        {/* التابات المحدثة */}
-        <div className="border-b flex">
-          {availabilityMode === 'available' ? (
-            <>
-              <button 
-                onClick={() => handleTabChange('available-times')} 
-                className={`px-4 py-2 ${activeTab === 'available-times' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500'}`}
-              >
-                Available Times
-              </button>
-              <button 
-                onClick={() => handleTabChange('available-dates')} 
-                className={`px-4 py-2 ${activeTab === 'available-dates' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500'}`}
-              >
-                Available Dates
-              </button>
-            </>
-          ) : (
-            <>
-              <button 
-                onClick={() => handleTabChange('unavailable-times')} 
-                className={`px-4 py-2 ${activeTab === 'unavailable-times' ? 'border-b-2 border-red-600 text-red-600' : 'text-gray-500'}`}
-              >
-                Unavailable Times
-              </button>
-              <button 
-                onClick={() => handleTabChange('unavailable-dates')} 
-                className={`px-4 py-2 ${activeTab === 'unavailable-dates' ? 'border-b-2 border-red-600 text-red-600' : 'text-gray-500'}`}
-              >
-                Unavailable Dates
-              </button>
-            </>
-          )}
-        </div>
-       
-        {/* عرض TimeSection للأوقات */}
-        {(activeTab === 'available-times' || activeTab === 'unavailable-times') ? (
-          <TimeSection 
-            timeZone={timeZone} 
-            weekDays={weekDays} 
-            selectedTimeDropdown={selectedTimeDropdown}
-            handleTimeDropdownToggle={setSelectedTimeDropdown}
-            handleSave={handleSaveTimes} // الدالة الموحدة
-            onUpdateWeekDays={setWeekDays}
-            onCancel={handleCancel} // Updated cancel handler
-            getInterviewData={interview}
-            availabilityMode={availabilityMode}
-          />
-        ) : (
-          /* عرض CalendarSection للتواريخ */
-          <CalendarSection 
-            timeZone={timeZone}
-            currentMonth={currentMonth}
-            selectedDates={selectedDates}
-            goToPreviousMonth={() => handleMonthChange('prev')}
-            goToNextMonth={() => handleMonthChange('next')}
-            handleDateClick={setSelectedDates}
-            handleSave={handleSaveDates}
-            getInterviewData={interview}
-            availabilityMode={availabilityMode} 
-            onCancel={handleCancel}
-          />
-        )}
-      </div>
-    );
-  } else {
-    return (
-      <ReadOnlyView 
-        sections={[
-          { id: 'working-hours', title: 'Working Hours', description: 'Set weekly available days and hours.', expandable: true },
-          { id: 'special-hours', title: 'Special Working Hours', description: 'Add extra available days or hours.', expandable: true },
-          { id: 'unavailability', title: 'Unavailability', description: 'Add extra unavailable days or hours.', expandable: false }
-        ]}
-        activeTab={activeTab}
-        handleTabChange={handleTabChange} 
-        onEdit={handleEdit} 
-        availabilityMode={availabilityMode}
-        showTabs={showTabs} 
-      />
-    );
-  }
+  const handleSpecialHoursAdd = useCallback(() => {
+    setActiveSection('special-hours');
+    setIsEditing(true);
+    setActiveTab('available-dates');
+    setAvailabilityMode('available');
+  }, []);
+
+  const handleUnavailabilityAdd = useCallback(() => {
+    setActiveSection('unavailability');
+    setIsEditing(true);
+    setIsTimeSectionDisabled(false); // إضافة هذا السطر لتفعيل وضع التحرير في TimeSection لقسم unAvailability
+    setActiveTab('unavailable-times');
+    setAvailabilityMode('unavailable');
+  }, []);
+
+  return (
+    <ReadOnlyView
+      sections={[
+        { id: 'working-hours', title: 'Working Hours', description: 'Set weekly available days and hours.', expandable: true },
+        { id: 'unavailability', title: 'Unavailability', description: 'Add extra unavailable days or hours.', expandable: true }
+      ]}
+      onEdit={handleEdit}
+      handleSpecialHoursAdd={handleSpecialHoursAdd}
+      handleUnavailabilityAdd={handleUnavailabilityAdd}
+      handleTabChange={handleTabChange}
+      activeTab={activeTab}
+      availabilityMode={availabilityMode}
+      isEditing={isEditing}
+      activeSection={activeSection}
+      timeZone={timeZone}
+      weekDays={weekDays}
+      selectedTimeDropdown={selectedTimeDropdown}
+      handleTimeDropdownToggle={setSelectedTimeDropdown}
+      handleSaveTimes={handleSaveTimes}
+      onUpdateWeekDays={setWeekDays}
+      onCancel={handleCancel}
+      currentMonth={currentMonth}
+      selectedDates={getSelectedDates()} 
+      goToPreviousMonth={() => handleMonthChange('prev')}
+      goToNextMonth={() => handleMonthChange('next')}
+      handleDateClick={handleDateClick} 
+      handleSaveDates={handleSaveDates}
+      getInterviewData={interview}
+      getWorkspaceData={workspace}
+      isTimeSectionDisabled={isTimeSectionDisabled}
+    />
+  );
 };
 
 export default InterviewAvailability;

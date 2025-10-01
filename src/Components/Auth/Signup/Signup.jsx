@@ -4,19 +4,27 @@ import { Eye, EyeOff, Phone, Mail, Lock, User, Camera, ArrowRight, UserPlus } fr
 import * as Yup from 'yup';
 import { useFormik } from 'formik';
 import { useNavigate } from 'react-router-dom';
+import ImageUploadCrop from '../../Dashboard/InterviewsPages/InterViewPage/ImageUploadCrop';
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 const Signup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
+  const [tempImage, setTempImage] = useState(null);
+  const [phoneValue, setPhoneValue] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  
   let navigate = useNavigate();
 
   const validationSchema = Yup.object().shape({
     name: Yup.string()
       .min(3, "Name must be at least 3 characters")
-      .max(50, "Name must be at most 50 characters")
-      .required("Name is required"),
+      .max(50, "Name must be at most 50 characters"),
     email: Yup.string()
       .email("Invalid email address")
       .required("Email is required"),
@@ -36,6 +44,27 @@ const Signup = () => {
         return value instanceof File && ['image/jpeg', 'image/png', 'image/gif'].includes(value.type);
       })
   });
+
+  const handlePhoneChange = (value, country) => {
+    setPhoneValue(value);
+
+    formik.setFieldValue('phone', value.replace(`+${country.dialCode}`, ""));
+    formik.setFieldValue('phone_code', `+${country.dialCode}`);
+
+    // Validate phone number
+    if (!value || value.length <= country.dialCode.length + 1) {
+      setPhoneError("Please enter a valid phone number");
+      return;
+    }
+
+    const phoneNumber = parsePhoneNumberFromString(value, country.countryCode?.toUpperCase());
+    
+    if (!phoneNumber || !phoneNumber.isValid()) {
+      setPhoneError("The phone number is invalid for this country");
+    } else {
+      setPhoneError("");
+    }
+  };
 
   const handleRegister = async (values) => {
     setIsLoading(true);
@@ -57,12 +86,14 @@ const Signup = () => {
         formData.append("phone", values.phone);
       }
 
-      if (values.photo) {
-        formData.append("photo", values.photo);
+      // استخدام tempImage إذا كانت موجودة
+      const photoToSend = tempImage || values.photo;
+      if (photoToSend) {
+        formData.append("photo", photoToSend);
       }
 
       const response = await axios.post(
-        "https://booking-system-demo.efc-eg.com/api/register",
+        "https://backend-booking.appointroll.com/api/register",
         formData,
         {
           headers: {
@@ -115,6 +146,27 @@ const Signup = () => {
     }
   };
 
+  // استقبال الصورة من ImageUploadCrop
+  const handleImageUpdate = (imageFile) => {
+    setTempImage(imageFile);
+    formik.setFieldValue('photo', imageFile);
+    setIsImageUploadOpen(false);
+    console.log("تم تحديث الصورة من ImageUploadCrop:", imageFile);
+  };
+
+  // فتح popup الصورة
+  const handleCameraClick = () => {
+    setIsImageUploadOpen(true);
+  };
+
+  // عرض الصورة المختارة
+  const getDisplayImage = () => {
+    if (tempImage) {
+      return URL.createObjectURL(tempImage);
+    }
+    return null;
+  };
+
   const formik = useFormik({
     initialValues: {
       name: "",
@@ -128,6 +180,8 @@ const Signup = () => {
     validationSchema,
     onSubmit: handleRegister
   });
+
+  const displayImage = getDisplayImage();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex">
@@ -188,7 +242,7 @@ const Signup = () => {
               <div className="w-16 h-16 mx-auto bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mb-4">
                 <UserPlus className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-800">BookingHub</h2>
+              <h2 className="text-2xl font-bold text-gray-800">Appoint Roll</h2>
             </div>
 
             {/* Header */}
@@ -286,51 +340,33 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Phone Input */}
+              {/* Phone Input - Updated with react-phone-input-2 */}
               <div className="space-y-2">
                 <label htmlFor="phone" className="block text-sm font-semibold text-gray-700">
                   Phone Number (Optional)
                 </label>
-                <div className="flex space-x-2">
-                  <div className="relative">
-                    <select
-                      id="phone_code"
-                      name="phone_code"
-                      value={formik.values.phone_code}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      className="w-24 px-3 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 hover:border-gray-300"
-                    >
-                      <option value="">Code</option>
-                      <option value="+20">+20</option>
-                      <option value="+1">+1</option>
-                      <option value="+44">+44</option>
-                      <option value="+971">+971</option>
-                    </select>
-                  </div>
-                  <div className="relative flex-1">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Phone className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formik.values.phone}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      placeholder="Phone number"
-                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 hover:border-gray-300"
-                      dir="ltr"
-                    />
-                  </div>
-                </div>
-                {formik.touched.phone && formik.errors.phone && (
-                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <PhoneInput
+                  country="eg"
+                  value={phoneValue}
+                  onChange={handlePhoneChange}
+                  enableSearch={true}
+                  searchPlaceholder="Search country"
+                  inputProps={{
+                    name: "phone",
+                    className: "!pl-16 w-full py-3 px-4 border border-gray-200 rounded-xl outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 hover:border-gray-300",
+                    placeholder: "Enter your mobile number"
+                  }}
+                  containerClass="w-full"
+                  buttonClass="!border-r !bg-white !px-3 !py-3 !rounded-l-xl !border-gray-200 hover:!border-gray-300"
+                  dropdownClass="!bg-white !border !shadow-lg !rounded-lg !mt-1"
+                  searchClass="!p-3 !border-b !border-gray-200"
+                />
+                {phoneError && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {formik.errors.phone}
+                    {phoneError}
                   </p>
                 )}
               </div>
@@ -419,26 +455,42 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Photo Input */}
+              {/* Profile Photo Input */}
               <div className="space-y-2">
-                <label htmlFor="photo" className="block text-sm font-semibold text-gray-700">
+                <label className="block text-sm font-semibold text-gray-700">
                   Profile Photo (Optional)
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Camera className="h-5 w-5 text-gray-400" />
+                <div className="flex items-center space-x-4">
+                  <div 
+                    className="cursor-pointer relative w-16 h-16 bg-purple-100 rounded-xl flex items-center justify-center text-purple-700 font-bold shadow-sm overflow-hidden hover:bg-purple-200 transition-colors"
+                    onClick={handleCameraClick}
+                  >
+                    {displayImage ? (
+                      <>
+                        <img className='w-full h-full rounded-xl object-cover' src={displayImage} alt="Profile" />
+                        <span className='w-full h-full absolute top-0 left-0 flex justify-center items-center group'>
+                          <span className='group-hover:opacity-30 duration-300 w-full h-full absolute top-0 opacity-0 left-0 bg-slate-800'></span>
+                          <Camera className='absolute text-white text-xl opacity-0 group-hover:opacity-100'/>
+                        </span>
+                      </>
+                    ) : (
+                      <Camera className="h-6 w-6" />
+                    )}
                   </div>
-                  <input
-                    type="file"
-                    id="photo"
-                    name="photo"
-                    accept="image/*"
-                    onChange={(event) => {
-                      const file = event.currentTarget.files[0] || null;
-                      formik.setFieldValue('photo', file);
-                    }}
-                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 hover:border-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
-                  />
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600 mb-1">
+                      {displayImage ? "Profile photo selected" : "Click the camera icon to add a profile photo"}
+                    </p>
+                    {displayImage && (
+                      <button 
+                        type="button"
+                        onClick={handleCameraClick}
+                        className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                      >
+                        Change Photo
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {formik.touched.photo && formik.errors.photo && (
                   <p className="text-red-500 text-sm mt-1 flex items-center">
@@ -483,7 +535,7 @@ const Signup = () => {
                   className="w-full bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-md flex items-center justify-center space-x-2"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
                   </svg>
                   <span>Sign In Instead</span>
                 </button>
@@ -497,6 +549,14 @@ const Signup = () => {
           </div>
         </div>
       </div>
+
+      {/* ImageUploadCrop Component */}
+      <ImageUploadCrop 
+        isOpen={isImageUploadOpen}
+        onClose={() => setIsImageUploadOpen(false)}
+        onImageUpdate={handleImageUpdate}
+        currentImage={null}
+      />
     </div>
   );
 };

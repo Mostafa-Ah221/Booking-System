@@ -1,20 +1,54 @@
 import { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, Download, Plus, ChevronRight, MoreHorizontal } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import Confetti from 'react-confetti';
 
 import { Link, useParams } from 'react-router-dom';
 import RescheduleSidebar from './RescheduleSidebar';
+import CancelConfirmationModal from './CancelConfirmationModal'; // Import the new modal
 import imgCheckCircle from '../../assets/image/ueyd.png'
+
 
 export default function AppointmentConfirmation() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isRescheduleSidebarOpen, setIsRescheduleSidebarOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false); // New state for cancel modal
+  const [showConfetti, setShowConfetti] = useState(true);
+  const [windowDimensions, setWindowDimensions] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+  
   const dropdownRef = useRef(null);
-const {id} = useParams();
-const location = useLocation();
-const responseData = location.state?.data.appointment;
+  const {id} = useParams();
+  const location = useLocation();
+  const responseData = location.state?.data.appointment;
 
-console.log(responseData.id);
+
+  const double_book= localStorage.getItem("double_book")
+ 
+  
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Stop confetti after 5 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowConfetti(false);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -33,17 +67,31 @@ console.log(responseData.id);
     };
   }, [showDropdown]);
 
+  // Handle successful cancellation
+  const handleCancelSuccess = () => {
+    setShowDropdown(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+      {/* Confetti Animation */}
+      {showConfetti && (
+        <Confetti
+          width={windowDimensions.width}
+          height={windowDimensions.height}
+          recycle={false}
+          numberOfPieces={200}
+          gravity={0.3}
+          colors={['#9333ea', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']}
+        />
+      )}
    
-
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 pb-8 pt-12">
         {/* Success Message */}
         <div className="text-center mb-8">
-         
           <h1 className="text-xl font-bold text-gray-800 mb-2">
-            Appointment confirmed with {responseData?.name}!
+            Appointment confirmed with {responseData?.customer}!
           </h1>
           <p className="text-gray-600">Your appointment has been successfully scheduled</p>
         </div>
@@ -64,12 +112,11 @@ console.log(responseData.id);
                   <Clock className="w-4 h-4 text-blue-600" />
                   <span className="text-lg font-semibold text-blue-600">{responseData?.date} | {responseData?.time}</span>
                 </div>
-                <p className="text-gray-600 mb-1">demo</p>
+                <p className="text-gray-600 mb-1">{responseData?.interview}</p>
                 <p className="text-sm text-gray-500">{responseData?.time_zone}</p>
                 
                 {/* Action Links */}
                 <div className="flex items-center space-x-4 mt-4">
-                 
                   <button className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 transition-colors">
                     <Download className="w-4 h-4" />
                     <span className="text-sm font-medium">Download as ICS</span>
@@ -90,37 +137,59 @@ console.log(responseData.id);
               {/* Dropdown Menu */}
               {showDropdown && (
                 <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
-                  <Link to={`/share/${id}/appointmentConfirmation/summary`} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                  <Link 
+                    to={`/share/${id}/appointmentConfirmation/summary`}
+                    state={{ data: responseData }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
                     Booking Summary
                   </Link>
+
                   <button
-                   onClick={() => setIsRescheduleSidebarOpen(true)}
-                  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors">
+                    onClick={() => setIsRescheduleSidebarOpen(true)}
+                    className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
                     Reschedule
                   </button>
+                  
                   <div className="border-t border-gray-100 my-1"></div>
-                  <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                  
+                  <button 
+                    onClick={() => setIsCancelModalOpen(true)} // Open cancel modal instead of direct cancel
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
                     Cancel
                   </button>
                 </div>
               )}
-               <RescheduleSidebar
-        isOpen={isRescheduleSidebarOpen}
-        onClose={() => setIsRescheduleSidebarOpen(false)}
-        appointmentData={responseData}
-      />
             </div>
           </div>
         </div>
 
         {/* Book Another Appointment Button */}
-        <div className="text-center mb-12">
+        {double_book && double_book == 1 ? <div className="text-center mb-12">
           <Link to={`/share/${id}`} className="inline-flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-colors shadow-md hover:shadow-lg">
             <span>Book another appointment</span>
             <ChevronRight className="w-4 h-4" />
           </Link>
-        </div>
+        </div>: ""}
+        
       </div>
+
+      {/* Reschedule Sidebar */}
+      <RescheduleSidebar
+        isOpen={isRescheduleSidebarOpen}
+        onClose={() => setIsRescheduleSidebarOpen(false)}
+        appointmentData={responseData}
+      />
+
+      {/* Cancel Confirmation Modal */}
+      <CancelConfirmationModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        appointmentData={responseData}
+        onCancelSuccess={handleCancelSuccess}
+      />
 
       {/* Footer */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white relative overflow-hidden">
@@ -142,9 +211,9 @@ console.log(responseData.id);
                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                     <Calendar className="w-5 h-5 text-purple-600" />
                   </div>
-                  <span className="text-xl font-bold">Zoho</span>
+                  <span className="text-xl font-bold">Appoint </span>
                 </div>
-                <span className="text-xl font-bold">Bookings</span>
+                <span className="text-xl font-bold">Roll</span>
               </div>
               
               <div className="mb-4">
@@ -156,16 +225,16 @@ console.log(responseData.id);
               </h2>
               
               <p className="text-purple-100 leading-relaxed mb-6">
-                With Zoho Bookings, you can book more appointments without phone calls, back-and-forth emails, and 
+                With Appoint Roll, you can book more appointments without phone calls, back-and-forth emails, and 
                 repetitive tasks. Let customers self-schedule while you grow your business.
               </p>
             </div>
 
             {/* Right Side - CTA */}
             <div className="text-center md:text-right">
-              <button className="bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors shadow-lg hover:shadow-xl">
+              <Link to="/" target="_blank" rel="noopener noreferrer" className="bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors shadow-lg hover:shadow-xl">
                 Try for free
-              </button>
+              </Link>
             </div>
           </div>
         </div>

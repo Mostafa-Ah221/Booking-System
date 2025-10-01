@@ -1,21 +1,21 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isSetupOpen, setIsSetupOpen] = useState(false);
 
   return (
-    <nav className="relative bg-white shadow-md">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        {/* Logo Section */}
-        <Link to="/" className="flex items-center gap-3">
-        <svg
+    <nav className="relative bg-white shadow-lg border-b border-gray-100 sticky top-0 z-50">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16 lg:h-20">
+          {/* Logo Section */}
+          <a href="/" className="flex items-center gap-2 sm:gap-3">
+            <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 1024 1024"
               xmlSpace="preserve"
-              width={37}
+              className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10"
             >
               <path
                 fill="#226DB4"
@@ -29,50 +29,108 @@ const NavBar = () => {
                 fill="#089949"
                 d="M332.4,650.7l-76.3-81.4c-11.3-12-30.2-12.7-42.2-1.4c-12,11.3-12.6,30.2-1.4,42.2l96.6,103.1  c5.9,6.3,13.8,9.5,21.8,9.5c7.3,0,14.6-2.7,20.3-8l195.8-182.3l43.9-40.9l56.8-52.9c12.1-11.2,12.8-30.2,1.5-42.2  c-11.2-12.1-30.1-12.8-42.2-1.5l-56.8,52.9l-43.9,40.9L332.4,650.7z"
               />
-        </svg>
-          <div className="text-lg font-bold">Bookings</div>
-        </Link>
+            </svg>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800">
+              Appoint Roll
+            </div>
+          </a>
 
-        {/* Desktop Menu */}
-        <ul className="hidden md:flex space-x-6 text-gray-700 font-medium">
-          <li className="hover:text-blue-600 cursor-pointer">Features</li>
-          <li className="hover:text-blue-600 cursor-pointer">Industries </li>
-
-
-          <Link to="/pricing" className="hover:text-blue-600 cursor-pointer">Pricing</Link>
-          <Link to="/appointment-booking" className="hover:text-blue-600 cursor-pointer">Webinars</Link>
-          <li className="hover:text-blue-600 cursor-pointer">Resources </li>
-        </ul>
-        {/* links auth */}
-        <div className="hidden md:flex">
-          <Link to="/login" className="text-red-600 hover:text-red-800 mr-4 font-semibold text-[18px]">Sign In</Link>
-          <Link to="/signup" className="text-red-600 hover:text-red-800 font-semibold text-[18px]">Sign Up</Link>
-        </div>
-        {/* Mobile Menu Button */}
-        <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
-          {isOpen ? <X size={28} /> : <Menu size={28} />}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      {isOpen && (
-        <ul className="md:hidden bg-gray-100 text-gray-700 font-medium  flex flex-col gap-3 py-4">
+          {/* Desktop Menu */}
+          <ul className="hidden lg:flex items-center space-x-6 xl:space-x-8">
             <li>
-   
-      Features
-  </li>
-          <li className="hover:text-blue-600 cursor-pointer">Industries </li>
-          <Link to="/pricing" className="hover:text-blue-600 cursor-pointer">Pricing</Link>
-          <Link to="/appointment-booking" className="hover:text-blue-600 cursor-pointer">Webinars</Link>
-          {/* <li className="hover:text-blue-600 cursor-pointer">Webinars</li> */}
-          <li className="hover:text-blue-600 cursor-pointer">Resources </li>
-          <div className="flex flex-col">
-          <Link to="/login" className="text-red-600 hover:text-red-800 mr-4 font-semibold text-[18px]">Sign In</Link>
-          <Link to="/signup" className="text-red-600 hover:text-red-800 font-semibold text-[18px]">Sign Up</Link>
+              <Link to="/features" className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 py-2 px-1">
+                Features
+              </Link>
+            </li>
+            <li>
+              <a href="/" className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 py-2 px-1">
+                Industries
+              </a>
+            </li>
+            <li>
+              <Link to="/pricing" className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 py-2 px-1">
+                Pricing
+              </Link>
+            </li>
+            <li>
+              <Link to="/webinars" className="text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 py-2 px-1">
+                Webinars
+              </Link>
+            </li>
+         
+          </ul>
+
+          {/* Desktop Auth Links */}
+          <div className="hidden lg:flex items-center space-x-4">
+            <Link
+              to="/login" 
+              className="text-red-600 hover:text-red-800 font-semibold text-lg transition-colors duration-200 px-2 py-1"
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/signup" 
+              className="text-red-600 hover:text-red-800 font-semibold text-lg transition-colors duration-200 px-2 py-1"
+            >
+              Sign Up
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button 
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200" 
+            onClick={() => setIsOpen(!isOpen)}
+            aria-label="Toggle menu"
+          >
+            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
-        </ul>
-        
-      )}
+
+        {/* Mobile Menu */}
+        <div className={`lg:hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+          <div className="py-4 border-t border-gray-100 bg-gray-50">
+            <ul className="space-y-1 px-4">
+              <li>
+                <a href="/" className="block py-3 text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 border-b border-gray-200">
+                  Features
+                </a>
+              </li>
+              <li>
+                <a href="/" className="block py-3 text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 border-b border-gray-200">
+                  Industries
+                </a>
+              </li>
+              <li>
+                <Link to="/pricing" className="block py-3 text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 border-b border-gray-200">
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link to="/webinars" className="block py-3 text-gray-700 hover:text-blue-600 font-medium transition-colors duration-200 border-b border-gray-200">
+                  Webinars
+                </Link>
+              </li>
+             
+              
+              {/* Auth Links Mobile */}
+              <div className="pt-4 space-y-3">
+                <Link
+                  to="/login" 
+                  className="block w-full text-center py-3 text-red-600 hover:text-red-800 font-semibold text-lg border border-red-200 rounded-lg hover:bg-red-50 transition-all duration-200"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/signup" 
+                  className="block w-full text-center py-3 text-red-600 hover:text-red-800 font-semibold text-lg border border-red-200 rounded-lg hover:bg-red-50 transition-all duration-200"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            </ul>
+          </div>
+        </div>
+      </div>
     </nav>
   );
 };

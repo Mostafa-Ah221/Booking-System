@@ -52,7 +52,7 @@ const UnavailabilityForm = ({ isOpen, onClose }) => {
               Add Unavailability For
             </label>
             <div className="flex space-x-4">
-              {['Business', 'Recruiter', 'Resource'].map((option) => (
+              {['Business', 'Recruiter'].map((option) => (
                 <label key={option} className="flex items-center space-x-2">
                   <input
                     type="radio"

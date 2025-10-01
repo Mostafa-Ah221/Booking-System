@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useDispatch } from 'react-redux';
 import { getWorkspace, createWorkSpace, updataWorkspace } from '../../../../redux/apiCalls/workspaceCallApi';
+import toast from "react-hot-toast";
 
 const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
   if (!isOpen) return null;
@@ -12,7 +13,7 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
     id: null
   });
   const [isEditMode, setIsEditMode] = useState(false);
-  
+  const [isLoading, setIsLoading] = useState(false); // إضافة state للتحميل
   const dispatch = useDispatch();
   
   useEffect(() => {
@@ -26,13 +27,16 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
       setWorkspace({ name: "", id: null });
       setIsEditMode(false);
     }
+    setIsLoading(false); // إعادة تعيين حالة التحميل عند فتح المودال
   }, [editWorkspace, isOpen]);
   
   const handleSubmit = async () => {
     if (!workspace.name) {
-      alert("Workspace name is required!");
+      toast.error("Workspace name is required!");
       return;
     }
+
+    setIsLoading(true); // تشغيل حالة التحميل
 
     try {
       let response;
@@ -44,18 +48,19 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
       }
 
       if (response?.success) {
+        onClose();
         dispatch(getWorkspace());
         setWorkspace({ name: "", id: null });
-        onClose();
       }
     } catch (error) {
       console.error("Error occurred:", error);
-      alert("An error occurred while " + (isEditMode ? "updating" : "creating") + " the workspace.");
+      toast.error("An error occurred while " + (isEditMode ? "updating" : "creating") + " the workspace.");
+    } finally {
+      setIsLoading(false); // إيقاف حالة التحميل
     }
   };
-  // Using React Portal to render modal at the root level
+  
   return (
-    
     <div className="fixed inset-0 flex items-start justify-center bg-black/40 z-50 p-5 w-[100vw]">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 mt-10 relative">
         {/* Header */}
@@ -67,6 +72,7 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
             onClick={onClose} 
             className="p-1 hover:bg-gray-200 rounded-full"
             aria-label="Close modal"
+            disabled={isLoading} // تعطيل زر الإغلاق أثناء التحميل
           >
             <X className="w-5 h-5 text-gray-600" />
           </button>
@@ -85,6 +91,7 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
               onChange={(e) => setWorkspace({...workspace, name: e.target.value})}
               className="w-full border rounded-lg p-2 mt-1 focus:ring-2 focus:ring-purple-500 focus:outline-none"
               autoFocus
+              disabled={isLoading} // تعطيل الإدخال أثناء التحميل
             />
           </div>
 
@@ -93,15 +100,25 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
             <button 
               type="button"
               onClick={handleSubmit}
-              className="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 ml-2 transition-colors"
+              disabled={isLoading} // تعطيل الزر أثناء التحميل
+              className={`px-5 py-2 text-white rounded-lg ml-2 transition-colors ${
+                isLoading 
+                  ? 'bg-purple-400 cursor-not-allowed' 
+                  : 'bg-purple-600 hover:bg-purple-700'
+              }`}
             >
-              {isEditMode ? "Update" : "Create"}
+              {isLoading ? "Processing..." : (isEditMode ? "Update" : "Create")}
             </button>
 
             <button 
               type="button" 
               onClick={onClose} 
-              className="px-5 py-2 bg-gray-100 text-gray-700 border rounded-lg hover:bg-gray-200 transition-colors"
+              disabled={isLoading} // تعطيل زر الإلغاء أثناء التحميل
+              className={`px-5 py-2 border rounded-lg transition-colors ${
+                isLoading
+                  ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
               Cancel
             </button>

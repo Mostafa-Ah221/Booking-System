@@ -1,4 +1,8 @@
 import { X, Calendar, Clock } from 'lucide-react';
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { useState } from 'react';
 
 const BookingSummarySidebar = ({
   show,
@@ -10,11 +14,41 @@ const BookingSummarySidebar = ({
   selectedTimezone,
   formData,
   onFormChange,
-  onPhoneCodeChange,
   onScheduleAppointment,
   isBooking
 }) => {
+  const [phoneValue, setPhoneValue] = useState(
+    formData.code_phone && formData.phone 
+      ? `${formData.code_phone}${formData.phone}` 
+      : ""
+  );
+  const [phoneError, setPhoneError] = useState("");
+
   if (!show) return null;
+console.log(bookingData);
+
+  const handlePhoneChange = (value, country) => {
+    setPhoneValue(value);
+
+    // Update form data with separated phone code and phone number
+    onFormChange('phone', value.replace(`+${country.dialCode}`, ""));
+    onFormChange('code_phone', `+${country.dialCode}`);
+
+    // Validate phone number
+    if (!value || value.length <= country.dialCode.length + 1) {
+      setPhoneError("Please enter a valid phone number");
+      return;
+    }
+
+    const phoneNumber = parsePhoneNumberFromString(value, country.countryCode?.toUpperCase());
+    
+    if (!phoneNumber || !phoneNumber.isValid()) {
+      setPhoneError("The phone number is invalid for this country");
+    } else {
+      setPhoneError("");
+    }
+  };
+
 
   return (
     <>
@@ -36,108 +70,149 @@ const BookingSummarySidebar = ({
           </div>
 
           <div className="flex items-center mb-6">
-            <div className="w-12 h-12 bg-pink-500 rounded-lg flex items-center justify-center mr-4">
-              <span className="text-white font-bold text-lg">S</span>
+            <div className="w-12 h-12 bg-pink-500 rounded-lg flex items-center justify-center mr-4 overflow-hidden">
+              {bookingData?.photo ? (
+                <img
+                  src={bookingData.photo}
+                  alt="Booking"
+                  className="w-full h-full object-cover rounded-lg"
+                />
+              ) : (
+                <span className="text-white font-bold text-lg">
+                  {bookingData?.name?.charAt(0) || "?"}
+                </span>
+              )}
             </div>
+
             <div>
               <h3 className="font-semibold text-gray-800">
                 {bookingData?.service_name || selectedService}
               </h3>
               <p className="text-sm text-gray-500">
-                ( {bookingData?.duration || '1 hr'} | One on One )
+                ( {bookingData?.duration} )
               </p>
             </div>
           </div>
 
-          <div className="mb-6 space-y-3">
+          <div className="mb-6 space-y-3 flex gap-7 items-center">
             <div className="flex items-center">
               <Calendar className="w-4 h-4 text-gray-500 mr-3" />
               <span className="text-sm text-gray-700">{selectedDate} {selectedTime}</span>
             </div>
             
-            <div className="flex items-center">
+            <div className="flex items-center !m-0">
               <Clock className="w-4 h-4 text-gray-500 mr-3" />
               <span className="text-sm text-gray-700">{selectedTimezone}</span>
             </div>
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="font-semibold text-gray-800 mb-4">Please enter your details</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Name"
-                  value={formData.name}
-                  onChange={(e) => onFormChange('name', e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={formData.email}
-                  onChange={(e) => onFormChange('email', e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Contact Number <span className="text-red-500">*</span>
-                </label>
-                <div className="flex">
-                  <select
-                    value={formData.code_phone}
-                    onChange={(e) => onPhoneCodeChange(e.target.value)}
-                    className="px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
-                  >
-                    <option value="+20">🇪🇬 +20</option>
-                    <option value="+1">🇺🇸 +1</option>
-                    <option value="+44">🇬🇧 +44</option>
-                    <option value="+971">🇦🇪 +971</option>
-                    <option value="+966">🇸🇦 +966</option>
-                    <option value="+49">🇩🇪 +49</option>
-                    <option value="+33">🇫🇷 +33</option>
-                    <option value="+39">🇮🇹 +39</option>
-                    <option value="+34">🇪🇸 +34</option>
-                    <option value="+31">🇳🇱 +31</option>
-                  </select>
-                  <input
-                    type="tel"
-                    placeholder="Contact Number"
-                    value={formData.phone}
-                    onChange={(e) => onFormChange('phone', e.target.value)}
-                    className="flex-1 p-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
+  <h3 className="font-semibold text-gray-800 mb-4">Please enter your details</h3>
+  
+  <div className="space-y-4">
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Name <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="text"
+        placeholder="Name"
+        value={formData.name}
+        onChange={(e) => onFormChange('name', e.target.value)}
+        className="w-full p-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
+      />
+    </div>
+    
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Email <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="email"
+        placeholder="Email"
+        value={formData.email}
+        onChange={(e) => onFormChange('email', e.target.value)}
+        className="w-full p-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
+      />
+    </div>
+    
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Contact Number 
+      </label>
+      <div>
+        <PhoneInput
+          country="eg"
+          value={phoneValue}
+          onChange={handlePhoneChange}
+          enableSearch={true}
+          searchPlaceholder="Search country"
+          inputProps={{
+            name: "phone",
+            className: "!pl-16 w-full py-3 px-4 border border-gray-300 rounded-sm outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200",
+            placeholder: "Enter your mobile number"
+          }}
+          containerClass="w-full"
+          buttonClass="!border-r !bg-gray-50 !px-3 !py-3 !rounded-l-sm !border-gray-300"
+          dropdownClass="!bg-white !border !shadow-lg !rounded-sm !mt-1 !z-[9999] relative bottom-7"
+          searchClass="!p-3 !border-b !border-gray-200"
+        />
+        {phoneError && (
+          <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
+            <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+            {phoneError}
+          </p>
+        )}
+      </div>
+    </div>
 
-            <button
-              onClick={onScheduleAppointment}
-              className="w-full bg-pink-500 hover:bg-pink-600 text-white py-3 rounded-lg font-semibold mt-6 transition-colors shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
-              disabled={!formData.name || !formData.email || !formData.phone || isBooking}
-            >
-              {isBooking ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Booking...
-                </div>
-              ) : (
-                'Schedule Appointment'
-              )}
-            </button>
-          </div>
+    {/* إضافة حقل العنوان */}
+    {bookingData?.offline_mode === 'homedelivery' && ( <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Address {bookingData?.offline_mode === 'homedelivery' && <span className="text-red-500">*</span>}
+
+          </label>
+        <input
+          type="text"
+          placeholder="Enter your address"
+          value={formData.address}
+          onChange={(e) => onFormChange('address', e.target.value)}
+          className="w-full p-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
+        />
+    </div>)}
+   
+    {bookingData?.price && bookingData?.price > 0 ?<div>
+        <div className="block text-sm font-medium text-gray-700 mb-2 border p-3">
+        Payment Amount  | {bookingData.price} {bookingData.currency}
+        </div></div> : ""}
+      
+      
+    
+   
+  </div>
+
+
+  <button
+    onClick={onScheduleAppointment}
+    className="w-full bg-pink-500 hover:bg-pink-600 text-white py-3 rounded-sm font-semibold mt-6 transition-colors shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
+disabled={
+  !formData.name || 
+  !formData.email || 
+ 
+  phoneError || 
+  (bookingData?.offline_mode === 'homedelivery' && !formData.address) || 
+  isBooking
+}  >
+    {isBooking ? (
+      <div className="flex items-center justify-center">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+        Booking...
+      </div>
+    ) : (
+      'Schedule Appointment'
+    )}
+  </button>
+</div>
         </div>
       </div>
     </>

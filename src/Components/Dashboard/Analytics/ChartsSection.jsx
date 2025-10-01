@@ -197,7 +197,7 @@ export function Chart1({ data, timeFilter }) {
                         <span className="text-sm text-gray-500 ml-2">(No data for selected period)</span>
                     )}
                 </h4>
-                <div className="h-[250px]">
+                <div className="h-[calc(100vh-300px)]">
                     {chartData.dateData.length > 0 ? (
                         <Chart
                             options={chartOptions}
@@ -221,23 +221,22 @@ export function Chart1({ data, timeFilter }) {
 
 export default function ChartsSection({ data }) {
     const [timeFilter, setTimeFilter] = useState('all');
-    const [searchTerm, setSearchTerm] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-    const timeFilterOptions = [
-        { value: 'all', label: 'All Time' },
-        { value: 'week', label: 'Last Week' },
-        { value: 'month', label: 'Last Month' },
-        { value: '3months', label: 'Last 3 Months' },
-        { value: '6months', label: 'Last 6 Months' },
-        { value: 'year', label: 'Last Year' }
-    ];
+    // const timeFilterOptions = [
+    //     { value: 'all', label: 'All Time' },
+    //     { value: 'week', label: 'Last Week' },
+    //     { value: 'month', label: 'Last Month' },
+    //     { value: '3months', label: 'Last 3 Months' },
+    //     { value: '6months', label: 'Last 6 Months' },
+    //     { value: 'year', label: 'Last Year' }
+    // ];
 
-    const selectedFilterLabel = timeFilterOptions.find(option => option.value === timeFilter)?.label;
+    // const selectedFilterLabel = timeFilterOptions.find(option => option.value === timeFilter)?.label;
 
     return (
         <div className="bg-white rounded-lg p-6 pb-0 shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-end justify-between mb-6">
                 <h3 className="text-sm font-medium text-gray-600">Appointments Analytics</h3>
                 <div className="flex items-center gap-4">
                     {/* Time Filter Dropdown */}
@@ -246,11 +245,11 @@ export default function ChartsSection({ data }) {
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
                         >
-                            <span>{selectedFilterLabel}</span>
-                            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                            {/* <span>{selectedFilterLabel}</span> */}
+                            {/* <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} /> */}
                         </button>
                         
-                        {isDropdownOpen && (
+                        {/* {isDropdownOpen && (
                             <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
                                 {timeFilterOptions.map((option) => (
                                     <button
@@ -267,7 +266,7 @@ export default function ChartsSection({ data }) {
                                     </button>
                                 ))}
                             </div>
-                        )}
+                        )} */}
                     </div>
 
                     {/* Search Input */}
@@ -284,7 +283,7 @@ export default function ChartsSection({ data }) {
             {/* Click outside to close dropdown */}
             {isDropdownOpen && (
                 <div 
-                    className="fixed inset-0 z-5" 
+                    className="fixed z-5" 
                     onClick={() => setIsDropdownOpen(false)}
                 />
             )}
@@ -298,63 +297,41 @@ export default function ChartsSection({ data }) {
 export function Chart2({ data, timeFilter }) {
     const appointmentData = data?.data || {};
 
-    // Process data for pie chart based on time filter
+    // Process data for pie chart
     const pieData = useMemo(() => {
-        const appointments = appointmentData.recent_appointments || [];
+        // Get appointments_by_status object directly
+        const appointmentsByStatus = appointmentData?.appointments_by_status || {};
 
-        // Filter appointments based on time filter
-        const filteredAppointments = appointments.filter(appointment => {
-            const appointmentDate = new Date(appointment.date);
-            const now = new Date();
-            
-            switch(timeFilter) {
-                case 'week':
-                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                    return appointmentDate >= weekAgo;
-                case 'month':
-                    const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-                    return appointmentDate >= monthAgo;
-                case '3months':
-                    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-                    return appointmentDate >= threeMonthsAgo;
-                case '6months':
-                    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
-                    return appointmentDate >= sixMonthsAgo;
-                case 'year':
-                    const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-                    return appointmentDate >= yearAgo;
-                default: // 'all'
-                    return true;
-            }
-        });
-
-        // Count appointments by status
-        const statusCounts = filteredAppointments.reduce((acc, appointment) => {
-            const status = appointment.status === 'rescheduled' ? 'upcoming' : appointment.status;
-            acc[status] = (acc[status] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Convert to pie chart format
+        // Since we have aggregated data by status, we don't need time filtering
+        // The data is already summarized by status
+        
+        // Convert object to pie chart format
         const statusData = [
             { 
                 id: 'upcoming', 
                 label: 'Upcoming', 
-                value: statusCounts.upcoming || 0, 
+                value: appointmentsByStatus.upcoming || 0, 
                 color: '#4f46e5',
                 percentage: 0
             },
             { 
                 id: 'completed', 
                 label: 'Completed', 
-                value: statusCounts.completed || 0, 
+                value: appointmentsByStatus.completed || 0, 
                 color: '#10b981',
+                percentage: 0
+            },
+            { 
+                id: 'passed', 
+                label: 'Passed', 
+                value: appointmentsByStatus.passed || 0, 
+                color: '#f59e0b',
                 percentage: 0
             },
             { 
                 id: 'cancelled', 
                 label: 'Cancelled', 
-                value: statusCounts.cancelled || 0, 
+                value: appointmentsByStatus.cancelled || 0, 
                 color: '#ef4444',
                 percentage: 0
             }
@@ -376,7 +353,7 @@ export function Chart2({ data, timeFilter }) {
             <h4 className="text-lg font-medium text-gray-700 mb-3">
                 Appointments by Status
                 {pieData.length === 0 && (
-                    <span className="text-sm text-gray-500 ml-2">(No data for selected period)</span>
+                    <span className="text-sm text-gray-500 ml-2">(No data available)</span>
                 )}
             </h4>
             <div className="h-[300px]">
@@ -423,7 +400,7 @@ export function Chart2({ data, timeFilter }) {
                     <div className="flex items-center justify-center h-full text-gray-500">
                         <div className="text-center">
                             <p className="text-lg mb-2">No appointments found</p>
-                            <p className="text-sm">Try selecting a different time period</p>
+                            <p className="text-sm">No data available to display</p>
                         </div>
                     </div>
                 )}

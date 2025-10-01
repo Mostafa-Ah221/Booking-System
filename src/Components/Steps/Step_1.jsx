@@ -1,31 +1,38 @@
 import { Link } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
 import { createWorkSpace } from '../../redux/apiCalls/workspaceCallApi';
-
+import toast from "react-hot-toast";
+import { fetchProfileData } from '../../redux/apiCalls/ProfileCallApi';
 const Setup_1 = () => {
   const dispatch = useDispatch();
   const [businessName, setBusinessName] = useState('');
+  const { profile, loading = false } = useSelector(state => state.profileData);
+console.log(profile?.user.name);
 
   const handleSubmit = async () => {
     if (!businessName.trim()) {
-      alert("Workspace name is required!");
+      toast.error("Workspace name is required!");
       return;
     }
     try {
       const response = await dispatch(createWorkSpace(businessName.trim()));
       // You can add navigation logic here if needed
-      console.log("Workspace created successfully:", response);
     } catch (error) {
       console.error("Error occurred:", error);
-      alert("An error occurred while creating the workspace.");
+      toast.error("An error occurred while creating the workspace.");
     }
   };
 
   const handleInputChange = (e) => {
     setBusinessName(e.target.value);
   };
-
+  useEffect(() => {
+    if (!profile) {
+      dispatch(fetchProfileData());
+     
+    }
+  }, [dispatch, profile]);
   return (
     <div className="min-h-screen bg-white max-w-5xl m-auto">
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center">
@@ -50,14 +57,17 @@ const Setup_1 = () => {
               />
             </svg>
           </div>
-          <span className="text-xl font-medium">Bookings</span>
+          <span className="text-xl font-medium">Appoint Roll</span>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
         <div className="flex-1">
           <div className="mb-8">
-            <h1 className="text-gray-700 mb-2">Welcome to Zoho Bookings, مصطفى احمد!</h1>
+<h1 className="text-gray-700 mb-2">
+  Welcome to Appoint Roll -{" "}
+  <span className="font-semibold text-purple-600">{profile?.user.name}</span>
+</h1>
             <h2 className="text-2xl font-bold mb-4">Let's get you meeting ready!</h2>
           </div>
 

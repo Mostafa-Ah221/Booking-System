@@ -86,7 +86,7 @@ const PrivacyAndSecurity = () => {
             <div className="space-y-3">
               <p className="font-medium">Delete guest information</p>
               <p className="text-sm text-gray-600">
-                Enter guest email(s) to delete them from Zoho Bookings. 
+                Enter guest email(s) to delete them from Appoint Roll. 
                 You can delete up to 10 guest emails at a time.
               </p>
               <div className="flex gap-3">

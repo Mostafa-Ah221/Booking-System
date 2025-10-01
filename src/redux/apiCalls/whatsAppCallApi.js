@@ -1,8 +1,8 @@
 import axios from "axios";
 import { whatsAppActions } from '../slices/whatsAppSlice'; 
 
-const BASE_URL = "https://booking-system-demo.efc-eg.com/api/whatsapp/settings";
-const GET_INTEGRATIONS_URL = "https://booking-system-demo.efc-eg.com/api/whatsapp/integrations";
+const BASE_URL = "https://backend-booking.appointroll.com/api/whatsapp/settings";
+const GET_INTEGRATIONS_URL = "https://backend-booking.appointroll.com/api/whatsapp/integrations";
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const RATE_LIMIT_DELAY = 1000;
@@ -12,7 +12,7 @@ let cacheTimestamp = null;
 const CACHE_DURATION = 5 * 60 * 1000; 
 
 const apiClient = axios.create({
-  timeout: 10000,
+  timeout: 5000,
 });
 
 apiClient.interceptors.response.use(
@@ -98,7 +98,7 @@ export function createOrUpdateWhatsAppSettings(payload) {
     try {
       const token = localStorage.getItem("access_token");
 
-      const response = await apiClient.post(`https://booking-system-demo.efc-eg.com/api/whatsapp/settings/store`, payload, {
+      const response = await apiClient.post(`https://backend-booking.appointroll.com/api/whatsapp/settings/store`, payload, {
         headers: {
           "Content-Type": "application/json",
           Authorization: token,
@@ -149,6 +149,36 @@ export function deleteWhatsAppSettings(id) {
       }
     } catch (error) {
       console.error("Error deleting WhatsApp setting:", error);
+      dispatch(whatsAppActions.setError(error.message));
+      return { status: false, message: error.message };
+    } finally {
+      dispatch(whatsAppActions.setLoading(false));
+    }
+  };
+}
+
+export function fetchWhatsAppSettings(integrationId) {
+  return async (dispatch) => {
+    dispatch(whatsAppActions.setLoading(true));
+    try {
+      const token = localStorage.getItem("access_token");
+
+      const response = await axios.get(`${BASE_URL}`, {
+        headers: {
+          Authorization: token,
+        },
+        params: { integration_id: integrationId },
+      });
+
+      if (response.data.status) {
+        console.log("whatsApp response:", response.data);
+
+        dispatch(whatsAppActions.setSettings(response.data.data));
+        return { status: true, data: response.data.data };
+      } else {
+        throw new Error("Failed to fetch whatsApp settings");
+      }
+    } catch (error) {
       dispatch(whatsAppActions.setError(error.message));
       return { status: false, message: error.message };
     } finally {

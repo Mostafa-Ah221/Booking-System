@@ -6,7 +6,7 @@ const CustomLabels = () => {
   const [formData, setFormData] = useState({
     eventType: { one: 'Interview', many: 'Interviews' },
     user: { one: 'Recruiter', many: 'Recruiters' },
-    resource: { one: 'Resource', many: 'Resources' }
+    // resource: { one: 'Resource', many: 'Resources' }
   });
 
   const handleInputChange = (section, field, value) => {
@@ -37,12 +37,12 @@ const CustomLabels = () => {
       one: formData.user.one,
       many: formData.user.many
     },
-    {
-      id: 'resource',
-      title: 'Resource',
-      one: formData.resource.one,
-      many: formData.resource.many
-    }
+    // {
+    //   id: 'resource',
+    //   title: 'Resource',
+    //   one: formData.resource.one,
+    //   many: formData.resource.many
+    // }
   ];
 
   return (

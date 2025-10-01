@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const HeroSection = () => {
   return (
@@ -12,11 +13,11 @@ const HeroSection = () => {
               Online appointment scheduling made simple
             </h1>
             <p className="text-gray-600 text-lg mb-8 max-w-lg">
-              Zoho Bookings is intuitive appointment scheduling software that empowers everyone to schedule meetings effortlessly. With Bookings, you can avoid phone calls, back-and-forth emails, and repetitive tasks. Let customers self-schedule while you grow your business.
+              Appoint Roll is intuitive appointment scheduling software that empowers everyone to schedule meetings effortlessly. With Bookings, you can avoid phone calls, back-and-forth emails, and repetitive tasks. Let customers self-schedule while you grow your business.
             </p>
-            <button className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-md font-medium transition-colors">
+            <Link to="/signup" className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-md font-medium transition-colors">
               SIGN UP FOR FREE
-            </button>
+            </Link>
           </div>
 
        

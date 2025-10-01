@@ -1,17 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { X, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { rescheduleAppointment } from '../../redux/apiCalls/AppointmentCallApi';
+import { reschedulePublic } from '../../redux/apiCalls/AppointmentCallApi';
 import { useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
+import TimezoneSelect from 'react-timezone-select';
 
-// Reschedule Sidebar Component
 const RescheduleSidebar = ({ 
   isOpen, 
   onClose, 
   appointmentData,
+  outShareId,
+  onRescheduleSuccess
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState('');
+  const [selectedTimezone, setSelectedTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
@@ -20,18 +23,16 @@ const RescheduleSidebar = ({
   const [interviewDetails, setInterviewDetails] = useState(null);
   const [availableDates, setAvailableDates] = useState([]);
   const [availableTimes, setAvailableTimes] = useState([]);
+  const [unavailableDates, setUnavailableDates] = useState([]);
+  const [unavailableTimes, setUnavailableTimes] = useState([]);
   const [disabledTimes, setDisabledTimes] = useState([]);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   
   const calendarRef = useRef(null);
   const dispatch = useDispatch();
 
-  // Get IDs from props and params
   const idAppointment = appointmentData?.id;
   const { id: shareId } = useParams();
-
-  console.log('📍 Appointment ID:', idAppointment);
-  console.log('📍 Share ID:', shareId);
+  const finalShareId = shareId || outShareId;
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -40,13 +41,352 @@ const RescheduleSidebar = ({
 
   const dayNames = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
+  // Helper functions from DateTimeSelector
+  const formatDateToYMD = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const getDayId = (date) => {
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 ? 1 : dayOfWeek + 1; 
+  };
+
+  const isDateInUnavailableDatesRange = (date) => {
+    if (!date || !unavailableDates || unavailableDates.length === 0) {
+      return false;
+    }
+    
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    
+    return unavailableDates.some(dateRange => {
+      try {
+        if (!dateRange || !dateRange.from) {
+          return false;
+        }
+
+        let fromDateStr = dateRange.from.includes(' ') ? dateRange.from.split(' ')[0] : dateRange.from;
+        const fromDate = new Date(fromDateStr);
+        fromDate.setHours(0, 0, 0, 0);
+        
+        if (isNaN(fromDate.getTime())) {
+          return false;
+        }
+
+        // If to is null, date remains unavailable indefinitely
+        if (dateRange.to === null || dateRange.to === undefined) {
+          return checkDate >= fromDate;
+        }
+
+        // If to exists, handle it normally
+        let toDateStr = dateRange.to.includes(' ') ? dateRange.to.split(' ')[0] : dateRange.to;
+        const toDate = new Date(toDateStr);
+        toDate.setHours(23, 59, 59, 999);
+
+        if (isNaN(toDate.getTime())) {
+          return false;
+        }
+
+        return checkDate >= fromDate && checkDate <= toDate;
+      } catch (error) {
+        return false;
+      }
+    });
+  };
+
+  const isTimeUnavailable = (date, time) => {
+    if (!date || !time || !unavailableTimes || !Array.isArray(unavailableTimes)) {
+      return false;
+    }
+    
+    if (isDateInUnavailableDatesRange(date)) {
+      return true;
+    }
+    
+    const dayId = getDayId(date);
+    const dayUnavailableTimes = unavailableTimes.filter(timeRange => 
+      timeRange.day_id.toString() === dayId.toString()
+    );
+    
+    if (dayUnavailableTimes.length === 0) {
+      return false;
+    }
+    
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    
+    const checkTimeMinutes = timeToMinutes(time);
+    
+    return dayUnavailableTimes.some(dayUnavailableTime => {
+      if (!dayUnavailableTime || !dayUnavailableTime.from) {
+        return false;
+      }
+      
+      const fromMinutes = timeToMinutes(dayUnavailableTime.from.slice(0, 5));
+      
+      // If to is null, from this time to end of day is unavailable
+      if (!dayUnavailableTime.to || dayUnavailableTime.to === null) {
+        return checkTimeMinutes >= fromMinutes;
+      }
+      
+      const toMinutes = timeToMinutes(dayUnavailableTime.to.slice(0, 5));
+      
+      return checkTimeMinutes >= fromMinutes && checkTimeMinutes <= toMinutes;
+    });
+  };
+
+  // Check if date is in available range with support for to: null
+  const isDateInAvailableRange = (date, availableDatesRanges) => {
+    if (!date || !availableDatesRanges || availableDatesRanges.length === 0) {
+      return false;
+    }
+    
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    
+    return availableDatesRanges.some(dateRange => {
+      try {
+        if (!dateRange || !dateRange.from) {
+          return false;
+        }
+
+        let fromDateStr = dateRange.from;
+        if (fromDateStr.includes(' ')) {
+          fromDateStr = fromDateStr.split(' ')[0];
+        }
+        
+        const fromDate = new Date(fromDateStr);
+        fromDate.setHours(0, 0, 0, 0);
+        
+        if (isNaN(fromDate.getTime())) {
+          console.warn('Invalid from date:', dateRange.from);
+          return false;
+        }
+
+        // If to is null, range is open-ended
+        if (dateRange.to === null || dateRange.to === undefined) {
+          return checkDate >= fromDate;
+        }
+        
+        let toDateStr = dateRange.to;
+        if (toDateStr.includes(' ')) {
+          toDateStr = toDateStr.split(' ')[0];
+        }
+        
+        const toDate = new Date(toDateStr);
+        toDate.setHours(23, 59, 59, 999);
+        
+        if (isNaN(toDate.getTime())) {
+          console.warn('Invalid to date:', dateRange.to);
+          return false;
+        }
+
+        return checkDate >= fromDate && checkDate <= toDate;
+      } catch (error) {
+        console.error('Error in isDateInAvailableRange:', error, dateRange);
+        return false;
+      }
+    });
+  };
+
+  // Calculate effective available times (similar to DateTimeSelector)
+  const calculateEffectiveAvailableTimes = (selectedDate, availableTimesData, disabledTimes, interviewData) => {
+    if (!selectedDate || !availableTimesData || !Array.isArray(availableTimesData)) {
+      return [];
+    }
+
+    const dayId = getDayId(selectedDate);
+    const dayAvailableTimes = availableTimesData.filter(timeRange => 
+      timeRange.day_id.toString() === dayId.toString()
+    );
+
+    if (dayAvailableTimes.length === 0) {
+      return [];
+    }
+
+    const dayUnavailableTimes = unavailableTimes.filter(timeRange => 
+      timeRange.day_id.toString() === dayId.toString()
+    );
+
+    const timeToMinutes = (timeStr) => {
+      if (!timeStr || !timeStr.includes(':')) return 0;
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const availableRanges = [];
+    
+    dayAvailableTimes.forEach((availableRange) => {
+      if (!availableRange || !availableRange.from) return;
+      
+      const availableFromMinutes = timeToMinutes(availableRange.from);
+      let availableToMinutes;
+
+      // If to is null, end of day (23:59)
+      if (!availableRange.to || availableRange.to === null) {
+        availableToMinutes = 23 * 60 + 59;
+      } else {
+        availableToMinutes = timeToMinutes(availableRange.to);
+      }
+      
+      let currentRanges = [{ from: availableFromMinutes, to: availableToMinutes }];
+      
+      // Subtract unavailable times from available times
+      dayUnavailableTimes.forEach((unavailableRange) => {
+        if (!unavailableRange || !unavailableRange.from) return;
+        
+        const unavailableFromMinutes = timeToMinutes(unavailableRange.from.slice(0, 5));
+        let unavailableToMinutes;
+
+        // If to is null, end of day
+        if (!unavailableRange.to || unavailableRange.to === null) {
+          unavailableToMinutes = 23 * 60 + 59;
+        } else {
+          unavailableToMinutes = timeToMinutes(unavailableRange.to.slice(0, 5));
+        }
+        
+        const newRanges = [];
+        currentRanges.forEach((range) => {
+          if (unavailableToMinutes <= range.from || unavailableFromMinutes >= range.to) {
+            newRanges.push(range);
+          } else if (unavailableFromMinutes <= range.from && unavailableToMinutes < range.to) {
+            newRanges.push({ from: unavailableToMinutes, to: range.to });
+          } else if (unavailableFromMinutes > range.from && unavailableToMinutes >= range.to) {
+            newRanges.push({ from: range.from, to: unavailableFromMinutes });
+          } else if (unavailableFromMinutes > range.from && unavailableToMinutes < range.to) {
+            newRanges.push({ from: range.from, to: unavailableFromMinutes });
+            newRanges.push({ from: unavailableToMinutes, to: range.to });
+          }
+        });
+        currentRanges = newRanges;
+      });
+      
+      availableRanges.push(...currentRanges);
+    });
+
+    // Generate time slots from available ranges
+    const effectiveTimeSlots = [];
+    let durationCycle = 15;
+    let durationPeriod = "minutes";
+    let restCycle = 0;
+    
+    if (interviewData) {
+      durationCycle = parseInt(interviewData.duration_cycle) || 15;
+      durationPeriod = interviewData.duration_period || "minutes";
+      restCycle = parseInt(interviewData.rest_cycle) || 0;
+    }
+    
+    const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
+    const totalSlotDuration = durationInMinutes + restCycle;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDateObj = new Date(selectedDate);
+    selectedDateObj.setHours(0, 0, 0, 0);
+    const isToday = selectedDateObj.getTime() === today.getTime();
+    const nowMinutes = isToday ? (new Date().getHours() * 60 + new Date().getMinutes()) : -1;
+    
+    availableRanges.forEach((range) => {
+      const startMinutes = range.from;
+      const endMinutes = range.to;
+      
+      for (let currentMinutes = startMinutes; currentMinutes + durationInMinutes <= endMinutes; currentMinutes += totalSlotDuration) {
+        const hours = Math.floor(currentMinutes / 60);
+        const minutes = currentMinutes % 60;
+        const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        
+        const dateISO = selectedDateObj.toISOString().split('T')[0];
+        const isDisabled = disabledTimes && disabledTimes.some(disabledTime => {
+          if (!disabledTime || !disabledTime.date || !disabledTime.time) return false;
+          const disabledDate = disabledTime.date;
+          const disabledTimeFormatted = disabledTime.time.slice(0, 5);
+          return disabledDate === dateISO && disabledTimeFormatted === formattedTime;
+        });
+        
+        let isPast = false;
+        if (isToday) {
+          const slotTimeMinutes = hours * 60 + minutes;
+          isPast = slotTimeMinutes < nowMinutes;
+        }
+        
+        if (!isDisabled && !isPast) {
+          effectiveTimeSlots.push(formattedTime);
+        }
+      }
+    });
+
+    return [...new Set(effectiveTimeSlots)].sort();
+  };
+
+  // Check if date is available with new logic
+  const isDateAvailable = (date, interview = interviewDetails) => {
+    if (!date || !interview) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    
+    // Check if date is in the past
+    if (checkDate < today) {
+      return false;
+    }
+
+    // Check if date is in available range
+    const isInDateRange = isDateInAvailableRange(checkDate, interview.available_dates);
+    if (!isInDateRange) {
+      return false;
+    }
+
+    // Check if day has available times
+    const dayId = getDayId(checkDate);
+    const hasTimesForDay = interview.available_times.some(time => time.day_id.toString() === dayId.toString());
+    
+    if (!hasTimesForDay) {
+      return false;
+    }
+
+    // Calculate effective available times
+    const effectiveAvailableTimes = calculateEffectiveAvailableTimes(date, interview.available_times, interview.disabled_times || [], interview);
+    
+    return effectiveAvailableTimes.length > 0;
+  };
+
+  // Generate time slots with rest_cycle support
+  const generateTimeSlots = (date, interview) => {
+    if (!date || !interview) return [];
+
+    const effectiveTimeSlots = calculateEffectiveAvailableTimes(
+      date, 
+      interview.available_times, 
+      interview.disabled_times || [], 
+      interview
+    );
+    
+    return effectiveTimeSlots.map(timeStr => {
+      const [hour, min] = timeStr.split(':').map(Number);
+      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      const ampm = hour >= 12 ? 'pm' : 'am';
+      const displayTime = `${displayHour}:${min.toString().padStart(2, '0')} ${ampm}`;
+      
+      return {
+        value: timeStr,
+        display: displayTime
+      };
+    });
+  };
+
   // Fetch interview details from API
   const fetchInterviewDetails = async (shareLink) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`https://booking-system-demo.efc-eg.com/api/public/interview/${shareLink}`);
+      const response = await fetch(`https://backend-booking.appointroll.com/api/public/interview/${shareLink}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -55,13 +395,12 @@ const RescheduleSidebar = ({
       const data = await response.json();
       const interview = data?.data?.interview;
 
-      console.log("📦 Full API Response:", data);
-      console.log("🎯 Interview Data:", interview);
-
       if (interview) {
         setInterviewDetails(interview);
         setAvailableDates(interview.available_dates || []);
         setAvailableTimes(interview.available_times || []);
+        setUnavailableDates(interview.un_available_dates || []);
+        setUnavailableTimes(interview.un_available_times || []);
         setDisabledTimes(interview.disabled_times || []);
 
         // Set current month to first available date
@@ -77,109 +416,62 @@ const RescheduleSidebar = ({
       }
 
     } catch (error) {
-      console.error('❌ Error fetching interview details:', error);
       setError(`Error loading interview details: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Find first available date and time
+  // Find first available date and time with updated logic
   const findFirstAvailableDateTime = (interview) => {
     if (!interview.available_dates || interview.available_dates.length === 0) return;
 
     for (const dateRange of interview.available_dates) {
-      const startDate = new Date(dateRange.from.split(' ')[0]);
-      const endDate = new Date(dateRange.to.split(' ')[0]);
+      if (!dateRange?.from) continue;
       
-      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        if (isDateAvailable(new Date(d), interview)) {
-          const timeSlots = generateTimeSlots(new Date(d), interview);
-          if (timeSlots.length > 0) {
-            setSelectedDate(new Date(d));
-            setSelectedTime(timeSlots[0]);
-            setAvailableTimeSlots(timeSlots);
-            return;
-          }
-        }
-      }
-    }
-  };
-
-  // Check if date is available
-  const isDateAvailable = (date, interview) => {
-    const dateStr = date.toISOString().split('T')[0];
-    const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
-    // Check if date is within available date ranges
-    const isInRange = interview.available_dates.some(range => {
-      const startDate = new Date(range.from.split(' ')[0]);
-      const endDate = new Date(range.to.split(' ')[0]);
-      return date >= startDate && date <= endDate;
-    });
-
-    if (!isInRange) return false;
-
-    // Check if day of week is available
-    const isDayAvailable = interview.available_times.some(timeSlot => {
-      return timeSlot.day_id === (dayOfWeek === 0 ? 7 : dayOfWeek); // Convert Sunday from 0 to 7
-    });
-
-    return isDayAvailable;
-  };
-
-  // Generate time slots for a specific date
-  const generateTimeSlots = (date, interview) => {
-    const dayOfWeek = date.getDay();
-    const dayId = dayOfWeek === 0 ? 7 : dayOfWeek;
-    
-    // Find available times for this day
-    const dayTimeSlot = interview.available_times.find(slot => slot.day_id === dayId);
-    if (!dayTimeSlot) return [];
-
-    const startTime = dayTimeSlot.from;
-    const endTime = dayTimeSlot.to;
-    const duration = parseInt(interview.duration_cycle || 15);
-    
-    const slots = [];
-    const start = new Date(`2000-01-01T${startTime}`);
-    const end = new Date(`2000-01-01T${endTime}`);
-    
-    for (let time = new Date(start); time < end; time.setMinutes(time.getMinutes() + duration)) {
-      const timeStr = time.toTimeString().substring(0, 5);
-      
-      // Check if this time slot is disabled
-      const isDisabled = interview.disabled_times.some(disabled => {
-        const disabledDate = disabled.date;
-        const disabledTime = disabled.time.substring(0, 5);
-        const currentDateStr = date.toISOString().split('T')[0];
-        return disabledDate === currentDateStr && disabledTime === timeStr;
-      });
-
-      if (!isDisabled) {
-        // Convert to 12-hour format
-        const hour = time.getHours();
-        const minute = time.getMinutes();
-        const ampm = hour >= 12 ? 'pm' : 'am';
-        const displayHour = hour % 12 || 12;
-        const displayTime = `${displayHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`;
+      try {
+        // Search within the date range
+        const fromDate = new Date(dateRange.from.split(' ')[0]);
+        const toDate = dateRange.to ? new Date(dateRange.to.split(' ')[0]) : new Date('2099-12-31');
         
-        slots.push({
-          value: timeStr,
-          display: displayTime
-        });
+        if (isNaN(fromDate.getTime())) continue;
+        
+        // Search day by day in the range
+        const currentDate = new Date(Math.max(fromDate.getTime(), new Date().getTime()));
+        const endDate = new Date(toDate.getTime());
+        
+        while (currentDate <= endDate) {
+          if (isDateAvailable(currentDate, interview)) {
+            const timeSlots = generateTimeSlots(currentDate, interview);
+            if (timeSlots.length > 0) {
+              setSelectedDate(new Date(currentDate));
+              setSelectedTime(timeSlots[0].value);
+              return;
+            }
+          }
+          
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+      } catch (err) {
+        console.warn('Error processing date range:', dateRange, err);
+        continue;
       }
     }
-    
-    return slots;
   };
+
+  // Memoized available time slots for performance
+  const availableTimeSlots = useMemo(() => {
+    if (!selectedDate || !interviewDetails) return [];
+    return generateTimeSlots(selectedDate, interviewDetails);
+  }, [selectedDate, interviewDetails, disabledTimes, unavailableTimes]);
 
   // Load interview details when component opens
   useEffect(() => {
-    if (isOpen && shareId && !interviewDetails) {
-      fetchInterviewDetails(shareId);
+    if (isOpen && finalShareId && !interviewDetails) {
+      fetchInterviewDetails(finalShareId);
     }
-  }, [isOpen, shareId]);
+  }, [isOpen, finalShareId]);
 
   // Handle calendar outside click
   useEffect(() => {
@@ -198,11 +490,10 @@ const RescheduleSidebar = ({
     };
   }, [isCalendarOpen]);
 
-  // Update available time slots when date changes
+  // Update selected time when date changes
   useEffect(() => {
     if (selectedDate && interviewDetails) {
       const timeSlots = generateTimeSlots(selectedDate, interviewDetails);
-      setAvailableTimeSlots(timeSlots);
       
       // Reset selected time if it's not available for the new date
       if (selectedTime && !timeSlots.some(slot => slot.value === selectedTime)) {
@@ -242,7 +533,7 @@ const RescheduleSidebar = ({
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1));
   };
 
-  const handleDateClick = (day) => {
+  const handleDateClick = useCallback((day) => {
     if (!day || !interviewDetails) return;
     
     const clickedDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
@@ -251,7 +542,7 @@ const RescheduleSidebar = ({
       setSelectedDate(clickedDate);
       setIsCalendarOpen(false);
     }
-  };
+  }, [currentMonth, interviewDetails]);
 
   const isSelectedDay = (day) => {
     if (!day || !selectedDate) return false;
@@ -275,31 +566,16 @@ const RescheduleSidebar = ({
     setIsRescheduling(true);
     setError(null);
 
-    const formattedDate = selectedDate.toLocaleDateString('en-CA'); // YYYY-MM-DD format
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    console.log("🟢 Sending Reschedule Data:", {
-      appointmentId: idAppointment,
-      date: formattedDate,
-      time: selectedTime,
-      time_zone: timeZone,
-    });
-
+    const formattedDate = selectedDate.toLocaleDateString('en-CA'); 
     try {
       const rescheduleData = {
         date: formattedDate,
         time: selectedTime,
-        time_zone: timeZone,
+        time_zone: selectedTimezone,
       };
 
-      console.log("📤 Dispatching reschedule action...");
-      const result = await dispatch(rescheduleAppointment(idAppointment, rescheduleData));
-      
-      console.log("📨 Raw API Response:", result);
-      console.log("📨 Response Type:", typeof result);
-      console.log("📨 Response Keys:", Object.keys(result || {}));
+      const result = await dispatch(reschedulePublic(idAppointment, rescheduleData));
 
-      // Check for success in various response formats
       const isSuccess = 
         result === true ||
         result?.success === true ||
@@ -309,11 +585,11 @@ const RescheduleSidebar = ({
         (result?.status >= 200 && result?.status < 300);
 
       if (isSuccess) {
-        console.log("✅ Reschedule successful!");
-        alert('The appointment has been successfully rescheduled');
+         if (onRescheduleSuccess) {
+          onRescheduleSuccess();
+        }
         onClose();
       } else {
-        console.log("❌ Reschedule failed - Response:", result);
         const errorMessage = 
           result?.error?.message ||
           result?.payload?.message ||
@@ -325,10 +601,6 @@ const RescheduleSidebar = ({
       }
 
     } catch (error) {
-      console.error('❌ Error in handleReschedule:', error);
-      console.error('❌ Error name:', error.name);
-      console.error('❌ Error message:', error.message);
-      
       let errorMessage = 'Failed to reschedule appointment.';
       
       if (error.message.includes('Network')) {
@@ -403,11 +675,33 @@ const RescheduleSidebar = ({
               </div>
             )}
 
+            {/* Interview Details Info */}
+            {!isLoading && interviewDetails && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  ⏱️ Slot Duration: {interviewDetails.duration_cycle} {interviewDetails.duration_period}
+                  {interviewDetails.rest_cycle && interviewDetails.rest_cycle > 0 && (
+                    <span className="ml-2">| Rest Time: {interviewDetails.rest_cycle} minutes</span>
+                  )}
+                </p>
+              </div>
+            )}
+
             {/* Appointment Info */}
             {!isLoading && (
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-orange-600" />
+                <div className="w-12 h-12 bg-pink-500 rounded-lg flex items-center justify-center mr-4 overflow-hidden">
+                    {interviewDetails?.photo ? (
+                      <img
+                        src={interviewDetails.photo}
+                        alt="Booking"
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <span className="text-white font-bold text-lg">
+                        {interviewDetails?.name?.charAt(0) || "?"}
+                      </span>
+                    )}
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
@@ -420,7 +714,7 @@ const RescheduleSidebar = ({
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">Booking Id: {appointmentData?.bookingId || 'N/A'}</p>
+                      <p className="text-sm font-medium">Booking Id: {appointmentData?.id || 'N/A'}</p>
                       <p className="text-sm text-gray-600">
                         Current: {appointmentData?.date} | {appointmentData?.time}
                       </p>
@@ -515,9 +809,29 @@ const RescheduleSidebar = ({
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Time zone</label>
-                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                      <option>Africa/Cairo - EEST (+03:00)</option>
-                    </select>
+                    <div className="border border-gray-300 rounded-md">
+                      <TimezoneSelect
+                        value={selectedTimezone}
+                        onChange={(timezone) => setSelectedTimezone(timezone.value)}
+                        className="react-timezone-select w-full"
+                        classNamePrefix="select"
+                        styles={{
+                          control: (base) => ({
+                            ...base,
+                            border: 'none',
+                            boxShadow: 'none',
+                            width: '100%', 
+                            '&:hover': {
+                              border: 'none',
+                            },
+                          }),
+                          menu: (base) => ({
+                            ...base,
+                            width: '100%',
+                          }),
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -550,8 +864,22 @@ const RescheduleSidebar = ({
 
             {/* No available slots message */}
             {!isLoading && selectedDate && availableTimeSlots.length === 0 && (
-              <div className="text-center py-4 text-gray-500">
-                No available time slots for selected date
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-500 mb-2">No available time slots for selected date</p>
+                <p className="text-xs text-gray-400">
+                  {(() => {
+                    const dayId = getDayId(selectedDate);
+                    const hasTimes = availableTimes.some(time => time.day_id.toString() === dayId.toString());
+                    
+                    if (!hasTimes) {
+                      return "This day is not available in working hours";
+                    } else if (isDateInUnavailableDatesRange(selectedDate)) {
+                      return "This date is in an unavailable range";
+                    } else {
+                      return "All time slots are either booked or in unavailable periods";
+                    }
+                  })()}
+                </p>
               </div>
             )}
           </div>

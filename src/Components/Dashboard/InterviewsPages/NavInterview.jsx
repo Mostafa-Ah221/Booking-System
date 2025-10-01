@@ -1,35 +1,31 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Share2, MoreVertical, X, Copy } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
-import { useDispatch,useSelector } from 'react-redux';
-import { editInterviewById } from '../../../redux/apiCalls/interviewCallApi';
+import { Share2, MoreVertical, X, Copy, ExternalLink, Trash2 } from 'lucide-react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { editInterviewById, deleteInterview } from '../../../redux/apiCalls/interviewCallApi';
+import ShareModal from './InterViewPage/ShareModal';
 
 export default function NavInterview() {
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [showEmbedWidget, setShowEmbedWidget] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false); 
   const [showMenuModal, setShowMenuModal] = useState(false);
-  const { id } = useParams()
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-  const shareModalRef = useRef(null);
   const menuModalRef = useRef(null);
   const menuButtonRef = useRef(null);
   const dispatch = useDispatch();
   
   const { interview } = useSelector(state => state.interview);
-  // console.log(interview);
 
-useEffect(() => {
-  if (id) {
-    dispatch(editInterviewById(id));
-  }
-}, [id, dispatch]);
+  useEffect(() => {
+    if (id) {
+      dispatch(editInterviewById(id));
+    }
+  }, [id, dispatch]);
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (shareModalRef.current && !shareModalRef.current.contains(event.target)) {
-        setShowShareModal(false);
-        setShowEmbedWidget(false);
-      }
       if (
         showMenuModal &&
         menuModalRef.current &&
@@ -47,15 +43,40 @@ useEffect(() => {
     };
   }, [showMenuModal]);
 
-  // تم تغيير الـ share link ليروح على صفحة share/:id
-  const shareLink = interview?.share_link 
-    ? `${window.location.origin}/share/${interview.share_link}` 
-    : '';
+  // دالة لفتح الـ ShareModal
+  const handleShareClick = () => {
+    setIsShareModalOpen(true);
+  };
 
-  // تم تحديث الـ iframe code ليشير على نفس الـ route
-  const iframeCode = interview?.share_link 
-    ? `<iframe width="400px" height="400px" src="${window.location.origin}/share/${interview.share_link}" frameborder="0" allowfullscreen></iframe>` 
-    : '';
+  // Handle booking page click
+  const handleBookingPageClick = (e) => {
+    e.preventDefault();
+    const bookingLink = `${window.location.origin}/share/${interview?.share_link}`;
+    window.open(bookingLink, '_blank');
+    setShowMenuModal(false); 
+  };
+
+  // Handle copy functionality
+  const handleCopyClick = (e) => {
+    e.preventDefault();
+    // Add your copy logic here
+    setShowMenuModal(false);
+  };
+
+  // Handle delete functionality
+  const handleDeleteClick = (e) => {
+    e.preventDefault();
+    setShowDeleteModal(true);
+    setShowMenuModal(false);
+  };
+
+  // Confirm delete
+  const confirmDelete = () => {
+    dispatch(deleteInterview(interview.id));
+    setShowDeleteModal(false);
+    // Navigate back to interviews list after deletion
+    navigate('/layoutDashboard/interviews');
+  };
 
   return (
     <div className="relative">
@@ -64,20 +85,23 @@ useEffect(() => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center">
-                <span className="text-green-800 font-medium">RS</span>
+                <span className="text-green-800 font-medium">
+                  {interview?.name?.substring(0, 2).toUpperCase() || "RS"}
+                </span>
               </div>
               <div>
-                <h1 className="text-[11px] md:text-lg font-semibold">Recruitment Strategy Meeting</h1>
-                <p className="text-sm text-gray-500">One-on-One</p>
+                <h1 className="text-[11px] md:text-lg font-semibold">
+                  {interview?.name || "Recruitment Strategy Meeting"}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  {interview?.mode || "One-on-One"}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <button 
                 className="flex items-center space-x-2 px-4 py-2 border rounded-lg hover:bg-gray-50"
-                onClick={() => {
-                  setShowShareModal(true);
-                  setShowEmbedWidget(false);
-                }}
+                onClick={handleShareClick}
               >
                 <Share2 className="w-4 h-4" />
                 <span>Share</span>
@@ -97,93 +121,75 @@ useEffect(() => {
         </div>
       </header>
 
-      {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50">
-          <div ref={shareModalRef} className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Share Booking Link</h2>
-              <button onClick={() => setShowShareModal(false)} className="p-1 hover:bg-gray-100 rounded">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center">
-                <span className="text-green-800 font-medium">RS</span>
-              </div>
-              <div>
-                <h3 className="font-medium">Recruitment Strategy Meeting</h3>
-                <p className="text-sm text-gray-500">30 mins · One-on-One</p>
-              </div>
-            </div>
-
-            <div className="border-b mb-4 flex">
-              <button 
-                className={`pb-2 flex-1 ${!showEmbedWidget ? "border-b-2 border-indigo-600 text-indigo-600 font-medium" : "text-gray-500"}`}
-                onClick={() => setShowEmbedWidget(false)}
-              >
-                Share Link
-              </button>
-              <button 
-                className={`pb-2 flex-1 ${showEmbedWidget ? "border-b-2 border-indigo-600 text-indigo-600 font-medium" : "text-gray-500"}`}
-                onClick={() => setShowEmbedWidget(true)}
-              >
-                Embed as Widget
-              </button>
-            </div>
-
-            {!showEmbedWidget ? (
-              <div className="mb-4">
-                <div className="flex items-center mt-4">
-                  <div className="flex-1 border rounded-l-lg p-2 text-sm text-gray-500 overflow-hidden">
-                    {shareLink}
-                  </div>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(shareLink)}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-r-lg hover:bg-indigo-700 flex items-center"
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="mb-4">
-                <textarea 
-                  className="w-full border rounded-lg p-2 text-sm text-gray-500"
-                  readOnly
-                  rows="3"
-                  value={iframeCode}
-                />
-                <button
-                  onClick={() => navigator.clipboard.writeText(iframeCode)}
-                  className="bg-indigo-600 w-fit text-white px-4 py-2 mt-2 rounded-lg hover:bg-indigo-700 flex items-center"
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy Code
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Menu Modal */}
       {showMenuModal && (
         <div ref={menuModalRef} className="absolute top-16 right-12 bg-white border rounded-lg shadow-lg z-40 w-40 py-1">
-          <button className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
-            <span className="w-4 h-4 mr-2 text-gray-600">📄</span>
-            <span>Make a copy</span>
+          <button 
+            onClick={handleBookingPageClick}
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center"
+          >
+            <ExternalLink size={15} className="mr-2 text-gray-700" />
+            <span className='text-sm text-gray-700'>Booking Page</span>
           </button>
-          <button className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center">
-            <span className="w-4 h-4 mr-2 text-gray-600">📁</span>
-            <span>Move</span>
+          <button 
+            onClick={handleCopyClick}
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center"
+          >
+            <Copy size={15} className="mr-2 text-gray-700" />
+            <span className='text-sm text-gray-700'>Make a copy</span>
           </button>
-          <button className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-red-500">
-            <span className="w-4 h-4 mr-2">🗑️</span>
-            <span>Delete</span>
+          <button 
+            onClick={handleDeleteClick}
+            className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-red-500"
+          >
+            <Trash2 size={15} className="mr-2 " />
+            <span className='text-sm '>Delete</span>
           </button>
+        </div>
+      )}
+
+      {/* استخدام ShareModal المكون الجاهز */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        interview={interview}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 mx-4">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Interview</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete "<span className="font-semibold">{interview?.name}</span>"? 
+              This will permanently remove the interview and all its data.
+            </p>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Interview</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

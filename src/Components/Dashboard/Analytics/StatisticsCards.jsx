@@ -21,6 +21,14 @@ function StatisticsCards({ data }) {
       changeType: 'positive'
     },
     {
+      title: 'Passed Appointments',
+      value: stats.passed_appointments || 0,
+      icon: CheckCircle,
+      color: 'green',
+      change: '+15.3%',
+      changeType: 'positive'
+    },
+    {
       title: 'Completed Appointments',
       value: stats.completed_appointments || 0,
       icon: CheckCircle,

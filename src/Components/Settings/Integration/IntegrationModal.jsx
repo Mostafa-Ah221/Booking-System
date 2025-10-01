@@ -38,7 +38,7 @@ const PROVIDER_CONFIGS = {
     { key: 'business_account_id', placeholder: 'Business Account ID', type: 'text' },
     { key: 'webhook_verify_token', placeholder: 'Webhook Verify Token', type: 'text' }
   ]},
-  'WhatsApp Business': { type: 'whatsapp', title: 'WhatsApp Business API Configuration', fields: [
+  'WhatsApp_Business': { type: 'whatsapp', title: 'WhatsApp Business API Configuration', fields: [
     { key: 'phone_number_id', placeholder: 'Phone Number ID', type: 'text' },
     { key: 'access_token', placeholder: 'Access Token', type: 'password' },
     { key: 'business_account_id', placeholder: 'Business Account ID', type: 'text' },

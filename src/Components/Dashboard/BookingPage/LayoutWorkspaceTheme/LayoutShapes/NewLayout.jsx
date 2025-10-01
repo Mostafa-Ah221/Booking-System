@@ -194,7 +194,7 @@ const NewLayout = ({ themeColor }) => {
       
       {/* Footer with theme color */}
       <div className="p-2 text-center text-xs border-t" style={{ color: themeTextColor }}>
-        Powered by Zefo Bookings
+        Powered by Zefo Appoint Roll
       </div>
     </div>
   );

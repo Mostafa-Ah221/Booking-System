@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { 
   ArrowLeft, 
   Search, 
@@ -25,10 +26,12 @@ import {
   AppWindow
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { setCurrentPath, setExpandedSection } from '../../redux/slices/navigationSlice';
+import { usePermission } from "../hooks/usePermission";
 
 const SettingSidebar = ({ iconOnly = false }) => {
-  const [expandedSection, setExpandedSection] = useState(null);
-  const [currentPath, setCurrentPath] = useState('basic-info');
+  const dispatch = useDispatch();
+  const { currentPath, expandedSection } = useSelector(state => state.navigation);
   const [isHovering, setIsHovering] = useState(null);
 
   // Simulating useLocation hook since we don't have react-router-dom
@@ -42,8 +45,9 @@ const SettingSidebar = ({ iconOnly = false }) => {
       icon: Settings,
       items: [
         { title: 'Basic Information', icon: Layout, path: "basic-info" },
-        { title: 'Business Hours', icon: Clock, path: "business-hours" },
-        { title: 'Custom Domain', icon: Globe, path: "custom-domain" }
+        // { title: 'Business Hours', icon: Clock, path: "business-hours" },
+        // { title: 'Custom Domain', icon: Globe, path: "custom-domain" },
+        { title: 'Recruiter', icon: Globe, path: "recruiters", permission: "view staff" }
       ]
     },
     {
@@ -51,8 +55,8 @@ const SettingSidebar = ({ iconOnly = false }) => {
       icon: Layout,
       items: [
         { title: 'Workspaces', icon: Layout, path: "workspaces" },
-        { title: 'Resources', icon: FileText, path: "resources-section" },
-        { title: 'Customers', icon: User, path: "customers" },
+        // { title: 'In-person Locations', icon: MapPin, path: "person-location" },
+        { title: 'Customers', icon: User, path: "customers", permission: "view clients" },
         { title: 'Reports', icon: BarChart, path: "reports" }
       ]
     },
@@ -60,28 +64,27 @@ const SettingSidebar = ({ iconOnly = false }) => {
       title: 'Integrations',
       icon: Plug,
       items: [
-        { title: 'Calendar', icon: Settings, path: "integrations-page?type=calendar" },
-        { title: 'Video Conferencing', icon: Settings, path: "integrations-page?type=video" },
-        { title: 'CRM & Sales', icon: Settings, path: "integrations-page?type=crm" },
-        { title: 'SMS', icon: Settings, path: "integrations-page?type=sms" },
-        { title: 'WhatsApp', icon: Settings, path: "integrations-page?type=whatsapp" },
+        // { title: 'Calendar', icon: Calendar, path: "integrations-page#calendar" },
+        // { title: 'Video Conferencing', icon: Video, path: "integrations-page#video" },
+        { title: 'Mail', icon: Settings, path: "integrations-page#email" },
+        { title: 'SMS', icon: MessageSquare, path: "integrations-page#sms" },
+        { title: 'WhatsApp', icon: Globe2, path: "integrations-page#whatsapp" },
       ]
-    }
-,    
+    },    
     {
       title: 'Product Customizations',
       icon: Settings,
       items: [
-        { title: 'In-product Notifications', icon: Bell, path: "notification-settings" },
-        { title: 'Custom Labels', icon: Tag, path: "custom-labels" },
-        { title: 'Roles and Permissions', icon: Users, path: "roles-permissions" }
+        // { title: 'In-product Notifications', icon: Bell, path: "notification-settings" },
+        // { title: 'Custom Labels', icon: Tag, path: "custom-labels" },
+        { title: 'Roles and Permissions', icon: Users, path: "roles-permissions", permission: "view roles" }
       ]
     },
     {
       title: 'Data Administration',
       icon: Lock,
       items: [
-        { title: 'Privacy and Security', icon: Lock, path: "privacy-and-security" },
+        // { title: 'Privacy and Security', icon: Lock, path: "privacy-and-security" },
         { title: 'Export', icon: FileText, path: "export-data" }
       ]
     }
@@ -92,50 +95,96 @@ const SettingSidebar = ({ iconOnly = false }) => {
     const activeSection = menuItems.find(section =>
       section.items.some(item => activePath.includes(item.path))
     );
-    
+
     if (activeSection) {
-      setExpandedSection(activeSection.title);
+      dispatch(setExpandedSection(activeSection.title));
     }
-  }, [location.pathname]);
+  }, [dispatch, location.pathname]); 
 
   const handleSectionClick = (title) => {
-    setExpandedSection(expandedSection === title ? null : title);
+    dispatch(setExpandedSection(expandedSection === title ? null : title));
   };
 
+  // دالة محسنة للتحقق من الرابط النشط - تتعامل مع الهاش بدقة
   const isLinkActive = (path) => {
-    return location.pathname.slice(1).includes(path);
+    const currentPathClean = location.pathname.slice(1);
+    
+    // إذا كان المسار يحتوي على هاش
+    if (path.includes('#')) {
+      const [basePath, hash] = path.split('#');
+      
+      // التحقق من أن المسار الأساسي متطابق
+      if (!currentPathClean.includes(basePath)) {
+        return false;
+      }
+      
+      // التحقق من الهاش في currentPath
+      // نفترض أن currentPath يحتوي على الهاش كجزء من المسار
+      return currentPathClean === path || currentPathClean.endsWith(`#${hash}`);
+    }
+    
+    // للمسارات العادية بدون هاش
+    return currentPathClean === path || currentPathClean.includes(path);
   };
 
   const handleNavigate = (path) => {
-    setCurrentPath(path);
+    dispatch(setCurrentPath(path));
+    if (path.includes('#')) {
+      const [basePath, hash] = path.split('#');
+      setTimeout(() => {
+        const element = document.getElementById(hash);
+        if (element) {
+          element.scrollIntoView({ 
+            behavior: "smooth",
+            block: "start"
+          });
+        } else {
+          console.log(`Element with ID ${hash} not found`);
+        }
+      }, 500);
+    }
+  };
+
+  // Create a component for menu items that handles permissions correctly
+  const MenuItem = ({ item, itemIndex }) => {
+    const hasPermission = item.permission ? usePermission(item.permission) : true;
+    
+    if (item.permission && !hasPermission) {
+      return null;
+    }
+
+    const isActive = isLinkActive(item.path);
+    
+    return (
+      <Link 
+        to={item.path}
+        key={item.title}
+        onClick={() => handleNavigate(item.path)}
+        className={`w-full flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 pl-6 transition-colors ${
+          isActive ? 'text-blue-600 font-semibold bg-blue-50' : 'text-gray-600'
+        }`}
+      >
+        <item.icon 
+          size={16} 
+          className={isActive ? 'text-blue-600' : 'text-gray-600'} 
+        />
+        <span>{item.title}</span>
+      </Link>
+    );
   };
 
   return (
-    <div className={`${iconOnly ? 'w-16' : 'w-72'} min-h-screen bg-white border-r transition-all duration-300`}>
-      {/* Header */}
+    <div className={`${iconOnly ? 'w-16' : 'w-68'} min-h-screen bg-white border-r transition-all duration-300`}>
       <div className="p-4 border-b">
         {!iconOnly && (
-          <>
-            <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 -mb-0.5">
+            <Link to='/layoutDashboard' className="text-lg font-semibold flex-1 flex items-center gap-1"> 
               <button className="hover:bg-gray-100 p-1 rounded-full">
                 <ArrowLeft size={20} />
               </button>
-              <button 
-                onClick={() => handleNavigate('layoutDashboard')}
-                className="font-semibold">
-                Admin Center
-              </button>
-             </div>
-
-             <div className="relative w-40">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search"
-                className="w-40 md:w-full pl-10 pr-4 py-2 bg-gray-50 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
-              />
-            </div>
-          </>
+              <span className='text-[16px]'>Admin Center</span>
+            </Link>
+          </div>
         )}
         
         {iconOnly && (
@@ -147,7 +196,6 @@ const SettingSidebar = ({ iconOnly = false }) => {
         )}
       </div>
 
-      {/* Navigation Menu */}
       <nav className="p-2">
         {menuItems.map((section) => {
           const isSectionActive = section.items.some(item => isLinkActive(item.path));
@@ -158,7 +206,7 @@ const SettingSidebar = ({ iconOnly = false }) => {
                 onClick={() => handleSectionClick(section.title)}
                 onMouseEnter={() => iconOnly && setIsHovering(section.title)}
                 onMouseLeave={() => iconOnly && setIsHovering(null)}
-                className={`w-full flex items-center justify-between p-2 rounded-md hover:bg-gray-50 ${
+                className={`text-sm w-full flex items-center justify-between p-2 rounded-md hover:bg-gray-50 ${
                   isSectionActive ? 'text-blue-600' : 'text-gray-700'
                 } ${iconOnly ? 'justify-center' : ''}`}
               >
@@ -175,7 +223,6 @@ const SettingSidebar = ({ iconOnly = false }) => {
                   )
                 )}
                 
-                {/* Tooltip for icon-only mode */}
                 {iconOnly && isHovering === section.title && (
                   <div className="absolute left-16 bg-gray-800 text-white px-2 py-1 rounded text-sm z-50 whitespace-nowrap">
                     {section.title}
@@ -184,25 +231,10 @@ const SettingSidebar = ({ iconOnly = false }) => {
               </button>
 
               {expandedSection === section.title && !iconOnly && (
-                <div className="ml-2 mt-1 space-y-1">
-                  {section.items.map((item) => {
-                    const isActive = isLinkActive(item.path);
-                    return (
-                      <Link to={item.path}
-                        key={item.title}
-                        onClick={() => handleNavigate(item.path)}
-                        className={`w-full flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 pl-6 transition-colors ${
-                          isActive ? 'text-blue-600 font-semibold bg-blue-50' : 'text-gray-600'
-                        }`}
-                      >
-                        <item.icon 
-                          size={16} 
-                          className={isActive ? 'text-blue-600' : 'text-gray-600'} 
-                        />
-                        <span>{item.title}</span>
-                      </Link>
-                    );
-                  })}
+                <div className="ml-2 mt-1 space-y-1 text-sm">
+                  {section.items.map((item, itemIndex) => (
+                    <MenuItem key={item.title} item={item} itemIndex={itemIndex} />
+                  ))}
                 </div>
               )}
             </div>

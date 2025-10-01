@@ -29,7 +29,7 @@ const SecuritySetting = () => {
                 <path d="M11 7h2v6h-2zm0 8h2v2h-2z" fill="#4285F4"></path>
               </svg>
             </div>
-            <span>You're signing in to Zoho via Google and haven't set a password yet.</span>
+            <span>You're signing in to Appoint Roll via Google and haven't set a password yet.</span>
           </div>
         </div>
         
@@ -87,7 +87,7 @@ const SecuritySetting = () => {
           </div>
           
           <p className="text-sm text-center text-gray-700 mb-4">
-            Use application-specific passwords instead of your account password to access your Zoho account from third-party applications
+            Use application-specific passwords instead of your account password to access your Appoint Roll account from third-party applications
           </p>
           
           <div className="flex justify-center">

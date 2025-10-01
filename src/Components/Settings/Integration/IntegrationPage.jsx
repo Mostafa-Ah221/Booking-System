@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import UnifiedIntegrationModal from './IntegrationModal';
 import CalendarCategory from './categoriesIntegrations/CalendarCategory';
@@ -10,111 +10,98 @@ import WhatsAppCategory from './categoriesIntegrations/WhatsAppCategory';
 import { createOrUpdateSmsSettings, getSmsSettingsByIntegrationId, deleteSmsSettings } from '../../../redux/apiCalls/smsIntegrationCallApi';
 import { createOrUpdateWhatsAppSettings, getWhatsAppSettingsByIntegrationId, deleteWhatsAppSettings } from '../../../redux/apiCalls/whatsAppCallApi';
 import { useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
+import MailCategory from './categoriesIntegrations/MailCategory';
 
 const IntegrationsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeModal, setActiveModal] = useState(null);
   const [currentIntegrationId, setCurrentIntegrationId] = useState(null);
   const [refreshSmsCategory, setRefreshSmsCategory] = useState(0); 
-  const [refreshWhatsAppCategory, setRefreshWhatsAppCategory] = useState(0); 
+  const [refreshWhatsAppCategory, setRefreshWhatsAppCategory] = useState(0);
+  // إضافة state لتتبع القسم النشط
+  const [activeSection, setActiveSection] = useState('calendar'); // القيمة الافتراضية
   const dispatch = useDispatch();
   const location = useLocation();
 
   useEffect(() => {
     if (location.hash) {
       const sectionId = location.hash.replace("#", "");
+      // تعيين القسم النشط بناءً على الهاش
+      setActiveSection(sectionId);
       const element = document.getElementById(sectionId);
       if (element) {
         element.scrollIntoView({ behavior: "smooth" });
       }
     }
-  }, [location]);
+  }, [location.hash, location.pathname]);
 
   // تعريف دقيق للخدمات مع التمييز الواضح
- // تعريف دقيق للخدمات مع التمييز الواضح - مُحدث
-const SERVICE_MAPPING = {
-  // WhatsApp Services - أسماء كاملة ومميزة أولاً
-  'WhatsApp Business API': { type: 'whatsapp', displayName: 'WhatsApp Business API' },
-  'Twilio WhatsApp': { type: 'whatsapp', displayName: 'Twilio WhatsApp' },
-  'WhatsApp Business': { type: 'whatsapp', displayName: 'WhatsApp Business' },
-  '360Dialog': { type: 'whatsapp', displayName: '360Dialog' },
-  'ChatAPI': { type: 'whatsapp', displayName: 'ChatAPI' },
-  'GreenApi': { type: 'whatsapp', displayName: 'Green API' },
-  'Green API': { type: 'whatsapp', displayName: 'Green API' },
-  
-  // SMS Services - الأسماء الأقل تحديداً في النهاية
-  'Twilio': { type: 'sms', displayName: 'Twilio SMS' },
-  'Nexmo': { type: 'sms', displayName: 'Nexmo/Vonage' },
-  'MessageBird': { type: 'sms', displayName: 'MessageBird' },
-  'MySmsLogin': { type: 'sms', displayName: 'MySmsLogin' }
-};
+  const SERVICE_MAPPING = {
+    // WhatsApp Services - أسماء كاملة ومميزة أولاً
+    'WhatsApp Business API': { type: 'whatsapp', displayName: 'WhatsApp Business API' },
+    'Twilio WhatsApp': { type: 'whatsapp', displayName: 'Twilio WhatsApp' },
+    'WhatsApp Business': { type: 'whatsapp', displayName: 'WhatsApp_Business' },
+    '360Dialog': { type: 'whatsapp', displayName: '360Dialog' },
+    'ChatAPI': { type: 'whatsapp', displayName: 'ChatAPI' },
+    'GreenApi': { type: 'whatsapp', displayName: 'Green API' },
+    'Green API': { type: 'whatsapp', displayName: 'Green API' },
+    
+    'Twilio': { type: 'sms', displayName: 'Twilio SMS' },
+    'Nexmo': { type: 'sms', displayName: 'Nexmo/Vonage' },
+    'MessageBird': { type: 'sms', displayName: 'MessageBird' },
+    'MySmsLogin': { type: 'sms', displayName: 'MySmsLogin' }
+  };
 
-// دالة للحصول على نوع الخدمة بدقة - محسنة
-const getServiceType = (serviceName) => {
-  console.log('Getting service type for:', serviceName);
-  
-  // البحث المباشر أولاً (أدق طريقة)
-  if (SERVICE_MAPPING[serviceName]) {
-    console.log('Found direct match:', SERVICE_MAPPING[serviceName].type);
-    return SERVICE_MAPPING[serviceName].type;
-  }
-  
-  // البحث بالأسماء الطويلة أولاً (لتجنب مشكلة Twilio)
-  const sortedKeys = Object.keys(SERVICE_MAPPING).sort((a, b) => b.length - a.length);
-  
-  for (const key of sortedKeys) {
-    if (serviceName.toLowerCase().includes(key.toLowerCase()) || 
-        key.toLowerCase().includes(serviceName.toLowerCase())) {
-      console.log('Found partial match:', key, '->', SERVICE_MAPPING[key].type);
-      return SERVICE_MAPPING[key].type;
+  const getServiceType = (serviceName) => {
+    if (SERVICE_MAPPING[serviceName]) {
+      return SERVICE_MAPPING[serviceName].type;
     }
-  }
-  
-  // فحص نهائي بالكلمات المفتاحية
-  const lowerServiceName = serviceName.toLowerCase();
-  
-  // WhatsApp services - فحص مفصل
-  if (lowerServiceName.includes('whatsapp')) {
-    console.log('Found WhatsApp keyword');
-    return 'whatsapp';
-  }
-  
-  // فحص محدد للخدمات
-  if (lowerServiceName === '360dialog' ||
-      lowerServiceName === 'chatapi' ||
-      (lowerServiceName.includes('green') && lowerServiceName.includes('api'))) {
-    console.log('Found specific WhatsApp service');
-    return 'whatsapp';
-  }
-  
-  // SMS services - فحص عام
-  if (lowerServiceName === 'twilio' || 
-      lowerServiceName === 'nexmo' ||
-      lowerServiceName === 'messagebird' ||
-      lowerServiceName === 'mysmslogin') {
-    console.log('Found SMS service');
-    return 'sms';
-  }
-  
-  console.log('No service type found for:', serviceName);
-  return null;
-};
+    
+    const sortedKeys = Object.keys(SERVICE_MAPPING).sort((a, b) => b.length - a.length);
+    
+    for (const key of sortedKeys) {
+      if (serviceName.toLowerCase().includes(key.toLowerCase()) || 
+          key.toLowerCase().includes(serviceName.toLowerCase())) {
+        return SERVICE_MAPPING[key].type;
+      }
+    }
+    
+    // فحص نهائي بالكلمات المفتاحية
+    const lowerServiceName = serviceName.toLowerCase();
+    
+    // WhatsApp services - فحص مفصل
+    if (lowerServiceName.includes('whatsapp')) {
+      return 'whatsapp';
+    }
+    
+    // فحص محدد للخدمات
+    if (lowerServiceName === '360dialog' ||
+        lowerServiceName === 'chatapi' ||
+        (lowerServiceName.includes('green') && lowerServiceName.includes('api'))) {
+      return 'whatsapp';
+    }
+    
+    // SMS services - فحص عام
+    if (lowerServiceName === 'twilio' || 
+        lowerServiceName === 'nexmo' ||
+        lowerServiceName === 'messagebird' ||
+        lowerServiceName === 'mysmslogin') {
+      return 'sms';
+    }
+    
+    return null;
+  };
 
-  // قوائم المزودين للتوافق مع الكود القديم
-  const SMS_PROVIDERS = Object.keys(SERVICE_MAPPING).filter(key => SERVICE_MAPPING[key].type === 'sms');
-  const WHATSAPP_PROVIDERS = Object.keys(SERVICE_MAPPING).filter(key => SERVICE_MAPPING[key].type === 'whatsapp');
-
-  // دالة لتحديث حالة الاتصال فوراً للـ SMS
+ 
   const handleSmsIntegrationStatusChange = (integrationId, isConnected) => {
     setRefreshSmsCategory(prev => prev + 1);
   };
 
-  // دالة لتحديث حالة الاتصال فوراً للـ WhatsApp
   const handleWhatsAppIntegrationStatusChange = (integrationId, isConnected) => {
     setRefreshWhatsAppCategory(prev => prev + 1);
   };
 
-  // دالة لحذف إعدادات SMS
   const handleDeleteSmsSettings = async (integrationId, serviceName) => {
     const confirmDelete = window.confirm(`هل أنت متأكد من حذف إعدادات ${serviceName}؟`);
     
@@ -127,20 +114,16 @@ const getServiceType = (serviceName) => {
           const result = await dispatch(deleteSmsSettings(smsId));
           
           if (result.status) {
-            console.log('SMS Settings deleted successfully!');
-            alert(`${serviceName} integration deleted successfully!`);
+            toast.success(`${serviceName} integration deleted successfully!`);
             handleSmsIntegrationStatusChange(integrationId, false);
           } else {
-            console.error('Failed to delete SMS settings:', result.message);
-            alert(`Failed to delete ${serviceName} integration: ${result.message}`);
+            toast.error(`Failed to delete ${serviceName} integration: ${result.message}`);
           }
         } else {
-          console.error('Failed to get SMS settings:', smsSettingsResult.message);
-          alert(`Failed to get ${serviceName} settings: ${smsSettingsResult.message}`);
+          toast.error(`Failed to get ${serviceName} settings: ${smsSettingsResult.message}`);
         }
       } catch (error) {
-        console.error('Error deleting SMS integration:', error);
-        alert(`Error deleting ${serviceName} integration: ${error.message}`);
+        toast.error(`Error deleting ${serviceName} integration: ${error.message}`);
       }
     }
   };
@@ -158,31 +141,22 @@ const getServiceType = (serviceName) => {
           const result = await dispatch(deleteWhatsAppSettings(whatsAppId));
           
           if (result.status) {
-            console.log('WhatsApp Settings deleted successfully!');
-            alert(`${serviceName} integration deleted successfully!`);
+            toast.success(`${serviceName} integration deleted successfully!`);
             handleWhatsAppIntegrationStatusChange(integrationId, false);
           } else {
-            console.error('Failed to delete WhatsApp settings:', result.message);
-            alert(`Failed to delete ${serviceName} integration: ${result.message}`);
+            toast.error(`Failed to delete ${serviceName} integration: ${result.message}`);
           }
         } else {
-          console.error('Failed to get WhatsApp settings:', whatsAppSettingsResult.message);
-          alert(`Failed to get ${serviceName} settings: ${whatsAppSettingsResult.message}`);
+          toast.error(`Failed to get ${serviceName} settings: ${whatsAppSettingsResult.message}`);
         }
       } catch (error) {
-        console.error('Error deleting WhatsApp integration:', error);
-        alert(`Error deleting ${serviceName} integration: ${error.message}`);
+        toast.error(`Error deleting ${serviceName} integration: ${error.message}`);
       }
     }
   };
 
-  // الدالة المحدثة للاتصال - مع debugging مفصل
+  // الدالة المحدثة للاتصال
   const handleConnectClick = (serviceName, integrationId = null, type = '') => {
-    console.log('=== DEBUG INFO ===');
-    console.log('Service Name received:', serviceName);
-    console.log('Integration ID:', integrationId);
-    console.log('Type passed:', type);
-    
     // تحديد النوع بدقة
     let actualType = type;
     
@@ -190,16 +164,11 @@ const getServiceType = (serviceName) => {
       actualType = getServiceType(serviceName);
     }
     
-    console.log('Determined type:', actualType);
-    console.log('Will open modal:', `${actualType}:${serviceName}`);
-    console.log('==================');
-    
     if (actualType === 'sms' || actualType === 'whatsapp') {
       setActiveModal(`${actualType}:${serviceName}`);
       setCurrentIntegrationId(integrationId);
     } else {
-      console.error('Unknown service type for:', serviceName);
-      alert(`${serviceName} integration is not available yet.`);
+      toast.error(`${serviceName} integration is not available yet.`);
     }
   };
 
@@ -214,7 +183,6 @@ const getServiceType = (serviceName) => {
       const result = await dispatch(getSmsSettingsByIntegrationId(integrationId));
       return result;
     } catch (error) {
-      console.error('Error fetching SMS settings:', error);
       return { status: false, data: null, message: error.message };
     }
   };
@@ -225,15 +193,11 @@ const getServiceType = (serviceName) => {
       const result = await dispatch(getWhatsAppSettingsByIntegrationId(integrationId));
       return result;
     } catch (error) {
-      console.error('Error fetching WhatsApp settings:', error);
       return { status: false, data: null, message: error.message };
     }
   };
 
   const handleSave = async (payload, providedType) => {
-    console.log('Saving settings for:', activeModal, 'with payload:', payload);
-    console.log('Provided type:', providedType);
-    
     try {
       // استخدام النوع المرسل من الـ modal أو تحديده من activeModal
       const serviceType = providedType || (activeModal ? activeModal.split(':')[0] : null);
@@ -242,33 +206,95 @@ const getServiceType = (serviceName) => {
         const result = await dispatch(createOrUpdateSmsSettings(payload));
         
         if (result.status) {
-          console.log('SMS Settings saved successfully!');
-          alert(`SMS integration saved successfully!`);
+          toast.success(`SMS integration saved successfully!`);
           handleSmsIntegrationStatusChange(currentIntegrationId, true);
         } else {
-          console.error('Failed to save SMS settings:', result.message);
-          alert(`Failed to save SMS integration: ${result.message}`);
+          toast.error(`Failed to save SMS integration: ${result.message}`);
         }
       } else if (serviceType === 'whatsapp') {
         const result = await dispatch(createOrUpdateWhatsAppSettings(payload));
         
         if (result.status) {
-          console.log('WhatsApp Settings saved successfully!');
-          alert(`WhatsApp integration saved successfully!`);
+          toast.success(`WhatsApp integration saved successfully!`);
           handleWhatsAppIntegrationStatusChange(currentIntegrationId, true);
         } else {
-          console.error('Failed to save WhatsApp settings:', result.message);
-          alert(`Failed to save WhatsApp integration: ${result.message}`);
+          toast.error(`Failed to save WhatsApp integration: ${result.message}`);
         }
       } else {
-        console.log('Other integration type - implement respective API call');
-        alert(`Integration saved successfully!`);
+        toast.success(`Integration saved successfully!`);
       }
       
       handleCloseModal();
     } catch (error) {
-      console.error('Error saving integration:', error);
-      alert(`Error saving integration: ${error.message}`);
+      toast.error(`Error saving integration: ${error.message}`);
+    }
+  };
+
+  // دالة لعرض المحتوى بناءً على القسم النشط
+  const renderActiveSection = () => {
+    switch (activeSection) {
+      // case 'calendar':
+      //   return (
+      //     <CalendarCategory 
+      //       id="calendar"
+      //       searchQuery={searchQuery} 
+      //       onConnectClick={handleConnectClick} 
+      //     />
+      //   );
+      // case 'video':
+      //   return (
+      //     <VideoConferencingCategory 
+      //       id="video"
+      //       searchQuery={searchQuery} 
+      //       onConnectClick={handleConnectClick} 
+      //     />
+      //   );
+      // case 'crm':
+      //   return (
+      //     <CrmSalesCategory 
+      //       id="crm"
+      //       searchQuery={searchQuery} 
+      //       onConnectClick={handleConnectClick} 
+      //     />
+      //   );
+      case 'email':
+        return (
+          <MailCategory 
+            id="email"
+            searchQuery={searchQuery} 
+            onConnectClick={handleConnectClick} 
+          />
+        );
+      case 'sms':
+        return (
+          <SmsCategory 
+            id="sms"
+            searchQuery={searchQuery} 
+            onConnectClick={(serviceName, integrationId) => handleConnectClick(serviceName, integrationId, 'sms')}
+            onDeleteClick={handleDeleteSmsSettings}
+            refreshTrigger={refreshSmsCategory}
+          />
+        );
+      case 'whatsapp':
+        return (
+          <WhatsAppCategory 
+            id="whatsapp"
+            searchQuery={searchQuery} 
+            onConnectClick={(serviceName, integrationId) => handleConnectClick(serviceName, integrationId, 'whatsapp')}
+            onDeleteClick={handleDeleteWhatsAppSettings}
+            refreshTrigger={refreshWhatsAppCategory}
+          />
+        );
+      default:
+        return (
+           <SmsCategory 
+            id="sms"
+            searchQuery={searchQuery} 
+            onConnectClick={(serviceName, integrationId) => handleConnectClick(serviceName, integrationId, 'sms')}
+            onDeleteClick={handleDeleteSmsSettings}
+            refreshTrigger={refreshSmsCategory}
+          />
+        );
     }
   };
 
@@ -285,41 +311,9 @@ const getServiceType = (serviceName) => {
         />
       </div>
 
+      {/* عرض القسم النشط فقط */}
       <div>
-        <CalendarCategory 
-          id="calendar"
-          searchQuery={searchQuery} 
-          onConnectClick={handleConnectClick} 
-        />
-        <VideoConferencingCategory 
-          id="video"
-          searchQuery={searchQuery} 
-          onConnectClick={handleConnectClick} 
-        />
-        <CrmSalesCategory 
-          id="crm"
-          searchQuery={searchQuery} 
-          onConnectClick={handleConnectClick} 
-        />
-        <PaymentsCategory 
-          id="payments"
-          searchQuery={searchQuery} 
-          onConnectClick={handleConnectClick} 
-        />
-        <SmsCategory 
-          id="sms"
-          searchQuery={searchQuery} 
-          onConnectClick={(serviceName, integrationId) => handleConnectClick(serviceName, integrationId, 'sms')}
-          onDeleteClick={handleDeleteSmsSettings}
-          refreshTrigger={refreshSmsCategory}
-        />
-        <WhatsAppCategory 
-          id="whatsapp"
-          searchQuery={searchQuery} 
-          onConnectClick={(serviceName, integrationId) => handleConnectClick(serviceName, integrationId, 'whatsapp')}
-          onDeleteClick={handleDeleteWhatsAppSettings}
-          refreshTrigger={refreshWhatsAppCategory}
-        />
+        {renderActiveSection()}
       </div>
 
       {/* عرض المكون الموحد الجديد */}

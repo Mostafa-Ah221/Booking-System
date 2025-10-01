@@ -133,7 +133,7 @@ const ModernWebLayout = ({ themeColor }) => {
 
         {/* Footer */}
         <div className="text-center text-xs text-white mt-8">
-          Powered by Zoho Bookings
+          Powered by Appoint Roll
         </div>
       </div>
     </div>

@@ -52,7 +52,7 @@ const {id}=useParams()
         </div>
 
         {/* Main Content */}
-        <div className="col-span-12 lg:col-span-9 p-4">
+        <div className="col-span-12 lg:col-span-9 p-4 ">
           <Outlet  context={{ id }}/>
         </div>
       </div>

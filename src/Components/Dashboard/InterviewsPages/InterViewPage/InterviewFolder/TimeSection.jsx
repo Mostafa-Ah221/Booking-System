@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, Search, X, Edit, Send } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, X, Send } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { editInterviewById } from '../../../../../redux/apiCalls/interviewCallApi';
+import toast from "react-hot-toast";
 
 const TimeSection = ({ 
   timeZone, 
@@ -12,17 +13,16 @@ const TimeSection = ({
   handleSave,
   onUpdateWeekDays,
   onCancel,
-  availabilityMode = 'available'
+  availabilityMode = 'available',
+  isTimeSectionDisabled,
 }) => {
-  const [isWorkingHoursEnabled, setIsWorkingHoursEnabled] = useState(true);
   const [weekDays, setWeekDays] = useState(initialWeekDays);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(true);
   const [displayWeekDays, setDisplayWeekDays] = useState([]);
   
-  const { interview, loading } = useSelector(state => state.interview);
+  const { interview } = useSelector(state => state.interview);
   const { id } = useOutletContext();
   const dispatch = useDispatch();
-console.log(displayWeekDays);
 
   useEffect(() => {
     if (id) {
@@ -30,7 +30,6 @@ console.log(displayWeekDays);
     }
   }, [id, dispatch]);
 
-  // Day ID to name mapping
   const dayIdToName = {
     1: 'Sunday',
     2: 'Monday', 
@@ -48,14 +47,13 @@ console.log(displayWeekDays);
         : interview.un_available_times;
   
       if (timeSource && timeSource.length > 0) {
-        // Group time slots by day_id
         const groupedByDay = timeSource.reduce((acc, item) => {
           if (!acc[item.day_id]) {
             acc[item.day_id] = [];
           }
           acc[item.day_id].push({
-            from: item.from.substring(0, 5), // Remove seconds (09:00:00 -> 09:00)
-            to: item.to.substring(0, 5)     // Remove seconds (17:00:00 -> 17:00)
+            from: item.from.substring(0, 5),
+            to: item.to.substring(0, 5)
           });
           return acc;
         }, {});
@@ -67,40 +65,35 @@ console.log(displayWeekDays);
             return {
               day_id: dayId,
               day_name: dayIdToName[dayId],
-              timeSlots: dayTimeSlots, // Use actual data from API
+              timeSlots: dayTimeSlots,
               isChecked: true
             };
           } else {
             return {
               day_id: dayId,
               day_name: dayIdToName[dayId],
-              timeSlots: [{ from: "09:00", to: "17:00" }], // Default only for unchecked days
+              timeSlots: [],
               isChecked: false
             };
           }
         });
   
         setDisplayWeekDays(convertedWeekDays);
-        
-        if (!isEditMode) {
-          setWeekDays(convertedWeekDays);
-        }
+        setWeekDays(convertedWeekDays);
       } else {
-        // No data from API - set all days as unchecked with default times
         const defaultWeekDays = [1, 2, 3, 4, 5, 6, 7].map(dayId => ({
           day_id: dayId,
           day_name: dayIdToName[dayId],
-          timeSlots: [{ from: "09:00", to: "17:00" }],
+          timeSlots: [],
           isChecked: false
         }));
         
         setDisplayWeekDays(defaultWeekDays);
-        if (!isEditMode) {
-          setWeekDays(defaultWeekDays);
-        }
+        setWeekDays(defaultWeekDays);
       }
     }
-  }, [interview, availabilityMode, isEditMode]);
+  }, [interview, availabilityMode]);
+
   useEffect(() => {
     if (onUpdateWeekDays) {
       onUpdateWeekDays(weekDays);
@@ -119,44 +112,38 @@ console.log(displayWeekDays);
           }))
         }));
       
-      console.log("Time data to be saved:", available_times);
-      
       if (handleSave) {
-        const result = await handleSave({ available_times });
+        const result = await handleSave({ 
+          [availabilityMode === 'available' ? 'available_times' : 'un_available_times']: available_times 
+        });
         
         if (result && result.success) {
           setDisplayWeekDays([...weekDays]);
-          
           await dispatch(editInterviewById(id));
-          
-          setIsEditMode(false);
+        } else {
+          throw new Error('Save operation did not return success');
         }
       }
     } catch (error) {
-      console.error("Error saving time data:", error);
-      alert(`خطأ في حفظ الأوقات: ${error.message || 'حدث خطأ غير متوقع'}`);
+      toast.error(`Error saving times: ${error.message || 'An unexpected error occurred'}`);
     }
   };
 
-  // Generate time options in 24-hour format (HH:mm)
   const generateTimeOptions = (isToField = false, fromTime = null) => {
     const options = [];
     
     for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) { // 30-minute intervals
+      for (let minute = 0; minute < 60; minute += 30) {
         const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         
-        // If this is a "to" field and we have a "from" time, filter options
         if (isToField && fromTime) {
           const [fromHour, fromMinute] = fromTime.split(':').map(Number);
           const [currentHour, currentMinute] = [hour, minute];
           
-          // Only show times after the "from" time
           if (currentHour > fromHour || (currentHour === fromHour && currentMinute > fromMinute)) {
             options.push(timeString);
           }
         } else if (!isToField) {
-          // For "from" field, show all options
           options.push(timeString);
         }
       }
@@ -164,15 +151,11 @@ console.log(displayWeekDays);
     
     return options;
   };
-  const timeOptions = generateTimeOptions();
 
-  // Handle adding a new time slot to a specific day
   const addTimeSlot = (dayId) => {
-    if (!isEditMode) return;
-    
+    if (isTimeSectionDisabled) return;
     const updatedWeekDays = weekDays.map(day => {
       if (day.day_id === dayId) {
-        // استخدام آخر time slot في نفس اليوم كـ template بدلاً من القيم الافتراضية
         const lastTimeSlot = day.timeSlots[day.timeSlots.length - 1];
         const newTimeSlot = { 
           from: lastTimeSlot ? lastTimeSlot.from : "09:00", 
@@ -186,9 +169,8 @@ console.log(displayWeekDays);
     setWeekDays(updatedWeekDays);
   };
 
-  // Handle removing a time slot from a specific day
   const removeTimeSlot = (dayId, slotIndex) => {
-    if (!isEditMode) return;
+    if (isTimeSectionDisabled) return;
     if (weekDays.find(d => d.day_id === dayId)?.timeSlots.length <= 1) return;
     
     const updatedWeekDays = weekDays.map(day => {
@@ -202,10 +184,8 @@ console.log(displayWeekDays);
     setWeekDays(updatedWeekDays);
   };
 
-  // تحديث دالة applyToAll لتطبيق القيم الفعلية من اليوم الأول
   const applyToAll = () => {
-    if (!isEditMode) return;
-    
+    if (isTimeSectionDisabled) return;
     const firstDay = weekDays[0];
     if (!firstDay) return;
     
@@ -213,9 +193,7 @@ console.log(displayWeekDays);
       if (day.day_id === firstDay.day_id) return day;
       return {
         ...day,
-        // نسخ القيم الفعلية من اليوم الأول بدلاً من القيم الافتراضية
         timeSlots: JSON.parse(JSON.stringify(firstDay.timeSlots)),
-        // إذا كان اليوم الأول محدد، نحدد باقي الأيام أيضاً
         isChecked: firstDay.isChecked
       };
     });
@@ -223,8 +201,7 @@ console.log(displayWeekDays);
   };
 
   const handleTimeChange = (dayId, slotIndex, field, newValue) => {
-    if (!isEditMode) return;
-    
+    if (isTimeSectionDisabled) return;
     const updatedWeekDays = weekDays.map(day => {
       if (day.day_id === dayId) {
         const newTimeSlots = [...day.timeSlots];
@@ -233,16 +210,13 @@ console.log(displayWeekDays);
         if (field === 'from') {
           currentSlot.from = newValue;
           
-          // Check if current "to" time is now invalid (before or equal to new "from" time)
           const [fromHour, fromMinute] = newValue.split(':').map(Number);
           const [toHour, toMinute] = currentSlot.to.split(':').map(Number);
           
           if (toHour < fromHour || (toHour === fromHour && toMinute <= fromMinute)) {
-            // Reset "to" time to 30 minutes after "from" time
             const newToHour = fromMinute === 30 ? fromHour + 1 : fromHour;
             const newToMinute = fromMinute === 30 ? 0 : fromMinute + 30;
             
-            // Make sure we don't exceed 23:59
             if (newToHour < 24) {
               currentSlot.to = `${newToHour.toString().padStart(2, '0')}:${newToMinute.toString().padStart(2, '0')}`;
             } else {
@@ -262,84 +236,90 @@ console.log(displayWeekDays);
     setWeekDays(updatedWeekDays);
   };
 
-  // Handle day checkbox toggle
   const handleDayToggle = (dayId) => {
-    if (!isEditMode) return;
-    
+    if (isTimeSectionDisabled) return;
     const updatedWeekDays = weekDays.map(day => {
       if (day.day_id === dayId) {
-        // عند تحديد يوم جديد، نحتفظ بآخر قيم تم تعديلها في ذلك اليوم
-        // أو نستخدم القيم الحالية الموجودة
-        return { ...day, isChecked: !day.isChecked };
+        const updatedDay = { ...day, isChecked: !day.isChecked };
+        
+        if (updatedDay.isChecked && updatedDay.timeSlots.length === 0) {
+          updatedDay.timeSlots = [{ from: "09:00", to: "17:00" }];
+        }
+        
+        return updatedDay;
       }
       return day;
     });
     setWeekDays(updatedWeekDays);
   };
 
-  // Handle edit mode toggle
-  const handleEditClick = () => {
-    setIsEditMode(true);
-    if (displayWeekDays.length > 0) {
-      setWeekDays([...displayWeekDays]);
-    }
-  };
-
   const handleCancelClick = () => {
-    setIsEditMode(false);
-    if (displayWeekDays.length > 0) {
-      // استرجاع القيم المحفوظة الأصلية عند الإلغاء
-      setWeekDays([...displayWeekDays]);
-    }
+    if (isTimeSectionDisabled) return;
     if (onCancel) {
       onCancel();
     }
   };
 
-  const currentWeekDays = isEditMode ? weekDays : displayWeekDays;
   const TimeDropdown = ({ value, dayId, slotIndex, field }) => {
     const dropdownId = `${field}-${dayId}-${slotIndex}`;
+    const containerRef = useRef(null);
+    const buttonRef = useRef(null);
     
-    // Get the current time slot to determine filtering
     const currentDay = weekDays.find(day => day.day_id === dayId);
     const currentSlot = currentDay?.timeSlots[slotIndex];
     
-    // Generate appropriate options based on field type
     const timeOptions = field === 'to' 
       ? generateTimeOptions(true, currentSlot?.from)
       : generateTimeOptions(false);
-    
+
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (containerRef.current && !containerRef.current.contains(event.target)) {
+          handleTimeDropdownToggle(null);
+        }
+      };
+
+      if (selectedTimeDropdown === dropdownId) {
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+          document.removeEventListener('mousedown', handleClickOutside);
+        };
+      }
+    }, [selectedTimeDropdown, dropdownId]);
+
+    const handleToggle = () => {
+      if (isTimeSectionDisabled) return;
+      handleTimeDropdownToggle(selectedTimeDropdown === dropdownId ? null : dropdownId);
+    };
+
+    const menuPositionClass = [6, 7].includes(dayId) 
+      ? 'bottom-full mb-1' 
+      : 'top-full mt-1';
+
     return (
-      <div className="relative">
+      <div ref={containerRef} className="relative w-20">
         <button 
-          onClick={() => isEditMode && handleTimeDropdownToggle(dropdownId)}
-          className={`flex items-center justify-between w-full px-3 py-2 text-left border rounded-md bg-white ${
-            !isEditMode ? 'opacity-50 cursor-not-allowed' : ''
+          ref={buttonRef}
+          onClick={handleToggle}
+          className={`flex items-center justify-between w-full px-3 py-2 text-left border rounded-md bg-white transition-colors duration-200 ${
+            isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
           }`}
-          disabled={!isEditMode}
+          disabled={isTimeSectionDisabled}
         >
-          <span>{value}</span>
-          <ChevronDown size={16} className={`transition-transform ${selectedTimeDropdown === dropdownId ? 'transform rotate-180' : ''}`} />
+          <span className="text-sm">{value}</span>
+          <ChevronDown size={16} className={`transition-transform duration-200 ${selectedTimeDropdown === dropdownId ? 'transform rotate-180' : ''}`} />
         </button>
         
-        {selectedTimeDropdown === dropdownId && isEditMode && (
-          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
-            <div className="p-2 border-b">
-              <div className="flex items-center px-2 py-1 border rounded-md bg-white">
-                <Search size={16} className="text-gray-400 mr-2" />
-                <input
-                  type="text"
-                  placeholder="Search"
-                  className="w-full outline-none text-sm"
-                  autoFocus
-                />
-              </div>
-            </div>
+        {selectedTimeDropdown === dropdownId && !isTimeSectionDisabled && (
+          <div 
+            className={`absolute z-30 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto ${menuPositionClass}`}
+            style={{ minWidth: '80px' }}
+          >
             {timeOptions.length > 0 ? (
               timeOptions.map((option, idx) => (
                 <div 
                   key={idx} 
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  className="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer transition-colors duration-150"
                   onClick={() => {
                     handleTimeChange(dayId, slotIndex, field, option);
                     handleTimeDropdownToggle(null);
@@ -361,169 +341,137 @@ console.log(displayWeekDays);
 
   return (
     <div className="p-6">
-      {!isEditMode && (
-        <div className="flex justify-between mb-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-2">
           <div>
-            <h2 className="text-xl font-semibold">
-              {availabilityMode === 'available' ? 'Available Times' : 'Unavailable Times'}
-            </h2>
-            <p className="text-gray-500">
+            <h3 className="font-medium">
+              {availabilityMode === 'available' ? 'Working Hours' : 'Unavailable Hours'}
+            </h3>
+            <p className="text-sm text-gray-500">
               {availabilityMode === 'available' ? 
-                'Set weekly available days and hours' : 
-                'Set weekly unavailable days and hours'
+                'Set weekly available days and hours.' : 
+                'Set weekly unavailable days and hours.'
               }
             </p>
           </div>
-          
-          <div className="flex items-center">
-            <button 
-              onClick={handleEditClick}
-              className={`px-4 py-2 text-white rounded-md shadow-sm flex items-center ${
-                availabilityMode === 'available' ? 
-                'bg-blue-600 hover:bg-blue-700' : 
-                'bg-red-600 hover:bg-red-700'
-              }`}
-            >
-              <Edit size={16} className="mr-2" />
-              Edit
-            </button>
-          </div>
         </div>
-      )}
-
-      {/* Show action buttons only when in edit mode */}
-      {isEditMode && (
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <input 
-              type="checkbox" 
-              checked={isWorkingHoursEnabled} 
-              onChange={() => setIsWorkingHoursEnabled(!isWorkingHoursEnabled)} 
-              className="w-4 h-4 rounded border-gray-300" 
-            />
-            <div>
-              <h3 className="font-medium">
-                {availabilityMode === 'available' ? 'Working Hours' : 'Unavailable Hours'}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {availabilityMode === 'available' ? 
-                  'Set weekly available days and hours.' : 
-                  'Set weekly unavailable days and hours.'
-                }
-              </p>
-            </div>
-          </div>
+        {isEditMode && (
           <div className="flex space-x-2">
             <button 
               onClick={handleCancelClick}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className={`px-4 py-1 border border-gray-300 rounded-md text-gray-700 transition-colors duration-200 ${
+                isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+              }`}
+              disabled={isTimeSectionDisabled}
             >
-              Cancel
+              <span className='text-sm'>Cancel</span>
             </button>
             <button 
               onClick={handleSaveAndSubmit}
-              className={`px-4 py-2 text-white rounded-md shadow-sm flex items-center ${
+              className={`px-4 py-1 text-white rounded-md shadow-sm flex items-center transition-colors duration-200 ${
                 availabilityMode === 'available' ? 
                 'bg-blue-600 hover:bg-blue-700' : 
                 'bg-red-600 hover:bg-red-700'
-              }`}
+              } ${isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isTimeSectionDisabled}
             >
               <Send size={16} className="mr-2" />
-              Save
+              <span className='text-sm'>Save</span>
             </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="border rounded-lg p-4">
-        <div className="mb-4">
-          <div className="relative">
-            <button className="flex items-center justify-between w-full px-3 py-2 text-left border rounded-md bg-white">
-              <span>{timeZone}</span>
-              <ChevronDown size={16} />
-            </button>
-          </div>
-        </div>
-
         <div className="space-y-4">
-          {currentWeekDays.map((day) => (
-            <div key={day.day_id} className="space-y-2">
+          {weekDays.map((day) => (
+            <div key={day.day_id} className="flex">
               <div className="flex items-center gap-3">
                 <input 
                   type="checkbox" 
                   checked={day.isChecked} 
                   onChange={() => handleDayToggle(day.day_id)} 
-                  className="w-4 h-4 rounded border-gray-300"
-                  disabled={!isEditMode}
+                  className={`w-3 h-3 rounded border-gray-300 cursor-pointer ${
+                    isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  disabled={isTimeSectionDisabled}
                 />
-                <span className="w-24">{dayIdToName[day.day_id]}</span>
+                <span className="w-24 text-sm">{dayIdToName[day.day_id]}</span>
               </div>
-              
-              {day.isChecked && day.timeSlots.map((slot, slotIndex) => (
-                <div key={`${day.day_id}-${slotIndex}`} className="flex items-center gap-2 ml-8">
-                  <TimeDropdown 
-                    value={slot.from}
-                    dayId={day.day_id}
-                    slotIndex={slotIndex}
-                    field="from"
-                  />
-                  
-                  <span>—</span>
-                  
-                  <TimeDropdown 
-                    value={slot.to}
-                    dayId={day.day_id}
-                    slotIndex={slotIndex}
-                    field="to"
-                  />
+              <div className='flex flex-col gap-1'>
+                {day.isChecked && day.timeSlots.map((slot, slotIndex) => (
+                  <div key={`${day.day_id}-${slotIndex}`} className="flex items-center gap-2 ml-8 text-xs">
+                    <TimeDropdown 
+                      value={slot.from}
+                      dayId={day.day_id}
+                      slotIndex={slotIndex}
+                      field="from"
+                    />
+                    
+                    <span>—</span>
+                    
+                    <TimeDropdown 
+                      value={slot.to}
+                      dayId={day.day_id}
+                      slotIndex={slotIndex}
+                      field="to"
+                    />
 
-                  {isEditMode && day.day_id === 1 && slotIndex === 0 && (
-                    <>
+                    {day.day_id === 1 && slotIndex === 0 && (
+                      <>
+                        <button 
+                          onClick={() => addTimeSlot(day.day_id)}
+                          className={`border rounded-md w-8 h-8 flex items-center justify-center text-indigo-600 transition-colors duration-200 ${
+                            isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                          }`}
+                          disabled={isTimeSectionDisabled}
+                        >
+                          +
+                        </button>
+                        <span 
+                          className={`text-indigo-600 cursor-pointer ml-1 hover:underline ${
+                            isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                          onClick={applyToAll}
+                        >
+                          Apply to all
+                        </span>
+                      </>
+                    )}
+
+                    {day.timeSlots.length > 1 && (
+                      <button 
+                        onClick={() => removeTimeSlot(day.day_id, slotIndex)}
+                        className={`border rounded-md w-8 h-8 flex items-center justify-center text-red-600 transition-colors duration-200 ${
+                          isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                        }`}
+                        disabled={isTimeSectionDisabled}
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+
+                    {slotIndex === day.timeSlots.length - 1 && (
                       <button 
                         onClick={() => addTimeSlot(day.day_id)}
-                        className="border rounded-md w-8 h-8 flex items-center justify-center text-indigo-600"
+                        className={`border rounded-md w-8 h-8 flex items-center justify-center text-indigo-600 transition-colors duration-200 ${
+                          isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                        }`}
+                        disabled={isTimeSectionDisabled}
                       >
                         +
                       </button>
-                      <span 
-                        className="text-indigo-600 cursor-pointer ml-1"
-                        onClick={applyToAll}
-                      >
-                        Apply to all
-                      </span>
-                    </>
-                  )}
-
-                  {isEditMode && day.timeSlots.length > 1 && (
-                    <button 
-                      onClick={() => removeTimeSlot(day.day_id, slotIndex)}
-                      className="border rounded-md w-8 h-8 flex items-center justify-center text-red-600"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-
-                  {isEditMode && slotIndex === day.timeSlots.length - 1 && (
-                    <button 
-                      onClick={() => addTimeSlot(day.day_id)}
-                      className="border rounded-md w-8 h-8 flex items-center justify-center text-indigo-600"
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
       </div>
 
       <div className="mt-4 text-gray-600 text-sm">
-        {isEditMode ? (
-          `Configure ${availabilityMode} working hours`
-        ) : (
-          `${availabilityMode === 'available' ? 'Available' : 'Unavailable'} working hours configured`
-        )}
+        Configure {availabilityMode} working hours
       </div>
     </div>
   );

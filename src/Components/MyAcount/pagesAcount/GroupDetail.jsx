@@ -65,7 +65,7 @@ const GroupDetail = ({ group, onClose, onDelete, onUpdate, onStarToggle }) => {
         {/* Delete Confirmation */}
         {showDeleteConfirm && (
           <div className="p-6 bg-gray-50">
-            <p className="text-lg mb-6">Delete the group {group.name} from your Zoho account?</p>
+            <p className="text-lg mb-6">Delete the group {group.name} from your Appoint Roll account?</p>
             <div className="flex space-x-2">
               <button 
                 className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600"

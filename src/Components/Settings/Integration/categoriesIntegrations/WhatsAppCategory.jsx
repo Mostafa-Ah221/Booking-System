@@ -19,7 +19,6 @@ const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshT
     }
   }, [dispatch]);
 
-  console.log(integrationsWhatsApp);
 
   const checkIntegrationsSettings = useCallback(async () => {
     if (!isCheckingSettings && integrationsWhatsApp.length > 0) {

@@ -22,7 +22,7 @@ const ShareModal = ({ isOpen, onClose, interview }) => {
       setTimeout(() => setCopiedEmbed(false), 2000);
     }
   };
-  
+
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
@@ -68,7 +68,7 @@ const ShareModal = ({ isOpen, onClose, interview }) => {
             <>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-gray-700">One-time booking link</span>
-                <label className="relative inline-flex items-center cursor-pointer">
+                {/* <label className="relative inline-flex items-center cursor-pointer">
                   <input 
                     type="checkbox" 
                     className="sr-only peer"
@@ -76,7 +76,7 @@ const ShareModal = ({ isOpen, onClose, interview }) => {
                     onChange={() => setOneTimeLink(!oneTimeLink)}
                   />
                   <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                </label>
+                </label> */}
               </div>
               <div className="flex">
                 <div className="flex-1 bg-gray-100 p-3 rounded-l-md overflow-hidden">

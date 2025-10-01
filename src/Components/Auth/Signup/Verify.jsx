@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import * as Yup from 'yup';
 import { useFormik } from 'formik';
+import toast from "react-hot-toast";
 
 const Verify = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +28,7 @@ const Verify = () => {
 
     try {
       const response = await axios.post(
-        'https://booking-system-demo.efc-eg.com/api/account/verify', 
+        'https://backend-booking.appointroll.com/api/account/verify', 
         {
           code: values.verification_code
         },
@@ -40,7 +41,7 @@ const Verify = () => {
        console.log(response);
        
       let message = response?.data?.message
-      alert(message)
+      toast.success(message)
       // Successful verification - navigate to login
       navigate('/setup_1', { 
         state: { 
@@ -71,7 +72,7 @@ const Verify = () => {
 
     try {
       const response = await axios.post(
-        'https://booking-system-demo.efc-eg.com/api/resend-verify-account',
+        'https://backend-booking.appointroll.com/api/resend-verify-account',
         {},
         {
           headers: {

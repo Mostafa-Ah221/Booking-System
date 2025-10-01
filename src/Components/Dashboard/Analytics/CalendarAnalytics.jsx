@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 
 const CalendarAnalytics = ({data}) => {
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 5, 19)); 
+  const [currentDate, setCurrentDate] = useState(new Date()); 
   const [selectedDate, setSelectedDate] = useState(null);
 
   const appointments=data?.data?.recent_appointments
@@ -33,7 +33,6 @@ const CalendarAnalytics = ({data}) => {
     return appointments.filter(app => app.date === dayStr).length;
   };
 
-  // Function to get appointments for selected day
   const appointmentsOnSelectedDay = (date) => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1;

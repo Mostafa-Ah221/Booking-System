@@ -4,6 +4,9 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
 import * as Yup from 'yup';
 import { useFormik } from 'formik';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { getPermissions } from '../../../redux/apiCalls/RolesCallApli';
+import { authActions } from '../../../redux/slices/authSlice';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,10 +14,12 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+ const dispatch = useDispatch();
 
   const access_token = location.state?.access_token || '';
-  const VerificationMessage = location.state?.message || '';
-
+//  useEffect(() => {
+//     dispatch(getPermissions()); 
+//   }, [dispatch]);
   const validationSchema = Yup.object().shape({
     identify: Yup.string()
       .email("Invalid email address")
@@ -24,6 +29,7 @@ const Login = () => {
   });
 
   const handleLogin = async (values) => {
+    // const dispatch = useDispatc();
     setIsLoading(true);
     setApiError(null);
 
@@ -36,7 +42,7 @@ const Login = () => {
       }
 
       const response = await axios.post(
-        "https://booking-system-demo.efc-eg.com/api/login",
+        "https://backend-booking.appointroll.com/api/login",
         formData,
         {
           headers: {
@@ -50,6 +56,8 @@ const Login = () => {
       const accessToken = response?.data?.data?.user?.original?.access_token;
       if(accessToken){
         localStorage.setItem("access_token", accessToken);
+         dispatch(authActions.setToken(accessToken));
+        await dispatch(getPermissions());
       }
 
       navigate("/layoutDashboard")
@@ -60,7 +68,7 @@ const Login = () => {
       let errorMessage = "Login failed. Please try again.";
 
       if (error.response) {
-        if (error.response.data.errors) {
+        if (error.response.data.errors) {ز
           const firstError = Object.values(error.response.data.errors)[0]?.[0];
           errorMessage = firstError || errorMessage;
         } else {
@@ -106,7 +114,7 @@ const Login = () => {
             
             <h1 className="text-4xl font-bold mb-4 leading-tight">
               Welcome Back to<br />
-              <span className="text-yellow-300">BookingHub</span>
+              <span className="text-yellow-300">Appoint Roll</span>
             </h1>
             
             <p className="text-xl text-blue-100 mb-8 leading-relaxed">

@@ -251,7 +251,7 @@ const PricingComponent = () => {
         <div className="mt-12 bg-white rounded-lg shadow-lg p-8 max-w-96 ">
             <img src="https://www.zohowebstatic.com/sites/zweb/images/bookings/free-plan.png" alt="" className='w-44' />
           <h3 className="text-xl font-bold text-gray-900">Forever Free Plan</h3>
-          <p className="mt-2 text-gray-600">1 staff | Online meetings | Notification emails and reminders. Two-way calendar sync - Zoho, Google, Q365/Outlook.com.</p>
+          <p className="mt-2 text-gray-600">1 staff | Online meetings | Notification emails and reminders. Two-way calendar sync - Appoint Roll, Google, Q365/Outlook.com.</p>
           <button className="mt-6  bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">GET STARTED</button>
         </div>
         <div className="mt-12 bg-[#4a3bb6] text-white rounded-lg shadow-lg p-8 max-w-96 ">

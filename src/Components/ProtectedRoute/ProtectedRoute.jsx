@@ -20,7 +20,6 @@ export default function ProtectedRoute({ children }) {
 
     return children;
   } catch (error) {
-    console.error("Invalid token", error);
     localStorage.removeItem("access_token");
     return <Navigate to="/login" />;
   }

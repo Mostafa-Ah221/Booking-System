@@ -3,8 +3,8 @@ import { createSlice } from "@reduxjs/toolkit";
 const smsSlice = createSlice({
   name: "sms",
   initialState: {
-    integrations: [],           // قائمة موفري الخدمة (مثل Twilio, MessageBird)
-    settings: null,             // إعدادات العميل (integration_id + config data)
+    integrations: [],        
+    settings: null,            
     loading: false,
     error: null,
     success: null,

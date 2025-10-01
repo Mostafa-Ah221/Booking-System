@@ -1,8 +1,128 @@
-import { useState } from 'react';
-import { X, User, Clock, Trash2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { useDispatch } from 'react-redux'; // أضف هذا
+import { X, User, Clock, Trash2, ChevronDown } from 'lucide-react';
+import { usePermission } from '../../hooks/usePermission';
+import { approveAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
 
-const AppointmentDetailsSidebar = ({ appointment, isOpen, onClose, onCancel, onDelete, isCancelling }) => {
+const AppointmentDetailsSidebar = ({ 
+  appointment, 
+  isOpen, 
+  onClose, 
+  onCancel, 
+  onDelete, 
+  isCancelling, 
+  onReschedule,
+  onAppointmentUpdate // أضف هذا prop لتحديث الـ appointment في الـ parent component
+}) => {
   const [activeTab, setActiveTab] = useState('Appointment Details');
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [approveStatus, setApproveStatus] = useState('pending');
+  const dropdownRef = useRef(null);
+  const dispatch = useDispatch(); // أضف هذا
+
+  // تحديث الـ approve status عند تغيير الـ appointment
+  useEffect(() => {
+    if (appointment?.approve_status !== undefined) {
+      const status = appointment.approve_status;
+      if (status === "1" || status === 1 || status === true) {
+        setApproveStatus('approved');
+      } else if (status === "0" || status === 0 || status === false) {
+        setApproveStatus('rejected');
+      } else {
+        setApproveStatus('pending');
+      }
+    } else {
+      setApproveStatus('pending');
+    }
+  }, [appointment]);
+
+  
+
+  const canEditAppointment = usePermission("edit appointment");
+  const canControlAppointment = usePermission("control appointment");
+  const canDeleteAppointment = usePermission("delete appointment");
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+
+  const handleApproveReject = async (approved) => {
+    if (!appointment?.id) return;
+console.log(approved);
+
+    console.log('Sending approval request:', { approved });
+    
+    // احفظ الحالة السابقة للرجوع إليها في حالة الفشل
+    const previousStatus = approveStatus;
+    
+    // تحديث الحالة فورًا لتعكس التغيير في واجهة المستخدم
+    const newStatus = approved ? 'approved' : 'rejected';
+    setApproveStatus(newStatus);
+    setIsProcessing(true);
+
+    try {
+      // استدعاء الـ API مع الـ dispatch
+      const result = await dispatch(approveAppointment(appointment.id, { approved }));
+      
+      console.log('API Response:', result);
+
+      if (result.success) {
+        // تحديث الـ appointment object في الـ parent component
+        if (onAppointmentUpdate) {
+          const updatedAppointment = {
+            ...appointment,
+            approve_status: approved ? "1" : "0"
+          };
+          onAppointmentUpdate(updatedAppointment);
+        }
+        
+        console.log(`Appointment ${approved ? 'approved' : 'rejected'} successfully`);
+      } else {
+        setApproveStatus(previousStatus);
+        console.error('Failed to update appointment:', result.message);
+      }
+    } catch (error) {
+      setApproveStatus(previousStatus);
+      console.error('Error updating appointment:', error);
+    } finally {
+      setIsProcessing(false);
+      setOpenDropdown(null);
+    }
+   
+  };
+
+  // Handle dropdown options
+  const handleDropdownOption = async (option, appointment) => {
+    setOpenDropdown(null);
+
+    if (option === 'reschedule') {
+      if (onReschedule && appointment) {
+        onReschedule(appointment);
+        onClose();
+      }
+    } else if (option === 'cancel') {
+      await handleCancelClick();
+    } else if (option === 'delete') {
+      await handleDeleteClick();
+    }
+  };
+
+  // Toggle dropdown
+  const toggleDropdown = (dropdownId) => {
+    setOpenDropdown(openDropdown === dropdownId ? null : dropdownId);
+  };
 
   // Handle delete appointment
   const handleDeleteClick = () => {
@@ -52,13 +172,12 @@ const AppointmentDetailsSidebar = ({ appointment, isOpen, onClose, onCancel, onD
     });
   };
 
-  // Calculate end time (assuming 2 hours 15 minutes duration as default)
+  // Calculate end time
   const getEndTime = (startTime) => {
     const [hours, minutes] = startTime.split(':');
     const startDate = new Date();
     startDate.setHours(parseInt(hours), parseInt(minutes), 0);
     
-    // Add 2 hours 15 minutes
     startDate.setHours(startDate.getHours() + 2);
     startDate.setMinutes(startDate.getMinutes() + 15);
     
@@ -84,16 +203,6 @@ const AppointmentDetailsSidebar = ({ appointment, isOpen, onClose, onCancel, onD
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-lg font-semibold text-gray-800">Appointment Summary</h2>
           <div className='flex gap-7 items-center'>
-            <button
-              onClick={handleDeleteClick}
-              disabled={isCancelling}
-              className={`cursor-pointer w-9 h-9 rounded-full flex justify-center items-center duration-300 hover:bg-red-200 ${
-                isCancelling ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-              title="Delete Appointment"
-            >
-              <Trash2 size={19} className='text-red-600' />
-            </button>
             <button 
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -106,29 +215,137 @@ const AppointmentDetailsSidebar = ({ appointment, isOpen, onClose, onCancel, onD
         {/* Content */}
         <div className="p-6 overflow-y-auto h-full pb-20">
           {/* Appointment Time Card */}
-          <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
+          <div className="rounded-md p-4 mb-6 border border-blue-200">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium text-gray-800">
+              <div className="font-medium text-gray-800">
                 {formatDate(appointment.date)}, {formatTime(appointment.time)} - {formatTime(endTime)}
               </div>
-              <div className="flex gap-2 mt-3">
-                <button 
-                  className="text-blue-600 text-sm hover:text-blue-700 flex items-center gap-1"
-                  disabled={isCancelling}
-                >
-                  <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
-                  Reschedule
-                </button>
-                <button 
-                  className={`text-red-600 text-sm hover:text-red-700 flex items-center gap-1 ${
-                    isCancelling ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                  onClick={handleCancelClick}
-                  disabled={isCancelling}
-                >
-                  <span className="w-2 h-2 bg-red-600 rounded-full"></span>
-                  {isCancelling ? 'Cancelling...' : 'Cancel'}
-                </button>
+              <div className="flex gap-2">
+                {/* Approval Section */}
+                {canControlAppointment && (
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      className="border border-gray-300 px-3 py-1 rounded flex items-center gap-1 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => toggleDropdown('approval')}
+                      disabled={isProcessing}
+                    >
+                      <span className="text-xs">
+                        {isProcessing ? 'Processing...' : 'Approve'}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform duration-200 ${
+                          openDropdown === 'approval' ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {/* Approval Dropdown Menu */}
+                    {openDropdown === 'approval' && (
+                      <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                        <div className="py-2 px-3">
+                          {/* Accept Radio */}
+                          <label className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-2">
+                            <input
+                              type="radio"
+                              name="approval"
+                              className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                              checked={approveStatus === 'approved'}
+                              onChange={() => handleApproveReject(true)}
+                              disabled={isProcessing}
+                            />
+                            <span className="text-xs text-green-600 font-medium">Accept</span>
+                          </label>
+
+                          {/* Reject Radio */}
+                          <label className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-2">
+                            <input
+                              type="radio"
+                              name="approval"
+                              className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+                              checked={approveStatus === 'rejected'}
+                              onChange={() => handleApproveReject(false)}
+                              disabled={isProcessing}
+                            />
+                            <span className="text-xs text-red-600 font-medium">Reject</span>
+                          </label>
+
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions Section */}
+                {(canEditAppointment || canControlAppointment || canDeleteAppointment) && (
+                  <div className="relative">
+                    <button
+                      className="border border-gray-300 px-3 py-1 rounded flex items-center gap-1 text-sm hover:bg-gray-50"
+                      onClick={() => toggleDropdown(appointment.id)}
+                      disabled={isCancelling}
+                    >
+                      <span className="text-xs">Actions</span>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform duration-200 ${
+                          openDropdown === appointment.id ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {/* Actions Dropdown Menu */}
+                    {openDropdown === appointment.id && (
+                      <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                        <div className="py-1">
+                          {/* Reschedule Option */}
+                          {canControlAppointment && (
+                            <button
+                              className="w-full text-right px-4 py-2 text-sm text-blue-600 hover:bg-gray-50 flex items-center justify-end gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDropdownOption('reschedule', appointment);
+                              }}
+                              disabled={isCancelling}
+                            >
+                              <span className="text-xs">Reschedule</span>
+                              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                            </button>
+                          )}
+                          
+                          {/* Cancel Option */}
+                          {canEditAppointment && (
+                            <button
+                              className="w-full text-right px-4 py-2 text-sm text-yellow-600 hover:bg-gray-50 flex items-center justify-end gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDropdownOption('cancel', appointment);
+                              }}
+                              disabled={isCancelling}
+                            >
+                              <span className="text-xs">Cancel</span>
+                              <div className="w-2 h-2 bg-yellow-600 rounded-full"></div>
+                            </button>
+                          )}
+                          
+                          {/* Delete Option */}
+                          {canDeleteAppointment && (
+                            <button
+                              className="w-full text-right px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center justify-end gap-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDropdownOption('delete', appointment);
+                              }}
+                              disabled={isCancelling}
+                            >
+                              <span className="text-xs">Delete</span>
+                              <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -191,6 +408,22 @@ const AppointmentDetailsSidebar = ({ appointment, isOpen, onClose, onCancel, onD
                    appointment.status === 'rescheduled' ? 'Rescheduled' : 
                    appointment.status === 'cancelled' ? 'Cancelled' :
                    appointment.status}
+                </span>
+              </div>
+
+              {/* Approval Status */}
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-gray-600">Approval Status</span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  approveStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                  approveStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                  approveStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {approveStatus === 'approved' ? 'Approved' :
+                   approveStatus === 'rejected' ? 'Rejected' :
+                   approveStatus === 'pending' ? 'Pending' :
+                   approveStatus || 'Not Set'}
                 </span>
               </div>
 

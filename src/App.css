@@ -40,3 +40,52 @@
 .read-the-docs {
   color: #888;
 }
+/* إضافة هذا CSS للملف الرئيسي للتطبيق */
+
+/* منع إزاحة الصفحة عند ظهور/إخفاء شريط التمرير */
+html {
+  overflow-y: scroll; /* يضمن ظهور شريط التمرير دائماً */
+}
+
+/* للمتصفحات الحديثة - شريط تمرير شبه شفاف */
+body {
+  overflow-y: overlay;
+}
+
+/* في حالة عدم دعم overlay */
+@supports not (overflow-y: overlay) {
+  body {
+    overflow-y: scroll;
+  }
+}
+
+/* تحسينات إضافية للانتقالات السلسة */
+.smooth-layout {
+  will-change: height, transform;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* منع الـ layout shift أثناء الانتقالات */
+.transition-height {
+  contain: layout style;
+}
+
+/* تخصيص شريط التمرير للمتصفحات المبنية على WebKit */
+::-webkit-scrollbar {
+  width: 8px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}

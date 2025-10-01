@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Send, Edit } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { editInterviewById } from '../../../../../redux/apiCalls/interviewCallApi';
+import toast from "react-hot-toast";
 
 const CalendarSection = ({ 
   timeZone, 
@@ -13,17 +14,53 @@ const CalendarSection = ({
   handleDateClick,
   handleSave,
   availabilityMode = 'available',
+  getWorkspaceData
 }) => {
   const [rangeStart, setRangeStart] = useState(null);
   const [rangeEnd, setRangeEnd] = useState(null);
   const [selecting, setSelecting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [displayDates, setDisplayDates] = useState([]); // للعرض المستمر
+  const [displayDates, setDisplayDates] = useState([]); 
   const { interview, loading } = useSelector(state => state.interview);
 
   const { id } = useOutletContext();
   const dispatch = useDispatch();
 
+  // ✅ التعديل 1: دوال للتحقق من التواريخ المتاحة وغير المتاحة
+  // Helper function to check if a date is within workspace available dates
+  const isDateInWorkspaceRange = (dateStr) => {
+    if (!getWorkspaceData?.available_dates || getWorkspaceData.available_dates.length === 0) {
+      return true; // If no restrictions, allow all dates
+    }
+
+    const checkDate = new Date(dateStr);
+    
+    return getWorkspaceData.available_dates.some(range => {
+      const rangeStart = new Date(range.from);
+      const rangeEnd = new Date(range.to);
+      return checkDate >= rangeStart && checkDate <= rangeEnd;
+    });
+  };
+
+  // Helper function to check if a date is in workspace unavailable dates
+  const isDateInWorkspaceUnavailable = (dateStr) => {
+    if (!getWorkspaceData?.un_available_dates || getWorkspaceData.un_available_dates.length === 0) {
+      return false;
+    }
+
+    const checkDate = new Date(dateStr);
+    
+    return getWorkspaceData.un_available_dates.some(range => {
+      const rangeStart = new Date(range.from);
+      const rangeEnd = new Date(range.to);
+      return checkDate >= rangeStart && checkDate <= rangeEnd;
+    });
+  };
+
+  // Check if date is disabled (outside workspace range or in unavailable dates)
+  const isDateDisabled = (dateStr) => {
+    return !isDateInWorkspaceRange(dateStr) || isDateInWorkspaceUnavailable(dateStr);
+  };
 
   useEffect(() => {
     if (id) {
@@ -31,10 +68,10 @@ const CalendarSection = ({
     }
   }, [id, dispatch]);
 
-  // تحديث البيانات المعروضة عند تحميل المقابلة
+ 
   useEffect(() => {
     if (interview) {
-      // اختيار المصدر الصحيح حسب النوع
+     
       const dateSource = availabilityMode === 'available' 
         ? interview.available_dates 
         : interview.un_available_dates;
@@ -42,19 +79,19 @@ const CalendarSection = ({
       if (dateSource?.length > 0) {
         const lastRange = dateSource[dateSource.length - 1];
         if (lastRange?.from && lastRange?.to) {
-          // تعيين النطاق للعرض
+        
           setRangeStart(lastRange.from);
           setRangeEnd(lastRange.to);
 
-          // توليد التواريخ للعرض
+          
           const datesInRange = generateDatesInRange(lastRange.from, lastRange.to);
           setDisplayDates(datesInRange);
           
-          // تحديث selectedDates أيضاً
+          
           handleDateClick(datesInRange);
         }
       } else {
-        // إذا لم توجد بيانات، امسح العرض
+     
         setDisplayDates([]);
         setRangeStart(null);
         setRangeEnd(null);
@@ -62,7 +99,7 @@ const CalendarSection = ({
     }
   }, [interview, availabilityMode]);
 
-  // دالة توليد التواريخ ضمن النطاق
+  
   const generateDatesInRange = (startDate, endDate) => {
     const datesInRange = [];
     const currentDate = new Date(startDate);
@@ -138,8 +175,10 @@ const CalendarSection = ({
     return date === rangeEnd;
   };
 
+  // ✅ التعديل 2: إضافة validation للتواريخ عند الاختيار
   const handleDateSelect = (day, monthOffset = 0) => {
     if (!isEditMode) return;
+    
     const year =
       monthOffset === 1 && currentMonth.getMonth() === 11
         ? currentMonth.getFullYear() + 1
@@ -152,6 +191,12 @@ const CalendarSection = ({
         : currentMonth.getMonth();
     const date = createDate(year, month, day);
     const dateStr = formatDate(date);
+
+    // Check if date is disabled
+    if (isDateDisabled(dateStr)) {
+      toast.error('This date is outside the workspace available range');
+      return;
+    }
 
     if (!selecting) {
       setRangeStart(dateStr);
@@ -172,12 +217,26 @@ const CalendarSection = ({
       setSelecting(false);
       const start = new Date(Math.min(new Date(rangeStart), clickedDate));
       const end = new Date(Math.max(new Date(rangeStart), clickedDate));
-      const datesInRange = [];
-
+      
+      // Validate all dates in range
       const currentDate = new Date(start);
+      const datesInRange = [];
+      let hasDisabledDate = false;
+
       while (currentDate <= end) {
-        datesInRange.push({ date: formatDate(new Date(currentDate)) });
+        const checkDateStr = formatDate(new Date(currentDate));
+        if (isDateDisabled(checkDateStr)) {
+          hasDisabledDate = true;
+          break;
+        }
+        datesInRange.push({ date: checkDateStr });
         currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      if (hasDisabledDate) {
+        toast.error('Selected range contains dates outside workspace availability');
+        resetSelection();
+        return;
       }
 
       handleDateClick(datesInRange);
@@ -251,19 +310,11 @@ const CalendarSection = ({
   const handleSaveClick = async () => {
     const available_dates = formatSelectedDates();
     
-    console.log('Dates to save:', available_dates);
-  
-    if (!available_dates || available_dates.length === 0) {
-      alert('الرجاء تحديد نطاق تاريخ واحد على الأقل');
-      return;
-    }
-  
     try {
       if (handleSave) {
         const result = await handleSave({ available_dates });
         
         if (result && result.success) {
-          // تحديث displayDates بالبيانات الجديدة فوراً
           const newDisplayDates = [];
           available_dates.forEach(range => {
             const datesInRange = generateDatesInRange(range.from, range.to);
@@ -279,14 +330,12 @@ const CalendarSection = ({
       }
     } catch (error) {
       console.error('Error saving dates:', error);
-      alert(`خطأ في حفظ التواريخ: ${error.message || 'حدث خطأ غير متوقع'}`);
     }
   };
 
   // Handle edit mode toggle
   const handleEditClick = () => {
     setIsEditMode(true);
-    // عند الدخول في وضع التحرير، اعرض البيانات الحالية
     if (displayDates.length > 0) {
       setRangeStart(displayDates[0].date);
       setRangeEnd(displayDates[displayDates.length - 1].date);
@@ -327,16 +376,22 @@ const CalendarSection = ({
       return dateToCheck.toDateString() === today.toDateString();
     };
 
-    // Get style for date cell
+    // ✅ التعديل 3: إضافة styling للتواريخ الـ disabled
     const getDateCellStyle = (day) => {
       if (day === null) return 'invisible';
       
       const dateYear = year;
       const dateMonth = month;
+      const dateStr = formatDate(createDate(dateYear, dateMonth, day));
+      
+      // Check if date is disabled
+      const disabled = isDateDisabled(dateStr);
       
       let baseStyle = '';
       
-      if (isRangeStart(day, dateMonth, dateYear)) {
+      if (disabled) {
+        baseStyle = 'bg-gray-100 text-gray-400 cursor-not-allowed line-through';
+      } else if (isRangeStart(day, dateMonth, dateYear)) {
         baseStyle = availabilityMode === 'available' ? 
           'bg-blue-600 text-white rounded-l-full' : 
           'bg-red-600 text-white rounded-l-full';
@@ -359,7 +414,7 @@ const CalendarSection = ({
       }
       
       // Add blur effect if not in edit mode
-      if (!isEditMode) {
+      if (!isEditMode && !disabled) {
         baseStyle += ' opacity-50 cursor-not-allowed';
       }
       
@@ -380,22 +435,29 @@ const CalendarSection = ({
           ))}
         </div>
 
+        {/* ✅ التعديل 4: إضافة disabled state للأزرار وtooltip */}
         <div className={`grid grid-cols-7 gap-0 ${!isEditMode ? 'pointer-events-none' : ''}`}>
           {weeks.map((week, weekIndex) => (
-            week.map((day, dayIndex) => (
-              <div
-                key={`${weekIndex}-${dayIndex}`}
-                className={`h-8 flex items-center justify-center relative ${day === null ? 'invisible' : ''}`}
-              >
-                <button
-                  onClick={() => day !== null && handleDateSelect(day, monthOffset)}
-                  className={`h-8 w-8 flex items-center justify-center text-xs ${getDateCellStyle(day)}`}
-                  disabled={day === null || !isEditMode}
+            week.map((day, dayIndex) => {
+              const dateStr = day !== null ? formatDate(createDate(year, month, day)) : null;
+              const disabled = dateStr ? isDateDisabled(dateStr) : true;
+              
+              return (
+                <div
+                  key={`${weekIndex}-${dayIndex}`}
+                  className={`h-8 flex items-center justify-center relative ${day === null ? 'invisible' : ''}`}
                 >
-                  {day}
-                </button>
-              </div>
-            ))
+                  <button
+                    onClick={() => day !== null && !disabled && handleDateSelect(day, monthOffset)}
+                    className={`h-8 w-8 flex items-center justify-center text-xs ${getDateCellStyle(day)}`}
+                    disabled={day === null || !isEditMode || disabled}
+                    title={disabled && day !== null ? 'Date outside workspace availability' : ''}
+                  >
+                    {day}
+                  </button>
+                </div>
+              );
+            })
           ))}
         </div>
       </div>
@@ -459,7 +521,8 @@ const CalendarSection = ({
               }`}
             >
               <Edit size={16} className="mr-2" />
-              Edit
+              <span className='text-sm'>Edit</span>
+              
             </button>
           </div>
         </div>
@@ -467,34 +530,27 @@ const CalendarSection = ({
 
       {/* Show action buttons only when in edit mode */}
       {isEditMode && (
-        <div className="space-x-3 flex justify-between mb-6">
-          <div>
-            <select 
-              className="border rounded-md p-2 pr-8 appearance-none text-gray-600"
-              value={timeZone}
-              disabled
-            >
-              <option>{timeZone}</option>
-            </select> 
-          </div>
+        <div className="space-x-3 flex justify-end mb-6">
           <div className="space-x-2 flex gap-3">
             <button
               onClick={handleCancelClick}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-4 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
-              Cancel
+              <span className='text-sm'>Cancel</span>
+              
             </button>
             <button
               onClick={handleSaveClick}
-              className={`px-4 py-2 text-white rounded-md shadow-sm flex items-center ${
+              className={`px-4 py-1 text-white rounded-md shadow-sm flex items-center ${
                 availabilityMode === 'available' ? 
                 'bg-blue-600 hover:bg-blue-700' : 
                 'bg-red-600 hover:bg-red-700'
               }`}
-              disabled={!rangeStart || !rangeEnd}
+               disabled={!rangeStart}
             >
               <Send size={16} className="mr-2" />
-              Save 
+              <span className='text-sm'>Save</span>
+               
             </button>
           </div>
         </div>

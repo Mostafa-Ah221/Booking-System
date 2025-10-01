@@ -1,20 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Settings, Plus } from 'lucide-react';
+import { Bell, Settings, Plus, Menu } from 'lucide-react';
 import { CgProfile } from 'react-icons/cg';
 import { Link } from 'react-router-dom';
 import AddNewMenu from './AddMenus/AddNewMenu';
 import Notifictions from './Notifictions';
 import ProfilePanel from './ProfilePanel';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProfileData } from '../../redux/apiCalls/ProfileCallApi';
 
-export default function NavDashbord() {
+export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
+  const { profile, loading = false } = useSelector(state => state.profileData);
 
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
   const notificationsRef = useRef(null);
   const bellButtonRef = useRef(null);
+  const dispatch = useDispatch();
+
+  // تحسين useEffect لتجنب infinite loop
+  useEffect(() => {
+    // استدعاء البيانات فقط إذا لم يتم تحميلها من قبل
+    if (!profile && !loading && !profileLoaded) {
+      dispatch(fetchProfileData());
+      setProfileLoaded(true);
+    }
+  }, [dispatch, profile, loading, profileLoaded]);
 
   const toggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
@@ -55,12 +70,23 @@ export default function NavDashbord() {
   }, []);
 
   return (
-    <div className="relative shadow-[0_6px_10px_-4px_rgba(0,0,0,0.1)]">
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+    <div className="w-full flex items-center relative shadow-[0_6px_10px_-4px_rgba(0,0,0,0.1)]">
+      {/* Mobile Menu Button */}
+      <div className="flex w-full items-center bg-white px-4 py-2 lg:hidden">
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          className="p-2 text-gray-600 focus:outline-none"
+        >
+          <Menu size={24} />
+        </button>
+      </div>
+
+      <header className="w-full bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <div className="text-sm text-gray-500">
-          Your trial ends in 15 days.
-          <a href="#" className="text-purple-600 ml-1 hover:underline">Upgrade now</a>
+          {/* Your trial ends in 15 days.
+          <a href="#" className="text-purple-600 ml-1 hover:underline">Upgrade now</a> */}
         </div>
+        
         <div className="flex items-center gap-4">
           {/* Add Button */}
           <button 
@@ -88,12 +114,35 @@ export default function NavDashbord() {
             <Settings size={18} />
           </Link>
 
-          {/* Profile Button */}
-          <button 
-            onClick={toggleProfile} 
-            className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+          {/* Profile Button - تحسين التعامل مع الصورة */}
+          <button
+            onClick={toggleProfile}
+            className="w-7 h-7 xs:w-7 xs:h-7 sm:w-6 sm:h-6 md:w-7 md:h-7 lg:w-8 lg:h-8 text-gray-500 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center overflow-hidden"
           >
-            <CgProfile className="w-6 h-6 text-gray-400" />
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+            ) : profile?.user?.photo ? (
+              <img
+                src={profile.user.photo}
+                alt="Profile"
+                className="w-full h-full rounded-full object-cover border border-gray-200"
+                loading="lazy"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'block';
+                }}
+              />
+            ) : (
+              <CgProfile className="w-5 h-5 text-gray-400" />
+            )}
+            
+            {/* Fallback icon (مخفي افتراضياً) */}
+            {profile?.user?.photo && (
+              <CgProfile 
+                className="w-5 h-5 text-gray-400" 
+                style={{ display: 'none' }}
+              />
+            )}
           </button>
         </div>
       </header>
