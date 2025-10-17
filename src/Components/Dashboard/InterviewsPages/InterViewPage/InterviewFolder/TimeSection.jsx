@@ -15,15 +15,18 @@ const TimeSection = ({
   onCancel,
   availabilityMode = 'available',
   isTimeSectionDisabled,
+  getWorkspaceData
 }) => {
   const [weekDays, setWeekDays] = useState(initialWeekDays);
   const [isEditMode, setIsEditMode] = useState(true);
   const [displayWeekDays, setDisplayWeekDays] = useState([]);
+  const [isSaving, setIsSaving] = useState(false); // ✅ إضافة state للحفظ
+  console.log(getWorkspaceData);
   
   const { interview } = useSelector(state => state.interview);
   const { id } = useOutletContext();
   const dispatch = useDispatch();
-
+  
   useEffect(() => {
     if (id) {
       dispatch(editInterviewById(id));
@@ -112,20 +115,27 @@ const TimeSection = ({
           }))
         }));
       
+      console.log('available_times:', available_times);
+      
       if (handleSave) {
-        const result = await handleSave({ 
-          [availabilityMode === 'available' ? 'available_times' : 'un_available_times']: available_times 
-        });
+        const formData = {};
+        if (availabilityMode === 'available') {
+          formData.available_times = available_times;
+        } else {
+          formData.un_available_times = available_times;
+        }
+        
+        console.log('FormData sent to handleSave:', formData); // لوج للتحقق
+        
+        const result = await handleSave(formData);
         
         if (result && result.success) {
           setDisplayWeekDays([...weekDays]);
           await dispatch(editInterviewById(id));
-        } else {
-          throw new Error('Save operation did not return success');
-        }
+        } 
       }
     } catch (error) {
-      toast.error(`Error saving times: ${error.message || 'An unexpected error occurred'}`);
+      toast.error(`Error saving times: ${error.message}`);
     }
   };
 
@@ -153,7 +163,7 @@ const TimeSection = ({
   };
 
   const addTimeSlot = (dayId) => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     const updatedWeekDays = weekDays.map(day => {
       if (day.day_id === dayId) {
         const lastTimeSlot = day.timeSlots[day.timeSlots.length - 1];
@@ -170,7 +180,7 @@ const TimeSection = ({
   };
 
   const removeTimeSlot = (dayId, slotIndex) => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     if (weekDays.find(d => d.day_id === dayId)?.timeSlots.length <= 1) return;
     
     const updatedWeekDays = weekDays.map(day => {
@@ -185,7 +195,7 @@ const TimeSection = ({
   };
 
   const applyToAll = () => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     const firstDay = weekDays[0];
     if (!firstDay) return;
     
@@ -201,7 +211,7 @@ const TimeSection = ({
   };
 
   const handleTimeChange = (dayId, slotIndex, field, newValue) => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     const updatedWeekDays = weekDays.map(day => {
       if (day.day_id === dayId) {
         const newTimeSlots = [...day.timeSlots];
@@ -237,7 +247,7 @@ const TimeSection = ({
   };
 
   const handleDayToggle = (dayId) => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     const updatedWeekDays = weekDays.map(day => {
       if (day.day_id === dayId) {
         const updatedDay = { ...day, isChecked: !day.isChecked };
@@ -254,7 +264,7 @@ const TimeSection = ({
   };
 
   const handleCancelClick = () => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     if (onCancel) {
       onCancel();
     }
@@ -288,7 +298,7 @@ const TimeSection = ({
     }, [selectedTimeDropdown, dropdownId]);
 
     const handleToggle = () => {
-      if (isTimeSectionDisabled) return;
+      if (isTimeSectionDisabled || isSaving) return;
       handleTimeDropdownToggle(selectedTimeDropdown === dropdownId ? null : dropdownId);
     };
 
@@ -302,15 +312,15 @@ const TimeSection = ({
           ref={buttonRef}
           onClick={handleToggle}
           className={`flex items-center justify-between w-full px-3 py-2 text-left border rounded-md bg-white transition-colors duration-200 ${
-            isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+            isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
           }`}
-          disabled={isTimeSectionDisabled}
+          disabled={isTimeSectionDisabled || isSaving}
         >
           <span className="text-sm">{value}</span>
           <ChevronDown size={16} className={`transition-transform duration-200 ${selectedTimeDropdown === dropdownId ? 'transform rotate-180' : ''}`} />
         </button>
         
-        {selectedTimeDropdown === dropdownId && !isTimeSectionDisabled && (
+        {selectedTimeDropdown === dropdownId && !isTimeSectionDisabled && !isSaving && (
           <div 
             className={`absolute z-30 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto ${menuPositionClass}`}
             style={{ minWidth: '80px' }}
@@ -360,9 +370,9 @@ const TimeSection = ({
             <button 
               onClick={handleCancelClick}
               className={`px-4 py-1 border border-gray-300 rounded-md text-gray-700 transition-colors duration-200 ${
-                isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
               }`}
-              disabled={isTimeSectionDisabled}
+              disabled={isTimeSectionDisabled || isSaving}
             >
               <span className='text-sm'>Cancel</span>
             </button>
@@ -372,11 +382,11 @@ const TimeSection = ({
                 availabilityMode === 'available' ? 
                 'bg-blue-600 hover:bg-blue-700' : 
                 'bg-red-600 hover:bg-red-700'
-              } ${isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={isTimeSectionDisabled}
+              } ${isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isTimeSectionDisabled || isSaving}
             >
               <Send size={16} className="mr-2" />
-              <span className='text-sm'>Save</span>
+              <span className='text-sm'>{isSaving ? 'Saving...' : 'Save'}</span>
             </button>
           </div>
         )}
@@ -392,9 +402,9 @@ const TimeSection = ({
                   checked={day.isChecked} 
                   onChange={() => handleDayToggle(day.day_id)} 
                   className={`w-3 h-3 rounded border-gray-300 cursor-pointer ${
-                    isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                    isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
-                  disabled={isTimeSectionDisabled}
+                  disabled={isTimeSectionDisabled || isSaving}
                 />
                 <span className="w-24 text-sm">{dayIdToName[day.day_id]}</span>
               </div>
@@ -422,15 +432,15 @@ const TimeSection = ({
                         <button 
                           onClick={() => addTimeSlot(day.day_id)}
                           className={`border rounded-md w-8 h-8 flex items-center justify-center text-indigo-600 transition-colors duration-200 ${
-                            isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                            isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
                           }`}
-                          disabled={isTimeSectionDisabled}
+                          disabled={isTimeSectionDisabled || isSaving}
                         >
                           +
                         </button>
                         <span 
                           className={`text-indigo-600 cursor-pointer ml-1 hover:underline ${
-                            isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                            isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                           onClick={applyToAll}
                         >
@@ -443,9 +453,9 @@ const TimeSection = ({
                       <button 
                         onClick={() => removeTimeSlot(day.day_id, slotIndex)}
                         className={`border rounded-md w-8 h-8 flex items-center justify-center text-red-600 transition-colors duration-200 ${
-                          isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                          isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
                         }`}
-                        disabled={isTimeSectionDisabled}
+                        disabled={isTimeSectionDisabled || isSaving}
                       >
                         <X size={16} />
                       </button>
@@ -455,9 +465,9 @@ const TimeSection = ({
                       <button 
                         onClick={() => addTimeSlot(day.day_id)}
                         className={`border rounded-md w-8 h-8 flex items-center justify-center text-indigo-600 transition-colors duration-200 ${
-                          isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                          isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
                         }`}
-                        disabled={isTimeSectionDisabled}
+                        disabled={isTimeSectionDisabled || isSaving}
                       >
                         +
                       </button>

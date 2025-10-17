@@ -71,21 +71,21 @@ const AddNewMenu = () => {
     },
     { 
       icon: Users, 
-      text: 'Recruiter', 
+      text: 'User', 
       color: 'bg-teal-50 text-teal-500', 
       form: "Invite_rec_modal",
       requiredPermission: "create staff"
     },
     { 
       icon: User, 
-      text: 'Customer', 
+      text: 'Client', 
       color: 'bg-red-50 text-red-500', 
       form: "add_cust_modal",
       requiredPermission: "create clients"
     },
     { 
       icon: Users, 
-      text: 'Staff', 
+      text: 'Recruiter', 
       color: 'bg-red-50 text-red-500', 
       form: "add_staff_modal",
       requiredPermission: "create staff"

@@ -62,13 +62,13 @@ const isNotificationRoute = (path) => {
       description: "Set the date and time for this Interview.",
       path: "interview-availability"
     }] : []),
-    {
-      id: 4,
-      icon: <Calendar className="w-5 h-5" />,
-      title: "Scheduling Rules",
-      description: "Set buffers, notices, and intervals.",
-      path: "scheduling-rules" 
-    },
+    // {
+    //   id: 4,
+    //   icon: <Calendar className="w-5 h-5" />,
+    //   title: "Scheduling Rules",
+    //   description: "Set buffers, notices, and intervals.",
+    //   path: "scheduling-rules" 
+    // },
     {
       id: 4,
       icon: <Users className="w-5 h-5" />,

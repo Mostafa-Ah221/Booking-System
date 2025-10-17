@@ -114,6 +114,7 @@ const Signup = () => {
       if (accessToken) {
         navigate("/verify", {
           state: {
+            type: "signup",
             access_token: accessToken,
             otp_verify: otpVerify,
             email: values.email
@@ -146,7 +147,7 @@ const Signup = () => {
     }
   };
 
-  // استقبال الصورة من ImageUploadCrop
+  
   const handleImageUpdate = (imageFile) => {
     setTempImage(imageFile);
     formik.setFieldValue('photo', imageFile);
@@ -154,7 +155,7 @@ const Signup = () => {
     console.log("تم تحديث الصورة من ImageUploadCrop:", imageFile);
   };
 
-  // فتح popup الصورة
+  
   const handleCameraClick = () => {
     setIsImageUploadOpen(true);
   };
@@ -274,6 +275,7 @@ const Signup = () => {
               <div className="space-y-2">
                 <label htmlFor="name" className="block text-sm font-semibold text-gray-700">
                   Full Name
+                    <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -309,6 +311,7 @@ const Signup = () => {
               <div className="space-y-2">
                 <label htmlFor="email" className="block text-sm font-semibold text-gray-700">
                   Email Address
+                    <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -375,6 +378,7 @@ const Signup = () => {
               <div className="space-y-2">
                 <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
                   Password
+                    <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -417,6 +421,7 @@ const Signup = () => {
               <div className="space-y-2">
                 <label htmlFor="password_confirmation" className="block text-sm font-semibold text-gray-700">
                   Confirm Password
+                    <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -543,8 +548,23 @@ const Signup = () => {
             </form>
 
             {/* Footer */}
-            <div className="mt-8 text-center text-sm text-gray-500">
-              <p>© 2024 BookingHub. All rights reserved.</p>
+             <div className="text-center mt-8">
+              <p className="text-gray-600 text-sm leading-relaxed">
+                <span className="font-medium text-gray-800">© 2025 Appointroll</span>
+                <span className="mx-2">•</span>
+                All Rights Reserved
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Powered by 
+                <a 
+                  href="http://egydesigner.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="ml-1 font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-300 hover:underline"
+                >
+                  EGYdesigner
+                </a>
+              </p>
             </div>
           </div>
         </div>

@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { useDispatch } from 'react-redux'; // أضف هذا
+import { useDispatch } from 'react-redux'; 
 import { X, User, Clock, Trash2, ChevronDown } from 'lucide-react';
 import { usePermission } from '../../hooks/usePermission';
 import { approveAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
+import { staff_ApproveAppointment } from '../../../redux/apiCalls/StaffapiCalls/StaffapiCalls';
 
 const AppointmentDetailsSidebar = ({ 
   appointment, 
@@ -12,22 +13,22 @@ const AppointmentDetailsSidebar = ({
   onDelete, 
   isCancelling, 
   onReschedule,
-  onAppointmentUpdate // أضف هذا prop لتحديث الـ appointment في الـ parent component
+  onAppointmentUpdate
 }) => {
   const [activeTab, setActiveTab] = useState('Appointment Details');
   const [openDropdown, setOpenDropdown] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [approveStatus, setApproveStatus] = useState('pending');
   const dropdownRef = useRef(null);
-  const dispatch = useDispatch(); // أضف هذا
+  const dispatch = useDispatch(); 
+  const userType = localStorage.getItem("userType");
 
-  // تحديث الـ approve status عند تغيير الـ appointment
   useEffect(() => {
     if (appointment?.approve_status !== undefined) {
       const status = appointment.approve_status;
-      if (status === "1" || status === 1 || status === true) {
+      if (status === "1" || status === 1) {
         setApproveStatus('approved');
-      } else if (status === "0" || status === 0 || status === false) {
+      } else if (status === "0" || status === 0) {
         setApproveStatus('rejected');
       } else {
         setApproveStatus('pending');
@@ -36,12 +37,12 @@ const AppointmentDetailsSidebar = ({
       setApproveStatus('pending');
     }
   }, [appointment]);
+console.log(appointment);
 
-  
-
-  const canEditAppointment = usePermission("edit appointment");
-  const canControlAppointment = usePermission("control appointment");
-  const canDeleteAppointment = usePermission("delete appointment");
+  // Use permissions only if userType is customer
+  const canEditAppointment = userType === 'staff' ? true : usePermission("edit appointment");
+  const canControlAppointment = userType === 'staff' ? true : usePermission("control appointment");
+  const canDeleteAppointment = userType === 'staff' ? true : usePermission("delete appointment");
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -57,38 +58,35 @@ const AppointmentDetailsSidebar = ({
     };
   }, []);
 
-
   const handleApproveReject = async (approved) => {
     if (!appointment?.id) return;
-console.log(approved);
+    console.log(approved);
 
     console.log('Sending approval request:', { approved });
     
-    // احفظ الحالة السابقة للرجوع إليها في حالة الفشل
     const previousStatus = approveStatus;
     
-    // تحديث الحالة فورًا لتعكس التغيير في واجهة المستخدم
     const newStatus = approved ? 'approved' : 'rejected';
     setApproveStatus(newStatus);
     setIsProcessing(true);
 
     try {
-      // استدعاء الـ API مع الـ dispatch
-      const result = await dispatch(approveAppointment(appointment.id, { approved }));
-      
-      console.log('API Response:', result);
+      const result = await dispatch(
+        userType === 'staff'
+          ? staff_ApproveAppointment(appointment.id, { approved: approved ? "1" : "0" })
+          : approveAppointment(appointment.id, { approved: approved ? "1" : "0" })
+      );
 
       if (result.success) {
-        // تحديث الـ appointment object في الـ parent component
         if (onAppointmentUpdate) {
           const updatedAppointment = {
             ...appointment,
-            approve_status: approved ? "1" : "0"
+            approve_appointment: approved ? "1" : "0"
           };
           onAppointmentUpdate(updatedAppointment);
         }
         
-        console.log(`Appointment ${approved ? 'approved' : 'rejected'} successfully`);
+       
       } else {
         setApproveStatus(previousStatus);
         console.error('Failed to update appointment:', result.message);
@@ -100,7 +98,6 @@ console.log(approved);
       setIsProcessing(false);
       setOpenDropdown(null);
     }
-   
   };
 
   // Handle dropdown options
@@ -198,7 +195,7 @@ console.log(approved);
       />
       
       {/* Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-1/2 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
+      <div className="fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-lg font-semibold text-gray-800">Appointment Summary</h2>
@@ -215,7 +212,8 @@ console.log(approved);
         {/* Content */}
         <div className="p-6 overflow-y-auto h-full pb-20">
           {/* Appointment Time Card */}
-          <div className="rounded-md p-4 mb-6 border border-blue-200">
+          {appointment?.approve_interview_status === "1" && (
+            <div className="rounded-md p-4 mb-6 border border-blue-200">
             <div className="flex items-center justify-between mb-2">
               <div className="font-medium text-gray-800">
                 {formatDate(appointment.date)}, {formatTime(appointment.time)} - {formatTime(endTime)}
@@ -269,15 +267,14 @@ console.log(approved);
                             />
                             <span className="text-xs text-red-600 font-medium">Reject</span>
                           </label>
-
                         </div>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Actions Section */}
-                {(canEditAppointment || canControlAppointment || canDeleteAppointment) && (
+                {/* Actions Section - Hidden for staff */}
+                {userType !== 'staff' && (canEditAppointment || canControlAppointment || canDeleteAppointment) && (
                   <div className="relative">
                     <button
                       className="border border-gray-300 px-3 py-1 rounded flex items-center gap-1 text-sm hover:bg-gray-50"
@@ -354,6 +351,8 @@ console.log(approved);
               <span>{appointment.name}, {appointment.email}</span>
             </div>
           </div>
+          )}
+          
 
           {/* Tab Navigation */}
           <div className="flex mb-6 border-b">
@@ -412,7 +411,7 @@ console.log(approved);
               </div>
 
               {/* Approval Status */}
-              <div className="flex items-center justify-between py-2">
+              {appointment?.approve_status == "1" ?   <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-600">Approval Status</span>
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                   approveStatus === 'approved' ? 'bg-green-100 text-green-800' :
@@ -423,9 +422,9 @@ console.log(approved);
                   {approveStatus === 'approved' ? 'Approved' :
                    approveStatus === 'rejected' ? 'Rejected' :
                    approveStatus === 'pending' ? 'Pending' :
-                   approveStatus || 'Not Set'}
+                   approveStatus || ''}
                 </span>
-              </div>
+              </div> :""}
 
               {/* Time */}
               <div className="flex items-center justify-between py-2">
@@ -460,7 +459,7 @@ console.log(approved);
           )}
 
           {activeTab === 'Client Details' && (
-            <div className="space-y-4">
+            <div className="space-y-4 mb-32">
               {/* Client Name */}
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-600">Name</span>
@@ -523,7 +522,18 @@ console.log(approved);
                 </div>
               </div>
             </div>
-          )}
+         )}
+
+          {/* My Appointments Button - Shared across all tabs */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
+            <button
+              onClick={onClose}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors"
+            >
+              My Appointments
+            </button>
+          </div>
+          
         </div>
       </div>
     </>

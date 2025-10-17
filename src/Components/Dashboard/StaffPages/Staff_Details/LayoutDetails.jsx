@@ -7,6 +7,7 @@ import StaffProfile from './StaffProfile';
 import StaffAvailability from './StaffAvailability/StaffAvailability';
 import AssignStaff from './AssignStaff';
 import ShareModalProfile from '../../Profile_Page/ShareModalPrpfile';
+import { usePermission } from '../../../hooks/usePermission';
 
 export default function LayoutDetails() {
   const navigate = useNavigate();
@@ -15,9 +16,10 @@ export default function LayoutDetails() {
   const { staff, loading, error } = useSelector(state => state.staff);
   const [activeTab, setActiveTab] = useState('Profile');
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false); // ✅ إضافة State للـ Modal
-console.log(staff);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false); 
 
+  const canEditStaff = usePermission("edit staff");
+  
   useEffect(() => {
     if (id) {
       dispatch(getStaffById(id)).then(() => {
@@ -32,23 +34,31 @@ console.log(staff);
     navigate('/layoutDashboard/staffPage');
   };
 
-  // ✅ تعديل: فتح الـ Modal بدلاً من console.log
   const handleShareClick = () => {
     setIsShareModalOpen(true);
   };
 
+
   const tabs = [
-    { name: 'Profile', label: 'Profile' },
-    { name: 'Availability', label: 'Availability' },
-    { name: 'Assigned Staff', label: 'Assigned Staff' },
-  ];
+    { name: 'Profile', label: 'Profile', canShow: true },
+    { name: 'Availability', label: 'Availability', canShow: canEditStaff },
+    { name: 'Assigned Recruiter', label: 'Assigned Recruiter', canShow: true },
+  ].filter(tab => tab.canShow);
+
+ 
+  useEffect(() => {
+    const isActiveTabAvailable = tabs.some(tab => tab.name === activeTab);
+    if (!isActiveTabAvailable && tabs.length > 0) {
+      setActiveTab(tabs[0].name);
+    }
+  }, [canEditStaff]);
 
   if (loading && !initialLoadComplete) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading staff details...</p>
+          <p className="text-gray-600">Loading Recruiter details...</p>
         </div>
       </div>
     );
@@ -59,15 +69,13 @@ console.log(staff);
       case 'Profile':
         return <StaffProfile staff={staff} />;
       case 'Availability':
-        return <StaffAvailability staff={staff} />;
-      case 'Assigned Staff':
+        return canEditStaff ? <StaffAvailability staff={staff} /> : null;
+      case 'Assigned Recruiter':
         return <AssignStaff staff={staff} />;
       default:
         return null;
     }
   };
-
-  
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="ltr">
@@ -80,7 +88,7 @@ console.log(staff);
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-xl font-semibold text-gray-900">{staff?.name || 'Loading...'}</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{staff?.staff.name || 'Loading...'}</h1>
         </div>
 
         <button 
@@ -121,7 +129,7 @@ console.log(staff);
       <ShareModalProfile
         isOpen={isShareModalOpen} 
         onClose={() => setIsShareModalOpen(false)} 
-        shareLink={staff?.staff.share_link}
+        shareLink={`Staff/${staff?.staff.share_link}`}
         profile={staff?.staff}
       />
     </div>

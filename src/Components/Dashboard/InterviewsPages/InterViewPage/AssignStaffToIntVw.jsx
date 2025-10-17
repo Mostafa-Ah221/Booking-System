@@ -1,5 +1,5 @@
-import { Plus, Mail, Phone, MoreVertical, X, Share2, UserMinus } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { Plus, Mail, Phone, MoreVertical, X, Share2, UserMinus, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useOutletContext } from "react-router-dom";
 import AssignInterviewModal from "./AssignInterviewModal";
@@ -7,11 +7,80 @@ import { useDispatch, useSelector } from "react-redux";
 import { getStaffByFilter } from "../../../../redux/apiCalls/StaffCallApi";
 import { unAssignStaffFromInterview } from "../../../../redux/apiCalls/interviewCallApi";
 
+// ✅ Unassign Confirmation Modal Component
+function UnassignConfirmModal({ isOpen, onClose, onConfirm, staffName, isUnassigning }) {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900">Unassign Staff</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            disabled={isUnassigning}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <p className="text-gray-700 mb-4">
+            Are you sure you want to unassign <span className="font-semibold">"{staffName}"</span> from this interview?
+          </p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-800">
+              <span className="font-semibold">Warning:</span> This staff member will no longer have access to this interview and all related data.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            disabled={isUnassigning}
+            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isUnassigning}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isUnassigning ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Unassigning...
+              </>
+            ) : (
+              'Confirm Unassign'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function AssignStaffToIntVw() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const [unassignConfirm, setUnassignConfirm] = useState(null); // ✅ للـ modal
+  const [isUnassigning, setIsUnassigning] = useState(false); // ✅ للـ loading state
+  
   const { id } = useOutletContext();
   const dispatch = useDispatch();
   const { filteredStaffs, filteredStaffsLoading, error } = useSelector(
@@ -24,7 +93,6 @@ export default function AssignStaffToIntVw() {
     }
   }, [dispatch, id]);
 
-  // إغلاق الـ dropdown لما تضغط براها
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest(".portal-dropdown")) {
@@ -49,18 +117,30 @@ export default function AssignStaffToIntVw() {
     setOpenDropdownId(staffId);
   };
 
-  const handleUnassign = async (staffId) => {
-    if (!window.confirm("Are you sure you want to unassign this staff member?")) {
-      return;
-    }
+  // ✅ فتح الـ modal بدل الـ window.confirm
+  const handleUnassignClick = (staff) => {
+    setUnassignConfirm(staff);
+    setOpenDropdownId(null);
+  };
 
-    const result = await dispatch(
-      unAssignStaffFromInterview(id, { staff_id: staffId })
-    );
+  // ✅ تنفيذ الـ unassign
+  const handleConfirmUnassign = async () => {
+    if (!unassignConfirm) return;
 
-    if (result?.success) {
-      dispatch(getStaffByFilter({ interview_id: id }));
-      setOpenDropdownId(null);
+    try {
+      setIsUnassigning(true);
+      const result = await dispatch(
+        unAssignStaffFromInterview(id, { staff_id: unassignConfirm.id })
+      );
+
+      if (result?.success) {
+        dispatch(getStaffByFilter({ interview_id: id }));
+        setUnassignConfirm(null);
+      }
+    } catch (error) {
+      console.error('Error unassigning staff:', error);
+    } finally {
+      setIsUnassigning(false);
     }
   };
 
@@ -134,13 +214,6 @@ export default function AssignStaffToIntVw() {
       {filteredStaffsLoading && (
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && !filteredStaffsLoading && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-          <p className="text-sm">{error}</p>
         </div>
       )}
 
@@ -270,18 +343,10 @@ export default function AssignStaffToIntVw() {
             style={{ top: dropdownPos.top, left: dropdownPos.left }}
           >
             <button
-              onClick={() =>
-                handleShare(
-                  searchResults.find((s) => s.id === openDropdownId)
-                )
-              }
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-            >
-              <Share2 className="w-4 h-4" />
-              Share
-            </button>
-            <button
-              onClick={() => handleUnassign(openDropdownId)}
+              onClick={() => {
+                const staff = searchResults.find(s => s.id === openDropdownId);
+                handleUnassignClick(staff);
+              }}
               className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
             >
               <UserMinus className="w-4 h-4" />
@@ -290,6 +355,15 @@ export default function AssignStaffToIntVw() {
           </div>,
           document.body
         )}
+
+      {/* ✅ Unassign Confirmation Modal */}
+      <UnassignConfirmModal
+        isOpen={!!unassignConfirm}
+        onClose={() => setUnassignConfirm(null)}
+        onConfirm={handleConfirmUnassign}
+        staffName={unassignConfirm?.name || ''}
+        isUnassigning={isUnassigning}
+      />
 
       <AssignInterviewModal
         interviewId={id}

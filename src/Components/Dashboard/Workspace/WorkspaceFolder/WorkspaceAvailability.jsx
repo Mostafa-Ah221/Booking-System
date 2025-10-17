@@ -101,14 +101,14 @@ const InterviewAvailability = () => {
     try {
       const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
       
-      if (!unAvailableTimes || unAvailableTimes.length === 0) {
-        throw new Error('No unavailable times provided');
-      }
+      // if (!unAvailableTimes || unAvailableTimes.length === 0) {
+      //   throw new Error('No unavailable times provided');
+      // }
       
       const payload = { un_available_times: unAvailableTimes };
       const result = await dispatch(updateUnAvailabilWorkspace(id, payload));
       
-      if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
+      if (result) {
         toast.success('Unavailable times saved successfully!');
         setIsTimeSectionDisabled(true);
         setIsEditing(false);
@@ -197,11 +197,11 @@ const InterviewAvailability = () => {
   const handleSaveTimes = useCallback((formData) => {
     const currentMode = activeTab.includes('unavailable') ? 'unavailable' : 'available';
     
-    const timesData = formData.available_times || formData.un_available_times;
-    if (!timesData || timesData.length === 0) {
-      toast.error('Please select at least one day and time slot');
-      return Promise.resolve({ success: false, error: 'No times data' });
-    }
+    // const timesData = formData.available_times || formData.un_available_times;
+    // if (!timesData || timesData.length === 0) {
+    //   toast.error('Please select at least one day and time slot');
+    //   return Promise.resolve({ success: false, error: 'No times data' });
+    // }
     
     if (currentMode === 'available') {
       return handleSaveAvailableTimes(formData);
@@ -292,7 +292,7 @@ const InterviewAvailability = () => {
     <ReadOnlyView
       sections={[
         { id: 'working-hours', title: 'Working Hours', description: 'Set weekly available days and hours.', expandable: true },
-        { id: 'unavailability', title: 'Unavailability', description: 'Add extra unavailable days or hours.', expandable: true }
+        // { id: 'unavailability', title: 'Unavailability', description: 'Add extra unavailable days or hours.', expandable: true }
       ]}
       onEdit={handleEdit}
       handleSpecialHoursAdd={handleSpecialHoursAdd}

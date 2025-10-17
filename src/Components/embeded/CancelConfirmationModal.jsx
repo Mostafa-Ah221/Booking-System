@@ -73,7 +73,7 @@ const CancelConfirmationModal = ({
           {/* Content */}
           <div className="p-6">
             <p className="text-gray-600 mb-4">
-              Sure you want to cancel appointment with <strong>{appointmentData?.name || 'this booking'}</strong>?
+              Sure you want to cancel appointment with <strong>{appointmentData?.staff_name || appointmentData?.customer || 'this booking'}</strong>?
             </p>
             
             {appointmentData && (
@@ -82,7 +82,7 @@ const CancelConfirmationModal = ({
                   <strong>Date:</strong> {appointmentData.date} | {appointmentData.time}
                 </p>
                 <p className="text-sm text-gray-600">
-                  <strong>Interview:</strong> {appointmentData.interview}
+                  <strong>Interview:</strong> {appointmentData.interview || appointmentData?.interview_name}
                 </p>
               </div>
             )}

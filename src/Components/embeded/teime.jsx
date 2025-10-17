@@ -70,79 +70,102 @@ const TimeSelectionModal = ({
     }
   };
 
-  const isTimeUnavailable = (selectedDate, timeToCheck) => {
-    if (!selectedDate || !timeToCheck || !timeToCheck.includes(':')) {
-      return false;
-    }
+ const isTimeUnavailable = (selectedDate, timeToCheck) => {
+  if (!selectedDate || !timeToCheck || !timeToCheck.includes(':')) {
+    return false;
+  }
 
-    const formattedSelectedDate = convertDateFormat(selectedDate);
-    if (!formattedSelectedDate) {
-      return false;
-    }
+  const formattedSelectedDate = convertDateFormat(selectedDate);
+  if (!formattedSelectedDate) {
+    return false;
+  }
 
-    const isInUnavailableDateRange = unavailableDates.some(dateRange => {
-      try {
-        let fromDateStr = dateRange.from.includes(' ') ? dateRange.from.split(' ')[0] : dateRange.from;
-        let toDateStr = dateRange.to.includes(' ') ? dateRange.to.split(' ')[0] : dateRange.to;
-
-        fromDateStr = fromDateStr.replace(/\//g, '-');
-        toDateStr = toDateStr.replace(/\//g, '-');
-
-        let fromParts = fromDateStr.split('-');
-        let toParts = toDateStr.split('-');
-        if (fromParts.length === 3 && parseInt(fromParts[0], 10) <= 31) {
-          fromDateStr = `${fromParts[2]}-${fromParts[1]}-${fromParts[0]}`;
-        }
-        if (toParts.length === 3 && parseInt(toParts[0], 10) <= 31) {
-          toDateStr = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
-        }
-
-        const fromDate = new Date(fromDateStr + 'T00:00:00.000Z');
-        const toDate = new Date(toDateStr + 'T00:00:00.000Z');
-        const checkDate = new Date(formattedSelectedDate + 'T00:00:00.000Z');
-
-        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime()) || isNaN(checkDate.getTime())) {
-          return false;
-        }
-
-        return checkDate >= fromDate && checkDate <= toDate;
-      } catch (error) {
-        console.error('Error checking unavailable date range:', error);
+  const isInUnavailableDateRange = unavailableDates.some(dateRange => {
+    try {
+      // تحقق من وجود from
+      if (!dateRange || !dateRange.from) {
         return false;
       }
-    });
 
-    if (!isInUnavailableDateRange) {
+      let fromDateStr = dateRange.from.includes(' ') ? dateRange.from.split(' ')[0] : dateRange.from;
+      fromDateStr = fromDateStr.replace(/\//g, '-');
+
+      let fromParts = fromDateStr.split('-');
+      if (fromParts.length === 3 && parseInt(fromParts[0], 10) <= 31) {
+        fromDateStr = `${fromParts[2]}-${fromParts[1]}-${fromParts[0]}`;
+      }
+
+      const fromDate = new Date(fromDateStr + 'T00:00:00.000Z');
+      const checkDate = new Date(formattedSelectedDate + 'T00:00:00.000Z');
+
+      if (isNaN(fromDate.getTime()) || isNaN(checkDate.getTime())) {
+        return false;
+      }
+
+      // إذا كان to = null، التاريخ unavailable للأبد
+      if (dateRange.to === null || dateRange.to === undefined) {
+        return checkDate >= fromDate;
+      }
+
+      // إذا كان to موجود، عالجه عادي
+      let toDateStr = dateRange.to.includes(' ') ? dateRange.to.split(' ')[0] : dateRange.to;
+      toDateStr = toDateStr.replace(/\//g, '-');
+
+      let toParts = toDateStr.split('-');
+      if (toParts.length === 3 && parseInt(toParts[0], 10) <= 31) {
+        toDateStr = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
+      }
+
+      const toDate = new Date(toDateStr + 'T00:00:00.000Z');
+
+      if (isNaN(toDate.getTime())) {
+        return false;
+      }
+
+      return checkDate >= fromDate && checkDate <= toDate;
+    } catch (error) {
+      console.error('Error checking unavailable date range:', error);
       return false;
     }
+  });
 
-    const dayId = getDayIdFromDate(selectedDate);
-    if (!dayId) {
-      return false;
-    }
+  if (!isInUnavailableDateRange) {
+    return false;
+  }
 
-    const cleanTimeToCheck = timeToCheck.includes(':') ? timeToCheck.substring(0, 5) : timeToCheck;
+  const dayId = getDayIdFromDate(selectedDate);
+  if (!dayId) {
+    return false;
+  }
 
-    if (unavailableTimes && Array.isArray(unavailableTimes) && unavailableTimes.length > 0) {
-      const dayUnavailableTimes = unavailableTimes.find(time => time.day_id === dayId);
+  const cleanTimeToCheck = timeToCheck.includes(':') ? timeToCheck.substring(0, 5) : timeToCheck;
+
+  if (unavailableTimes && Array.isArray(unavailableTimes) && unavailableTimes.length > 0) {
+    const dayUnavailableTimes = unavailableTimes.find(time => time.day_id === dayId);
+    
+    if (dayUnavailableTimes && dayUnavailableTimes.from) {
+      const fromTime = dayUnavailableTimes.from.substring(0, 5);
       
-      if (dayUnavailableTimes && dayUnavailableTimes.from && dayUnavailableTimes.to) {
-        const fromTime = dayUnavailableTimes.from.substring(0, 5);
-        const toTime = dayUnavailableTimes.to.substring(0, 5);
-        
+      // إذا كان to = null، من هذا الوقت لنهاية اليوم unavailable
+      if (!dayUnavailableTimes.to || dayUnavailableTimes.to === null) {
         const timeToCheckMinutes = timeToMinutes(cleanTimeToCheck);
         const fromMinutes = timeToMinutes(fromTime);
-        const toMinutes = timeToMinutes(toTime);
-        
-        if (timeToCheckMinutes >= fromMinutes && timeToCheckMinutes <= toMinutes) {
-          return true;
-        }
+        return timeToCheckMinutes >= fromMinutes;
+      }
+      
+      const toTime = dayUnavailableTimes.to.substring(0, 5);
+      const timeToCheckMinutes = timeToMinutes(cleanTimeToCheck);
+      const fromMinutes = timeToMinutes(fromTime);
+      const toMinutes = timeToMinutes(toTime);
+      
+      if (timeToCheckMinutes >= fromMinutes && timeToCheckMinutes <= toMinutes) {
+        return true;
       }
     }
+  }
 
-    return false;
-  };
-
+  return false;
+};
   const isTimeBooked = (selectedDate, timeToCheck) => {
     if (!selectedDate || !timeToCheck || !timeToCheck.includes(':')) {
       return false;

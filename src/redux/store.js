@@ -14,6 +14,7 @@ import { authReducer } from "./slices/authSlice";
 import analyticsReducer from "./slices/analyticsSlice";
 import { emailReducer } from './slices/EmailConfigSlice';
 import { staffReducer } from './slices/staffSlice';
+import { staffApisReducer } from './slices/StaffApisSlice/StaffApisSlice';
 
 
 const store = configureStore({
@@ -32,7 +33,8 @@ const store = configureStore({
     roles: rolesReducer,
     permissions: permissionsReducer,
     emailConfig: emailReducer,
-    staff: staffReducer
+    staff: staffReducer,
+    staffApis: staffApisReducer
   },
 });
 

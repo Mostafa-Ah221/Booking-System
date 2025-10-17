@@ -9,12 +9,11 @@ export default function ProtectedRoute({ children }) {
 
   try {
     const token = rawToken.replace(/^bearer\s+/i, "");
-    
     const payload = JSON.parse(atob(token.split(".")[1]));
     const exp = payload.exp * 1000;
 
     if (Date.now() >= exp) {
-      localStorage.removeItem("access_token")
+      localStorage.removeItem("access_token");
       return <Navigate to="/login" />;
     }
 

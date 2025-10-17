@@ -64,13 +64,17 @@ import VerifyForm from './Components/pages/VerifyForm';
 import VerifyRoute from './Components/pages/VerifyRoute';
 import SMSNotificationsSection from './Components/Dashboard/InterviewsPages/InterViewPage/SmsNotification';
 import UnifiedNotifications from './Components/Dashboard/InterviewsPages/InterViewPage/EmailNotifications';
-import AppointmentBookingCustomer from './Components/embeded/AppointmentBookingCustomer';
 import Webinars from './Components/Webinars/Webinars';
 import FeaturesView from './Components/Features/FeaturesView';
 import StaffComp from './Components/Dashboard/StaffPages/StaffComp';
 import LayoutDetails from './Components/Dashboard/StaffPages/Staff_Details/layoutDetails';
 import WorkspaceDetails from './Components/Dashboard/Workspace/WorkspaceDetails';
 import AssignStaffToIntVw from './Components/Dashboard/InterviewsPages/InterViewPage/AssignStaffToIntVw';
+import StaffDashboardLayout from './Components/Staff_Dashboard/Staff_DashboardLayout';
+import StaffAppointments from './Components/Staff_Dashboard/StaffAppointments';
+import StaffProfile from './Components/Staff_Dashboard/StaffProfile';
+import Staff_Interview from './Components/Staff_Dashboard/Staff_Interview';
+import NotFound from './Components/ProtectedRoute/NotFound';
 
 const router = createBrowserRouter ([
     { path: "/verifyNotification", element: <VerifyForm /> },
@@ -82,19 +86,57 @@ const router = createBrowserRouter ([
       </VerifyRoute>
     ),
   },
-  // { path: "/share/:idCustomer", element: <AppointmentBookingCustomer />, },
-  { path: "/share/:id", element: <AppointmentBooking /> },
-  { path: "/share/customer/:idCustomer", element: <AppointmentBooking /> },
-  { path: "/share/:id/appointmentConfirmation", element: <AppointmentConfirmation /> },
-  { path: "/share/:id/appointmentConfirmation/summary", element: <BookingSummary /> },
-  { path: "setup_1", element: <Setup_1 /> },
+  { path: "/:id", element: <AppointmentBooking /> },
+  { path: "/Admin/:idAdmin", element: <AppointmentBooking /> },
+  { path: "/Staff/:idCustomer", element: <AppointmentBooking /> },
+  { path: "/Space/:idSpace", element: <AppointmentBooking /> },
+
+   { 
+    path: "/:id/appointmentConfirmation", 
+    element: <AppointmentConfirmation /> 
+  },
+  { 
+    path: "/:id/appointmentConfirmation/summary", 
+    element: <BookingSummary /> 
+  },
+
+  // Admin routes
+  { 
+    path: "/Admin/:idAdmin/appointmentConfirmation", 
+    element: <AppointmentConfirmation /> 
+  },
+  { 
+    path: "/Admin/:idAdmin/appointmentConfirmation/summary", 
+    element: <BookingSummary /> 
+  },
+
+  // Staff routes
+  { 
+    path: "/Staff/:idCustomer/appointmentConfirmation", 
+    element: <AppointmentConfirmation /> 
+  },
+  { 
+    path: "/Staff/:idCustomer/appointmentConfirmation/summary", 
+    element: <BookingSummary /> 
+  },
+
+  // Space routes
+  { 
+    path: "/Space/:idSpace/appointmentConfirmation", 
+    element: <AppointmentConfirmation /> 
+  },
+  { 
+    path: "/Space/:idSpace/appointmentConfirmation/summary", 
+    element: <BookingSummary /> 
+  },
+  { path: "setup_1", element: <ProtectedRoute><Setup_1 /></ProtectedRoute> },
   { path: "signup", element: <Signup /> },
   { path: "login", element: <Login /> },
   { path: "/forget-password", element: <ForgetPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/verify", element: <Verify /> },
-  { path: "/bookPage/themes-and-layout", element: <LayoutThemPanal /> },
-  { path: "/bookPage/workspace-themes", element: <AllLayout /> },
+  { path: "/bookPage/themes-and-layout", element: <ProtectedRoute><LayoutThemPanal /></ProtectedRoute> },
+  { path: "/bookPage/workspace-themes", element:<ProtectedRoute><AllLayout /></ProtectedRoute>  },
  {
   path: "/create_interview",
   element: (
@@ -126,34 +168,48 @@ const router = createBrowserRouter ([
             { path: "profilepage", element: <ProfilePage /> },            
             { path: "analytics", element:<Analytics />  },            
             { path: "WorkspaceAvailability", element:<WorkspaceDetails />  },            
-            {path: "staffPage", element: <StaffComp />},
-            {  path: "staff/:id",  element: <LayoutDetails />}
+            {path: "recruiterPage", element: <StaffComp />},
+            {path: "recruiter/:id",  element: <LayoutDetails />},
+            
+            // Settings as nested route under layoutDashboard
+            {
+              path: "/layoutDashboard/setting",
+              element: <SettingsLayout />,
+              children: [
+                { index: true, element: <AdminCenter /> }, 
+                { path: "basic-info", element: <BasicInfo /> },
+                { path: "business-hours", element: <Availability />},
+                { path: "users", element:(<PermissionRoute permission="view staff"><Recruiters /></PermissionRoute>) },
+                { path: "custom-domain", element: <CustomDomain /> },
+                { path: "workspaces", element: <WorkspaceManag /> },
+                { path: "resources-section", element: <ResourcesSection /> },
+                { path: "person-location", element: <PersonLocation /> },
+                { path: "notification-settings", element: <NotificationSettings /> },
+                { path: "custom-labels", element: <CustomLabels /> },
+                { path: "roles-permissions", element: (<PermissionRoute permission="view roles"><RolesPermissions /></PermissionRoute>) },
+                { path: "reports", element: <Reports /> },
+                { path: "clients", element: (<PermissionRoute permission="view clients"><Customers /></PermissionRoute>) },
+                { path: "editcustomer", element: <Customers /> },
+                { path: "privacy-and-security", element: <PrivacyAndSecurity /> },
+                { path: "export-data", element: <ExportData /> },
+                { path: "integrations-page", element: <IntegrationsPage /> },
+              ],
+            },
                         
         ],
       },
       {
-        path: "/setting",
-        element: <ProtectedRoute><SettingsLayout /></ProtectedRoute>,
+        path: "/staff_dashboard_layout",
+        element: <ProtectedRoute><StaffDashboardLayout /></ProtectedRoute> ,
         children: [
-          { path: "", element: <AdminCenter /> }, 
-          { path: "basic-info", element: <BasicInfo /> },
-          { path: "business-hours", element: <Availability />},
-          { path: "recruiters", element:(<PermissionRoute permission="view staff"><Recruiters /></PermissionRoute>) },
-          { path: "custom-domain", element: <CustomDomain /> },
-          { path: "workspaces", element: <WorkspaceManag /> },
-          { path: "resources-section", element: <ResourcesSection /> },
-          { path: "person-location", element: <PersonLocation /> },
-          { path: "notification-settings", element: <NotificationSettings /> },
-          { path: "custom-labels", element: <CustomLabels /> },
-          { path: "roles-permissions", element: (<PermissionRoute permission="view roles"><RolesPermissions /></PermissionRoute>) },
-          { path: "reports", element: <Reports /> },
-          { path: "customers", element: (<PermissionRoute permission="view clients"><Customers /></PermissionRoute>) },
-          { path: "editcustomer", element: <Customers /> },
-          { path: "privacy-and-security", element: <PrivacyAndSecurity /> },
-          { path: "export-data", element: <ExportData /> },
-          { path: "integrations-page", element: <IntegrationsPage /> },
+            {index: true, element:(<StaffProfile />)  },
+            { path: "Staff_Profilepage", element: <StaffProfile /> }, 
+            { path: "Staff_Appointment", element:(<StaffAppointments />)  },
+            { path: "Staff_Interviews", element:( <Staff_Interview />)  },
+                        
         ],
       },
+      
  {
     path: "/",
     element: <Layout />,
@@ -162,7 +218,7 @@ const router = createBrowserRouter ([
       { path: "/pricing", element: <PricingComponent /> },
       { path: "/Webinars", element: <Webinars /> },
       { path: "/features", element: <FeaturesView /> },
-      { path: "*", element: <Home /> }, 
+      { path: "*", element: <NotFound /> }, 
     ],
   },
     { path: "/interview-layout/:id", element:(<ProtectedRoute>
@@ -195,15 +251,12 @@ const router = createBrowserRouter ([
 function App() {
    const dispatch = useDispatch();
     const token = useSelector((state) => state.auth.token);
- 
-  //  const Token = localStorage.getItem("access_token");
 
 useEffect(() => {
   if (token) {
     dispatch(getPermissions());
   }
 }, [dispatch, token]);
-
 
  
   return( 

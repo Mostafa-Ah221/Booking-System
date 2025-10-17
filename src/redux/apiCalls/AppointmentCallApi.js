@@ -14,7 +14,7 @@ export function fetchAppointments(queryParams = {}, force = false) {
     try {
       const token = localStorage.getItem("access_token");
 
-      let url = "https://backend-booking.appointroll.com/api/appointments";
+      let url = "https://backend-booking.appointroll.com/api/customer/appointments";
 
       const searchParams = new URLSearchParams();
       Object.keys(queryParams).forEach((key) => {
@@ -381,63 +381,71 @@ export function getAppointmentByIdPublic(id) {
       }
     };
   }
-   export function approveAppointment(id, data) {
-    return async (dispatch) => {
-      try {
-        const token = localStorage.getItem("access_token");
+ export function approveAppointment(id, data) {
+  return async (dispatch) => {
+    try {
+      const token = localStorage.getItem("access_token");
+
+      const response = await axios.post(
+        `https://backend-booking.appointroll.com/api/customer/appointments/${id}/approve`,
+        data,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token,
+          },
+        }
+      );
       
-  
-        const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/customer/appointments/${id}/approve`,
-          data,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        );
-        
-        // console.log("🔄 Status Update API Response:", response.data);
-        
-        if (response.data.status) {
-          toast.success(response?.data?.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
+      if (response.data.status) {
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
             borderRadius: '8px',
             background: '#333',
             color: '#fff',
             padding: '12px 16px',
             fontWeight: '500',
-            },
-          });
-          return { 
-            success: true, 
-            message: response.data.message,
-            data: response.data.data 
-          };
-        } else {
-          throw new Error(response.data.message );
+          },
+        });
+
+        // ✅ تحديث الـ appointment مباشرة في Redux
+        if (response.data.data) {
+          dispatch(appointmentActions.updateAppointment({
+            id: id,
+            approve_status: data.approved, // أو response.data.data.approve_status
+            ...response.data.data // إذا كان الـ API بيرجع بيانات كاملة
+          }));
         }
-      } catch (error) {
-        console.error("❌ Error updating appointment status:", error);
+
+        // ✅ اختياري: جلب البيانات المحدثة من الـ API
+        dispatch(getAppointmentById(id));
         
-        let errorMessage = "حدث خطأ غير متوقع";
-        
-        if (error.response) {
-          errorMessage = error.response.data?.message || `خطأ من الخادم: ${error.response.status}`;
-          
-          
-        } else {
-          errorMessage = error.message;
-        }
-        
-        return { success: false, message: errorMessage };
+        return { 
+          success: true, 
+          message: response.data.message,
+          data: response.data.data,
+        };
+      } else {
+        throw new Error(response.data.message);
       }
-    };
-  }
+    } catch (error) {
+      console.error("❌ Error updating appointment status:", error);
+      
+      let errorMessage = "حدث خطأ غير متوقع";
+      
+      if (error.response) {
+        errorMessage = error.response.data?.message || `خطأ من الخادم: ${error.response.status}`;
+      } else {
+        errorMessage = error.message;
+      }
+      
+      return { success: false, message: errorMessage };
+    }
+  };
+}
   
   
   

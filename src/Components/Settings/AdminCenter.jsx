@@ -3,7 +3,6 @@ import { ArrowLeft, Search, Settings, Grid, Layers, Package, Lock } from 'lucide
 import { Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { navigateToPath } from '../../redux/slices/navigationSlice';
-import NavDashbord from '../Dashboard/NavDashbord';
 import { usePermission } from "../hooks/usePermission";
 
 const AdminCenter = () => {
@@ -22,7 +21,7 @@ const AdminCenter = () => {
       'custom-domain': 'Organization',
       'workspaces': 'Modules',
       'person-location': 'Modules',
-      'customers': 'Modules',
+      'clients': 'Modules',
       'reports': 'Modules',
       'integrations-page#calendar': 'Integrations',
       'integrations-page#sms': 'Integrations',
@@ -49,7 +48,7 @@ const AdminCenter = () => {
         {title:'Basic Information',path:"basic-info"}, 
         // {title:'Business Hours',path:'business-hours'}, 
         // {title:'Custom Domain',path:"custom-domain"}, 
-        ...(hasViewStaff ? [{title:'Recruiters',path:"recruiters"}] : [])
+        ...(hasViewStaff ? [{title:'Users',path:"users"}] : [])
       ]
     },
     {
@@ -58,7 +57,7 @@ const AdminCenter = () => {
       items: [
         {title:'Workspaces', path:"workspaces"},  
         // {title:'In-person Locations', path:"person-location"}, 
-        ...(hasViewClients ? [{title:'Customers',path:"customers"}] : []),
+        ...(hasViewClients ? [{title:'Clients',path:"clients"}] : []),
         {title: 'Reports',path:"reports"}
       ]
     },

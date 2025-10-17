@@ -2,16 +2,19 @@ import { useEffect, useState, useRef } from 'react';
 import { Share2, MoreVertical, Trash2, Copy, ExternalLink, Plus, Wifi, WifiOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchInterviews, deleteInterview } from '../../../../redux/apiCalls/interviewCallApi';
-import ShareModal from './ShareModal';
+import { fetchInterviews, deleteInterview,updateShareLinkIntreview } from '../../../../redux/apiCalls/interviewCallApi';
+
 import Loader from '../../../Loader';
 import { interviewAction } from '../../../../redux/slices/interviewsSlice';
+import ShareBookingModal from '../../Profile_Page/ShareModalPrpfile';
+import { usePermission } from '../../../hooks/usePermission';
 
 const Interviews = () => {
   const dispatch = useDispatch();
   const { interviews, loading = false, currentWorkspaceId } = useSelector(state => state.interview);
   const { workspace } = useSelector(state => state.workspace);
   const workspaceId = workspace ? workspace.id : 0;
+const canEditInterviewf = usePermission("edit interview");
 
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -45,14 +48,13 @@ const Interviews = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  const getInitials = (name) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+const handleUpdateShareLink = async (newShareLink,id) => {
+    try {
+      await dispatch(updateShareLinkIntreview(newShareLink,id));
+      setIsShareModalOpen(false);
+    } catch (error) {
+      console.error('Error updating share link:', error);
+    }
   };
 
   const toggleMenu = (interviewId, e) => {
@@ -68,7 +70,7 @@ const Interviews = () => {
 
   const handleBookingPageClick = (interview, e) => {
     e.preventDefault();
-    const bookingLink = `${window.location.origin}/share/${interview?.share_link}`;
+    const bookingLink = `${window.location.origin}/${interview?.share_link}`;
     window.open(bookingLink, '_blank');
     setActiveMenuId(null);
   };
@@ -288,11 +290,21 @@ const Interviews = () => {
           {renderPagination()}
         </>
       )}
-      <ShareModal
+      {/* <ShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         interview={selectedInterview}
+      /> */}
+       <ShareBookingModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        shareLink={selectedInterview?.share_link}
+        profile={selectedInterview}
+        onUpdateLink={handleUpdateShareLink}
+        loading={loading}
+        canShowEdit={canEditInterviewf}
       />
+
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-96 mx-4 transform transition-all duration-200 scale-100">

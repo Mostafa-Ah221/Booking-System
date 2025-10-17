@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { X, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { reschedulePublic } from '../../redux/apiCalls/AppointmentCallApi';
+import { reschedulePublic,getAppointmentByIdPublic } from '../../redux/apiCalls/AppointmentCallApi';
 import { useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import TimezoneSelect from 'react-timezone-select';
@@ -26,13 +26,18 @@ const RescheduleSidebar = ({
   const [unavailableDates, setUnavailableDates] = useState([]);
   const [unavailableTimes, setUnavailableTimes] = useState([]);
   const [disabledTimes, setDisabledTimes] = useState([]);
-  
+  const [appointmentApi, setAppointmentApi] = useState(null);
+   const [restTimes, setRestTimes] = useState();
   const calendarRef = useRef(null);
   const dispatch = useDispatch();
+  
+  
+console.log(appointmentData);
 
   const idAppointment = appointmentData?.id;
   const { id: shareId } = useParams();
   const finalShareId = shareId || outShareId;
+  
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -126,14 +131,14 @@ const RescheduleSidebar = ({
         return false;
       }
       
-      const fromMinutes = timeToMinutes(dayUnavailableTime.from.slice(0, 5));
+      const fromMinutes = timeToMinutes(dayUnavailableTime.from);
       
       // If to is null, from this time to end of day is unavailable
       if (!dayUnavailableTime.to || dayUnavailableTime.to === null) {
         return checkTimeMinutes >= fromMinutes;
       }
       
-      const toMinutes = timeToMinutes(dayUnavailableTime.to.slice(0, 5));
+      const toMinutes = timeToMinutes(dayUnavailableTime.to);
       
       return checkTimeMinutes >= fromMinutes && checkTimeMinutes <= toMinutes;
     });
@@ -239,14 +244,14 @@ const RescheduleSidebar = ({
       dayUnavailableTimes.forEach((unavailableRange) => {
         if (!unavailableRange || !unavailableRange.from) return;
         
-        const unavailableFromMinutes = timeToMinutes(unavailableRange.from.slice(0, 5));
+        const unavailableFromMinutes = timeToMinutes(unavailableRange.from);
         let unavailableToMinutes;
 
         // If to is null, end of day
         if (!unavailableRange.to || unavailableRange.to === null) {
           unavailableToMinutes = 23 * 60 + 59;
         } else {
-          unavailableToMinutes = timeToMinutes(unavailableRange.to.slice(0, 5));
+          unavailableToMinutes = timeToMinutes(unavailableRange.to);
         }
         
         const newRanges = [];
@@ -295,15 +300,15 @@ const RescheduleSidebar = ({
       const endMinutes = range.to;
       
       for (let currentMinutes = startMinutes; currentMinutes + durationInMinutes <= endMinutes; currentMinutes += totalSlotDuration) {
-        const hours = Math.floor(currentMinutes / 60);
+         const hours = Math.floor(currentMinutes / 60);
         const minutes = currentMinutes % 60;
         const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         
-        const dateISO = selectedDateObj.toISOString().split('T')[0];
+        const dateISO = formatDateToYMD(selectedDateObj);
         const isDisabled = disabledTimes && disabledTimes.some(disabledTime => {
           if (!disabledTime || !disabledTime.date || !disabledTime.time) return false;
           const disabledDate = disabledTime.date;
-          const disabledTimeFormatted = disabledTime.time.slice(0, 5);
+          const disabledTimeFormatted = disabledTime.time.substring(0, 5);
           return disabledDate === dateISO && disabledTimeFormatted === formattedTime;
         });
         
@@ -322,39 +327,52 @@ const RescheduleSidebar = ({
     return [...new Set(effectiveTimeSlots)].sort();
   };
 
-  // Check if date is available with new logic
-  const isDateAvailable = (date, interview = interviewDetails) => {
-    if (!date || !interview) return false;
+  
+// Check if date is available with new logic
+const isDateAvailable = (date, interview = interviewDetails) => {
+  if (!date || !interview) return false;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const checkDate = new Date(date);
-    checkDate.setHours(0, 0, 0, 0);
-    
-    // Check if date is in the past
-    if (checkDate < today) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const checkDate = new Date(date);
+  checkDate.setHours(0, 0, 0, 0);
+  
+  // Check if date is in the past
+  if (checkDate < today) {
+    return false;
+  }
+
+  const dayId = getDayId(checkDate);
+
+  // PRIORITY 1: Check unavailable_dates + unavailable_times
+  const isInUnavailableRange = isDateInUnavailableDatesRange(checkDate);
+  if (isInUnavailableRange) {
+    const isDayInUnavailableTimes = unavailableTimes.some(
+      time => time.day_id.toString() === dayId.toString()
+    );
+    if (isDayInUnavailableTimes) {
       return false;
     }
+  }
 
-    // Check if date is in available range
-    const isInDateRange = isDateInAvailableRange(checkDate, interview.available_dates);
-    if (!isInDateRange) {
-      return false;
-    }
+  // PRIORITY 2: Check if date is in available range
+  const isInDateRange = isDateInAvailableRange(checkDate, interview.available_dates);
+  if (!isInDateRange) {
+    return false;
+  }
 
-    // Check if day has available times
-    const dayId = getDayId(checkDate);
-    const hasTimesForDay = interview.available_times.some(time => time.day_id.toString() === dayId.toString());
-    
-    if (!hasTimesForDay) {
-      return false;
-    }
+  // PRIORITY 3: Check if day has available times
+  const hasTimesForDay = interview.available_times.some(time => time.day_id.toString() === dayId.toString());
+  
+  if (!hasTimesForDay) {
+    return false;
+  }
 
-    // Calculate effective available times
-    const effectiveAvailableTimes = calculateEffectiveAvailableTimes(date, interview.available_times, interview.disabled_times || [], interview);
-    
-    return effectiveAvailableTimes.length > 0;
-  };
+  // PRIORITY 4: Calculate effective available times
+  const effectiveAvailableTimes = calculateEffectiveAvailableTimes(date, interview.available_times, interview.disabled_times || [], interview);
+  
+  return effectiveAvailableTimes.length > 0;
+};
 
   // Generate time slots with rest_cycle support
   const generateTimeSlots = (date, interview) => {
@@ -380,85 +398,145 @@ const RescheduleSidebar = ({
     });
   };
 
-  // Fetch interview details from API
-  const fetchInterviewDetails = async (shareLink) => {
-    setIsLoading(true);
-    setError(null);
+ const fetchInterviewDetails = async (shareLink, staffResource = null) => {
+  setIsLoading(true);
+  setError(null);
+  
+  try {
+    const response = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${shareLink}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const interview = data?.data?.interview;
+    
+    const useStaffResource = staffResource && 
+          typeof staffResource === 'object' && 
+          Object.keys(staffResource).length > 0;
+
+    const dataSource = useStaffResource ? staffResource : interview;
+    
+    
+     if (dataSource) {
+  // ✅ دمج disabled_times من المصدرين
+  const combinedDisabledTimes = [
+    ...(interview?.disabled_times || []),
+    ...(dataSource?.disabled_times || [])
+  ];
+
+  const mergedInterview = {
+    ...interview,
+    available_dates: dataSource.available_dates || [],
+    available_times: dataSource.available_times || [],
+    disabled_times: combinedDisabledTimes,
+    un_available_dates: dataSource.un_available_dates || [],
+    un_available_times: dataSource.un_available_times || []
+  };
+  
+  setInterviewDetails(mergedInterview);
+  setAvailableDates(dataSource.available_dates || []);
+  setAvailableTimes(dataSource.available_times || []);
+  setUnavailableDates(dataSource.un_available_dates || []);
+  setUnavailableTimes(dataSource.un_available_times || []);
+  setDisabledTimes(combinedDisabledTimes); 
+  setRestTimes(interview?.rest_cycle || 0);
+
+  if (dataSource.available_dates && dataSource.available_dates.length > 0) {
+    const firstDate = new Date(dataSource.available_dates[0].from);
+    setCurrentMonth(firstDate);
+    
+    setTimeout(() => {
+      findFirstAvailableDateTime(mergedInterview);
+    }, 100);
+  }
+}else {
+      throw new Error("Interview data not available");
+    }
+
+  } catch (error) {
+    setError(`Error loading interview details: ${error.message}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+const findFirstAvailableDateTime = (interview) => {
+  if (!interview.available_dates || interview.available_dates.length === 0) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // استخدم البيانات من interview مباشرة
+  const tempUnavailableDates = interview.un_available_dates || [];
+  const tempUnavailableTimes = interview.un_available_times || [];
+
+  for (const dateRange of interview.available_dates) {
+    if (!dateRange?.from) continue;
     
     try {
-      const response = await fetch(`https://backend-booking.appointroll.com/api/public/interview/${shareLink}`);
+      const fromDate = new Date(dateRange.from.split(' ')[0]);
+      const toDate = dateRange.to ? new Date(dateRange.to.split(' ')[0]) : new Date('2099-12-31');
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (isNaN(fromDate.getTime())) continue;
       
-      const data = await response.json();
-      const interview = data?.data?.interview;
-
-      if (interview) {
-        setInterviewDetails(interview);
-        setAvailableDates(interview.available_dates || []);
-        setAvailableTimes(interview.available_times || []);
-        setUnavailableDates(interview.un_available_dates || []);
-        setUnavailableTimes(interview.un_available_times || []);
-        setDisabledTimes(interview.disabled_times || []);
-
-        // Set current month to first available date
-        if (interview.available_dates && interview.available_dates.length > 0) {
-          const firstDate = new Date(interview.available_dates[0].from);
-          setCurrentMonth(firstDate);
+      const currentDate = new Date(Math.max(fromDate.getTime(), today.getTime()));
+      const endDate = new Date(toDate.getTime());
+      
+      while (currentDate <= endDate) {
+        const dayId = getDayId(currentDate);
+        
+        // تحقق من unavailable مباشرة هنا
+        const isInUnavailableRange = tempUnavailableDates.some(dr => {
+          if (!dr?.from) return false;
+          const fromDateCheck = new Date(dr.from.split(' ')[0]);
+          fromDateCheck.setHours(0, 0, 0, 0);
           
-          // Find first available date and time
-          findFirstAvailableDateTime(interview);
-        }
-      } else {
-        throw new Error("Interview data not available");
-      }
-
-    } catch (error) {
-      setError(`Error loading interview details: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Find first available date and time with updated logic
-  const findFirstAvailableDateTime = (interview) => {
-    if (!interview.available_dates || interview.available_dates.length === 0) return;
-
-    for (const dateRange of interview.available_dates) {
-      if (!dateRange?.from) continue;
-      
-      try {
-        // Search within the date range
-        const fromDate = new Date(dateRange.from.split(' ')[0]);
-        const toDate = dateRange.to ? new Date(dateRange.to.split(' ')[0]) : new Date('2099-12-31');
-        
-        if (isNaN(fromDate.getTime())) continue;
-        
-        // Search day by day in the range
-        const currentDate = new Date(Math.max(fromDate.getTime(), new Date().getTime()));
-        const endDate = new Date(toDate.getTime());
-        
-        while (currentDate <= endDate) {
-          if (isDateAvailable(currentDate, interview)) {
-            const timeSlots = generateTimeSlots(currentDate, interview);
-            if (timeSlots.length > 0) {
-              setSelectedDate(new Date(currentDate));
-              setSelectedTime(timeSlots[0].value);
-              return;
-            }
+          if (dr.to === null) {
+            return currentDate >= fromDateCheck;
           }
           
-          currentDate.setDate(currentDate.getDate() + 1);
+          const toDateCheck = new Date(dr.to.split(' ')[0]);
+          toDateCheck.setHours(23, 59, 59, 999);
+          return currentDate >= fromDateCheck && currentDate <= toDateCheck;
+        });
+        
+        // إذا كان في unavailable range، تحقق من اليوم
+        if (isInUnavailableRange) {
+          const isDayUnavailable = tempUnavailableTimes.some(
+            time => time.day_id.toString() === dayId.toString()
+          );
+          
+          if (isDayUnavailable) {
+            currentDate.setDate(currentDate.getDate() + 1);
+            continue; // تخطى هذا اليوم
+          }
         }
         
-      } catch (err) {
-        console.warn('Error processing date range:', dateRange, err);
-        continue;
+        // استخدم isDateAvailable للفحص الكامل
+        if (isDateAvailable(currentDate, interview)) {
+          const timeSlots = generateTimeSlots(currentDate, interview);
+          if (timeSlots.length > 0) {
+            setSelectedDate(new Date(currentDate));
+            setSelectedTime(timeSlots[0].value);
+            return;
+          }
+        }
+        
+        currentDate.setDate(currentDate.getDate() + 1);
       }
+      
+    } catch (err) {
+      console.warn('Error processing date range:', dateRange, err);
+      continue;
     }
-  };
+  }
+  
+  setSelectedDate(null);
+  setSelectedTime('');
+};
 
   // Memoized available time slots for performance
   const availableTimeSlots = useMemo(() => {
@@ -467,28 +545,115 @@ const RescheduleSidebar = ({
   }, [selectedDate, interviewDetails, disabledTimes, unavailableTimes]);
 
   // Load interview details when component opens
-  useEffect(() => {
-    if (isOpen && finalShareId && !interviewDetails) {
-      fetchInterviewDetails(finalShareId);
-    }
-  }, [isOpen, finalShareId]);
 
-  // Handle calendar outside click
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
-        setIsCalendarOpen(false);
+
+ useEffect(() => {
+  console.log('🔵 useEffect FIRED!', { isOpen, id: appointmentData?.id, finalShareId });
+  
+  if (!isOpen) {
+    console.log('⏸️ Sidebar not open, exiting useEffect');
+    return;
+  }
+  
+  if (!appointmentData?.id) {
+    console.log('❌ No appointment ID, exiting useEffect');
+    return;
+  }
+  
+  if (!finalShareId) {
+    console.log('❌ No finalShareId, exiting useEffect');
+    return;
+  }
+
+  let isMounted = true;
+  let loadAttempts = 0;
+  const maxAttempts = 5;
+  
+
+  const loadData = async () => {
+    if (!isOpen || !appointmentData?.id || !finalShareId) return;
+    
+    setIsLoading(true);
+    setInterviewDetails(null);
+    setSelectedDate(null);
+    setSelectedTime('');
+    
+    try {
+      const result = await dispatch(getAppointmentByIdPublic(appointmentData?.id));
+      
+
+      const appointmentResult = result?.payload?.appointment || result?.appointment || result?.payload;
+      
+      
+      console.log('Appointment result:', appointmentResult);
+      
+      
+      if (!isMounted) return;
+      
+      if (appointmentResult && appointmentResult.staff_resource === undefined && loadAttempts < maxAttempts) {
+        loadAttempts++;
+        console.log(`Retrying... attempt ${loadAttempts}`);
+        setTimeout(() => loadData(), 300);
+        return;
       }
-    };
-
-    if (isCalendarOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      
+      if (appointmentResult) {
+        setAppointmentApi(appointmentResult);
+        
+        const staffResource = appointmentResult?.staff_resource;
+        await fetchInterviewDetails(appointmentResult?.share_link, staffResource || null);
+      } else {
+        console.error('No appointment result found');
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      if (isMounted) {
+        setIsLoading(false);
+      }
     }
+  };
+  
+  if (isOpen) {
+    loadData();
+  }
+  
+  return () => {
+    isMounted = false;
+  };
+}, [isOpen, appointmentData?.id, finalShareId]);
 
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isCalendarOpen]);
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    
+    const isCalendarClick = calendarRef.current?.contains(event.target);
+    const isInputClick = event.target.closest('.relative input[type="text"]');
+    const isCalendarIcon = event.target.closest('.lucide-calendar');
+    
+    if (isCalendarClick || isInputClick || isCalendarIcon) {
+      return;
+    }
+    
+    const isClickableElement = 
+      event.target.tagName === 'BUTTON' ||
+      event.target.tagName === 'LABEL' ||
+      event.target.tagName === 'H3' ||
+      event.target.closest('button') ||
+      event.target.closest('.grid');
+    
+    if (isClickableElement) {
+      setIsCalendarOpen(false);
+    }
+  };
+
+  if (isCalendarOpen) {
+    document.addEventListener('mousedown', handleClickOutside);
+  }
+
+  return () => {
+    document.removeEventListener('mousedown', handleClickOutside);
+  };
+}, [isCalendarOpen]);
 
   // Update selected time when date changes
   useEffect(() => {
@@ -567,14 +732,17 @@ const RescheduleSidebar = ({
     setError(null);
 
     const formattedDate = selectedDate.toLocaleDateString('en-CA'); 
+    const formattedTime = selectedTime.includes(':') && selectedTime.split(':').length === 2 
+    ? `${selectedTime}:00` 
+    : selectedTime;
     try {
       const rescheduleData = {
         date: formattedDate,
-        time: selectedTime,
+        time: formattedTime ,
         time_zone: selectedTimezone,
       };
 
-      const result = await dispatch(reschedulePublic(idAppointment, rescheduleData));
+      const result = await dispatch(reschedulePublic(appointmentData?.id, rescheduleData));
 
       const isSuccess = 
         result === true ||
@@ -643,7 +811,7 @@ const RescheduleSidebar = ({
       )}
 
       {/* Reschedule Sidebar */}
-      <div className={`fixed top-0 right-0 h-full w-1/2 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-out ${
+      <div className={`fixed top-0 right-0 h-full w-full md:w-2/3 lg:w-1/2 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-out ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}>
         <div className="flex flex-col h-full">

@@ -100,34 +100,41 @@ console.log(staff);
     }
   }, [weekDays, onUpdateWeekDays]);
 
-  const handleSaveAndSubmit = async () => {
-    try {
-      const available_times = weekDays
-        .filter(day => day.isChecked)
-        .map(day => ({
-          day_id: day.day_id,
-          times: day.timeSlots.map(slot => ({
-            from: slot.from,
-            to: slot.to,
-          }))
-        }));
-      
-      if (handleSave) {
-        const result = await handleSave({ 
-          [availabilityMode === 'available' ? 'available_times' : 'un_available_times']: available_times 
-        });
-        
-        if (result && result.success) {
-          setDisplayWeekDays([...weekDays]);
-          await dispatch(getStaffById(id));
-        } else {
-          throw new Error('Save operation did not return success');
-        }
+const handleSaveAndSubmit = async () => {
+  try {
+    const available_times = weekDays
+      .filter(day => day.isChecked)
+      .map(day => ({
+        day_id: day.day_id,
+        times: day.timeSlots.map(slot => ({
+          from: slot.from,
+          to: slot.to,
+        }))
+      }));
+    
+    console.log('available_times:', available_times);
+    
+    if (handleSave) {
+      const formData = {};
+      if (availabilityMode === 'available') {
+        formData.available_times = available_times;
+      } else {
+        formData.un_available_times = available_times;
       }
-    } catch (error) {
-      toast.error(`Error saving times: ${error.message || 'An unexpected error occurred'}`);
+      
+      console.log('FormData sent to handleSave:', formData); // لوج للتحقق
+      
+      const result = await handleSave(formData);
+      
+      if (result && result.success) {
+        setDisplayWeekDays([...weekDays]);
+        await dispatch(getStaffById(id));
+      } 
     }
-  };
+  } catch (error) {
+    toast.error(`Error saving times: ${error.message}`);
+  }
+};
 
   const generateTimeOptions = (isToField = false, fromTime = null) => {
     const options = [];

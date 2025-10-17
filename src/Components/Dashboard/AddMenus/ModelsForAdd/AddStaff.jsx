@@ -1,4 +1,4 @@
-import { X, User, Mail, Lock, Phone, UserCheck, Upload, Camera } from "lucide-react";
+import { X, User, Mail, Lock, Phone, UserCheck, Upload, Camera, Clock } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import PhoneInput from "react-phone-input-2";
@@ -15,17 +15,20 @@ const AddStaff = ({ isOpen, onClose }) => {
     phone_code: "",
     phone: "",
     status: 1,
-    photo: null, // تغيير من image إلى photo
+    over_time: 1,
+    photo: null,
   });
 
   const [phoneValue, setPhoneValue] = useState("");
   const [errors, setErrors] = useState({});
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [isOvertimeDropdownOpen, setIsOvertimeDropdownOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
 
   // Refs for dropdown containers and modal
   const statusDropdownRef = useRef(null);
+  const overtimeDropdownRef = useRef(null);
   const modalRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -42,16 +45,20 @@ const AddStaff = ({ isOpen, onClose }) => {
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
         setIsStatusDropdownOpen(false);
       }
+      
+      if (overtimeDropdownRef.current && !overtimeDropdownRef.current.contains(event.target)) {
+        setIsOvertimeDropdownOpen(false);
+      }
     };
 
-    if (isStatusDropdownOpen) {
+    if (isStatusDropdownOpen || isOvertimeDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isStatusDropdownOpen]);
+  }, [isStatusDropdownOpen, isOvertimeDropdownOpen]);
 
   if (!isOpen) return null;
 
@@ -64,11 +71,13 @@ const AddStaff = ({ isOpen, onClose }) => {
       phone_code: "",
       phone: "",
       status: 1,
-      photo: null, // تغيير من image إلى photo
+      over_time: 1,
+      photo: null,
     });
     setPhoneValue("");
     setErrors({});
     setIsStatusDropdownOpen(false);
+    setIsOvertimeDropdownOpen(false);
     setImagePreview(null);
   };
 
@@ -129,7 +138,7 @@ const AddStaff = ({ isOpen, onClose }) => {
       if (!allowedTypes.includes(file.type)) {
         setErrors((prev) => ({
           ...prev,
-          photo: "Please select a valid image file (JPEG, PNG, GIF, WebP)", // تغيير من image إلى photo
+          photo: "Please select a valid image file (JPEG, PNG, GIF, WebP)",
         }));
         return;
       }
@@ -139,14 +148,14 @@ const AddStaff = ({ isOpen, onClose }) => {
       if (file.size > maxSize) {
         setErrors((prev) => ({
           ...prev,
-          photo: "Image size should be less than 5MB", // تغيير من image إلى photo
+          photo: "Image size should be less than 5MB",
         }));
         return;
       }
 
       setFormData((prev) => ({
         ...prev,
-        photo: file, // تغيير من image إلى photo
+        photo: file,
       }));
 
       // Create preview
@@ -157,10 +166,10 @@ const AddStaff = ({ isOpen, onClose }) => {
       reader.readAsDataURL(file);
 
       // Clear any existing error
-      if (errors.photo) { // تغيير من image إلى photo
+      if (errors.photo) {
         setErrors((prev) => ({
           ...prev,
-          photo: "", // تغيير من image إلى photo
+          photo: "",
         }));
       }
     }
@@ -194,7 +203,7 @@ const AddStaff = ({ isOpen, onClose }) => {
   const removeImage = () => {
     setFormData((prev) => ({
       ...prev,
-      photo: null, // تغيير من image إلى photo
+      photo: null,
     }));
     setImagePreview(null);
     if (fileInputRef.current) {
@@ -254,8 +263,8 @@ const AddStaff = ({ isOpen, onClose }) => {
                 <UserCheck className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold">Add New Staff Member</h2>
-                <p className="text-blue-100 text-sm">Add a new staff member to your team</p>
+                <h2 className="text-2xl font-bold">Add New Recruiter Member</h2>
+                <p className="text-blue-100 text-sm">Add a new Recruiter member to your team</p>
               </div>
             </div>
             <button 
@@ -331,10 +340,10 @@ const AddStaff = ({ isOpen, onClose }) => {
                 className="hidden"
               />
               
-              {errors.photo && ( // تغيير من image إلى photo
+              {errors.photo && (
                 <p className="text-red-500 text-xs flex items-center">
                   <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                  {errors.photo} {/* تغيير من image إلى photo */}
+                  {errors.photo}
                 </p>
               )}
             </div>
@@ -355,7 +364,7 @@ const AddStaff = ({ isOpen, onClose }) => {
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter staff member's full name"
+                  placeholder="Enter recruiter member's full name"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all duration-200 ${
@@ -375,7 +384,7 @@ const AddStaff = ({ isOpen, onClose }) => {
                 </label>
                 <input
                   type="email"
-                  placeholder="staff@company.com"
+                  placeholder="recruiter@company.com"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all duration-200 ${
@@ -391,7 +400,7 @@ const AddStaff = ({ isOpen, onClose }) => {
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Phone className="w-4 h-4 mr-1 text-gray-500" />
-                  Contact Number <span className="text-red-500 ml-1">*</span>
+                  Contact Number 
                 </label>
                 <PhoneInput
                   country="eg"
@@ -526,6 +535,66 @@ const AddStaff = ({ isOpen, onClose }) => {
                   </div>
                 )}
               </div>
+
+              {/* Over Time Dropdown */}
+              <div className="relative" ref={overtimeDropdownRef}>
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                  <Clock className="w-4 h-4 mr-1 text-gray-500" />
+                  Over Time
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsOvertimeDropdownOpen(!isOvertimeDropdownOpen)}
+                  className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all duration-200 text-left flex items-center justify-between hover:border-blue-400"
+                >
+                  <span className="text-gray-700 flex items-center">
+                    <div className={`w-2 h-2 rounded-full mr-2 ${formData.over_time === 1 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    {formData.over_time === 1 ? 'Active' : 'Inactive'}
+                  </span>
+                  <div className={`transform transition-transform duration-200 ${isOvertimeDropdownOpen ? 'rotate-180' : ''}`}>
+                    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+
+                {isOvertimeDropdownOpen && (
+                  <div className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl">
+                    <div className="p-2">
+                      <div
+                        className="flex items-center py-3 px-3 hover:bg-green-50 rounded-lg cursor-pointer transition-colors duration-200"
+                        onClick={() => {
+                          handleInputChange("over_time", 1);
+                          setIsOvertimeDropdownOpen(false);
+                        }}
+                      >
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                        <span className="text-sm text-gray-700 font-medium">Active</span>
+                        {formData.over_time === 1 && (
+                          <div className="ml-auto">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          </div>
+                        )}
+                      </div>
+                      <div
+                        className="flex items-center py-3 px-3 hover:bg-red-50 rounded-lg cursor-pointer transition-colors duration-200"
+                        onClick={() => {
+                          handleInputChange("over_time", 0);
+                          setIsOvertimeDropdownOpen(false);
+                        }}
+                      >
+                        <div className="w-2 h-2 bg-red-500 rounded-full mr-3"></div>
+                        <span className="text-sm text-gray-700 font-medium">Inactive</span>
+                        {formData.over_time === 0 && (
+                          <div className="ml-auto">
+                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -553,7 +622,7 @@ const AddStaff = ({ isOpen, onClose }) => {
               ) : (
                 <div className="flex items-center">
                   <UserCheck className="w-4 h-4 mr-2" />
-                  Add Staff
+                  Add Recruiter
                 </div>
               )}
             </button>

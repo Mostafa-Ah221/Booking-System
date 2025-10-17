@@ -3,7 +3,6 @@ import { X, Copy } from 'lucide-react';
 
 const ShareModal = ({ isOpen, onClose, interview }) => {
   const [activeTab, setActiveTab] = useState('share'); 
-  const [oneTimeLink, setOneTimeLink] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
 

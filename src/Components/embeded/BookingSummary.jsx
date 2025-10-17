@@ -14,17 +14,37 @@ export default function BookingSummary() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const location = useLocation();
-  const { id } = useParams();
   const responseData = location.state;
   const bookingDetailsRef = useRef(null);
   const dispatch = useDispatch();
- const double_book= localStorage.getItem("double_book")
- 
-  // Function to fetch appointment data
+  const double_book = localStorage.getItem("double_book");
+const { id, idAdmin, idCustomer, idSpace } = useParams();
+
+const share_link =  id || idAdmin|| idCustomer|| idSpace
+console.log(responseData);
+
+const getBasePath = () => {
+    const pathname = location.pathname;
+    
+    if (pathname.includes('/Admin/')) {
+      return `/Admin/${idAdmin}`;
+    } else if (pathname.includes('/Staff/')) {
+      return `/Staff/${idCustomer}`;
+    } else if (pathname.includes('/Space/')) {
+      return `/Space/${idSpace}`;
+    } else {
+      return `/${id}`;
+    }
+  };
+
+  const basePath = getBasePath();
+
   const fetchAppointmentData = async () => {
     try {
       const result = await dispatch(getAppointmentByIdPublic(responseData?.data.id));
       setAppointmentData(result?.appointment);
+      console.log();
+      
     } catch (error) {
       console.error('Error:', error);
     }
@@ -71,20 +91,18 @@ export default function BookingSummary() {
     }
   };
 
-  // ✅ Add to Calendar (Google)
   const handleAddToCalendar = () => {
     const title = encodeURIComponent("Appointment");
     const details = encodeURIComponent(`Appointment with ${responseData?.data.name || 'Customer'}`);
     const location = encodeURIComponent("Online / Office");
     const startDate = new Date(`${appointmentData?.date}T${appointmentData?.time}`).toISOString().replace(/-|:|\.\d+/g, "");
-    const endDate = new Date(new Date(`${appointmentData?.date}T${appointmentData?.time}`).getTime() + 30 * 60000) // 30 min duration
+    const endDate = new Date(new Date(`${appointmentData?.date}T${appointmentData?.time}`).getTime() + 30 * 60000)
       .toISOString().replace(/-|:|\.\d+/g, "");
 
     const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${startDate}/${endDate}`;
     window.open(url, "_blank");
   };
 
-  // ✅ Download ICS file
   const handleDownloadICS = () => {
     const startDate = new Date(`${appointmentData?.date}T${appointmentData?.time}`).toISOString().replace(/-|:|\.\d+/g, "");
     const endDate = new Date(new Date(`${appointmentData?.date}T${appointmentData?.time}`).getTime() + 30 * 60000).toISOString().replace(/-|:|\.\d+/g, "");
@@ -115,7 +133,7 @@ END:VCALENDAR
         <div className="text-center">
           <div className="text-gray-500 text-lg">No booking data found</div>
           <Link
-            to={`/share/${id}`}
+            to={`${basePath}`}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Go Back
@@ -133,14 +151,15 @@ END:VCALENDAR
           <h1 className="text-xl font-semibold text-gray-900">
             {responseData?.data.workspace || 'Booking System'}
           </h1>
-          {double_book && double_book == 1 ? <Link
-            to={`/share/${id}`}
-            className="inline-flex items-center space-x-2 px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition-colors"
-          >
-            <span>Book another appointment</span>
-            <ChevronRight className="w-4 h-4" />
-          </Link> :""}
-         
+          {double_book && double_book == 1 ? (
+            <Link
+              to={`${basePath}`}
+              className="inline-flex items-center space-x-2 px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition-colors"
+            >
+              <span>Book another appointment</span>
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          ) : ""}
         </div>
       </div>
 
@@ -221,6 +240,18 @@ END:VCALENDAR
               </div>
               <div className="w-1/3"></div>
             </div>
+            {/* Staff */}
+            {responseData?.data.staff_name && responseData?.data.staff !== null &&  <div className="flex items-center w-full">
+              <div className="flex items-center gap-1 w-1/3">
+                <User className="w-5 h-5 text-gray-400" />
+                <div className="text-sm text-gray-600">Staff</div>
+              </div>
+              <div className="w-1/3 text-left font-medium">
+                {responseData?.data.staff_name ||'N/A'}
+              </div>
+              <div className="w-1/3"></div>
+            </div>}
+           
             {/* Date & Time */}
             <div className="flex items-start w-full">
               <div className="flex items-center gap-1 w-1/3">
@@ -245,10 +276,12 @@ END:VCALENDAR
               </div>
               <div className="w-1/3 text-left">
                 <div className="font-medium">{responseData?.data.name || 'N/A'}</div>
-                <div className="text-sm text-blue-600 flex items-center justify-start">
+                  {responseData?.data.phone && responseData?.data.phone !== null 
+                  && <div className="text-sm text-blue-600 flex items-center justify-start">
                   <Phone className="w-3 h-3 mr-1" />
                   {formatPhoneNumber(responseData?.data.phone, responseData?.data.code_phone)}
-                </div>
+                </div>}
+                
                 <div className="text-sm text-blue-600 flex items-center justify-start">
                   <Mail className="w-3 h-3 mr-1" />
                   {responseData?.data.email || 'N/A'}
@@ -267,6 +300,19 @@ END:VCALENDAR
               </div>
               <div className="w-1/3"></div>
             </div>
+            {/* Meeting */}
+            {responseData?.data.meeting_link && responseData?.data.meeting_link !== null 
+            &&  <div className="flex items-center w-full">
+              <div className="flex items-center gap-1 w-1/3">
+                <Clock className="w-5 h-5 text-gray-400" />
+                <div className="text-sm text-gray-600">Meeting </div>
+              </div>
+              <div className="w-1/3 text-left font-medium">
+                {responseData?.data.meeting_link || 'N/A'}
+              </div>
+              <div className="w-1/3"></div>
+            </div>}
+           
           </div>
 
           {/* footer buttons */}
@@ -299,28 +345,30 @@ END:VCALENDAR
               Download as ICS
             </button>
             <div className="flex-1"></div>
-            {double_book && double_book == 1 ? <Link
-              to={`/share/${id}`}
-              className="inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors"
-            >
-              <span>Book another appointment</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>:""}
-            
+            {double_book && double_book == 1 ? (
+              <Link
+                to={`${basePath}`}
+                className="inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors"
+              >
+                <span>Book another appointment</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            ) : ""}
           </div>
         </div>
         <div className="text-center mt-8 text-sm text-gray-500 no-print">
- <p className="text-xs text-gray-500 mt-1">
-                Powered by 
-                <a 
-                  href="http://egydesigner.com/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="ml-1 font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-300 hover:underline"
-                >
-                  EGYdesigner
-                </a>
-              </p>        </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Powered by 
+            <a 
+              href="http://egydesigner.com/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="ml-1 font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-300 hover:underline"
+            >
+              EGYdesigner
+            </a>
+          </p>
+        </div>
       </div>
 
       {/* sidebars */}
@@ -329,6 +377,7 @@ END:VCALENDAR
         onClose={() => setIsRescheduleSidebarOpen(false)}
         onRescheduleSuccess={handleRescheduleSuccess}
         appointmentData={responseData?.data}
+        outShareId={share_link}
       />
       <CancelConfirmationModal
         isOpen={isCancelModalOpen}

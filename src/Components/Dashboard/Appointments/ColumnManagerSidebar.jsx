@@ -3,13 +3,11 @@ import { X, GripVertical } from 'lucide-react';
 import toast from "react-hot-toast";
 
 const ColumnManagerSidebar = ({ isOpen, onClose, onApply, initialColumns }) => {
-  // تحميل البيانات من localStorage عند بدء التشغيل
   const getInitialColumns = () => {
     if (initialColumns && Array.isArray(initialColumns)) {
       return initialColumns;
     }
 
-    // محاولة تحميل من localStorage
     try {
       const saved = localStorage.getItem('appointmentColumns');
       if (saved) {

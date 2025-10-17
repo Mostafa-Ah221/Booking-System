@@ -219,6 +219,7 @@ const ReadOnlyView = ({
                     getInterviewData={getInterviewData}
                     availabilityMode={getCurrentAvailabilityMode()}
                     isTimeSectionDisabled={isTimeSectionDisabled}
+                    getWorkspaceData={getWorkspaceData}
                   />
                 )}
                 {(activeTab === 'available-dates' || activeTab === 'unavailable-dates') && (

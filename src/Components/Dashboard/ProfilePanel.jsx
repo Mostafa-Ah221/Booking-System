@@ -25,71 +25,114 @@ const ProfilePanel = ({ isOpen, onClose }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
-  
+    const userType = localStorage.getItem("userType");
+
   const dispatch = useDispatch();
-  const { profile, loading = false } = useSelector(state => state.profileData);
-  const profileData = profile?.user;
+  const { profile,staffProfile, loading = false } = useSelector(state => state.profileData);
+
+ 
+  const profileData = userType === 'staff' ? staffProfile?.user : profile?.user;
 
   // Handle logout
-  const handleLogout = useCallback(() => {
-    toast.success('Logged out successfully');
+ const handleLogout = useCallback(async () => {
+  const token = localStorage.getItem("access_token");
+  const userType = localStorage.getItem("userType");
+
+  const logoutUrl =
+    userType === "staff"
+      ? "https://backend-booking.appointroll.com/api/staff/logout"
+      : "https://backend-booking.appointroll.com/api/customer/logout";
+
+  try {
+    if (token) {
+      const response = await fetch(logoutUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": token,
+        },
+      });
+
+      if (response.ok) {
+        toast.success("Logged out successfully");
+      } else {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data?.message || "Logout failed on server");
+      }
+    } else {
+      toast("No active session found", { icon: "⚠️" });
+    }
+  } catch (error) {
+    console.error("Logout failed:", error);
+    toast.error("Network error while logging out");
+  } finally {
+  
     localStorage.removeItem("access_token");
+    localStorage.removeItem("userType");
+
     setTimeout(() => {
-      window.location.href = "/";
-    }, 1000);
-  }, []);
+      window.location.href = "/login";
+    }, 800);
+  }
+}, []);
+
+
 
   // Handle delete account API call
   const handleDeleteAccount = useCallback(async (e) => {
-    e.preventDefault();
-    
-    if (!deleteFormData.email || !deleteFormData.password) {
-      toast.error('Please fill in all fields');
+  e.preventDefault();
+
+  if (!deleteFormData.email || !deleteFormData.password) {
+    toast.error('Please fill in all fields');
+    return;
+  }
+
+  setDeleteLoading(true);
+  setDeleteError('');
+
+  try {
+    const Token = localStorage.getItem("access_token");
+
+    const response = await fetch('https://backend-booking.appointroll.com/api/delete-account', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': Token,
+      },
+      body: JSON.stringify(deleteFormData),
+    });
+
+    const data = await response.json();
+    const isError =
+      !response.ok ||
+      data.message === 400 || 
+      data.data?.message?.toLowerCase().includes("credentials") ||
+      data.data?.message?.toLowerCase().includes("do not match");
+
+    if (isError) {
+      const errorMessage = data.data?.message || 'Invalid email or password';
+      setDeleteError(errorMessage);
+      toast.error(errorMessage);
       return;
     }
 
-    setDeleteLoading(true);
-    setDeleteError('');
+    toast.success('Account deleted successfully');
+    localStorage.removeItem('access_token');
+    setShowDeleteModal(false);
 
-    try {
-            const Token = localStorage.getItem("access_token");
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1500);
 
-      const response = await fetch('https://backend-booking.appointroll.com/api/delete-account', {
-        method: 'delete',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': Token,
-        },
-        body: JSON.stringify(deleteFormData),
-      });
+  } catch (error) {
+    const errorMessage = 'Network error. Please try again.';
+    setDeleteError(errorMessage);
+    toast.error(errorMessage);
+  } finally {
+    setDeleteLoading(false);
+  }
+}, [deleteFormData]);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorMessage = data.data?.message || 'An error occurred';
-        setDeleteError(errorMessage);
-        toast.error(errorMessage);
-        return;
-      }
-
-      // Success - account deleted
-      toast.success('Account deleted successfully');
-      localStorage.removeItem('access_token');
-      setShowDeleteModal(false);
-      
-      // Small delay to show success message before redirect
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1500);
-      
-    } catch (error) {
-      const errorMessage = 'Network error. Please try again.';
-      setDeleteError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setDeleteLoading(false);
-    }
-  }, [deleteFormData]);
 
   // Handle opening delete modal
   const handleDeleteClick = useCallback(() => {
@@ -198,7 +241,7 @@ const ProfilePanel = ({ isOpen, onClose }) => {
               className="text-lg sm:text-xl font-semibold mb-1 truncate px-4" 
               title={profileData?.name || 'Loading...'}
             >
-              {profileData?.name || 'Loading...'}
+              {profileData?.name || 'User Name'}
             </h2>
             <p 
               className="text-gray-600 text-xs sm:text-sm mb-2 truncate px-4" 
@@ -221,7 +264,7 @@ const ProfilePanel = ({ isOpen, onClose }) => {
           {/* Account Actions */}
           <div className="p-3 sm:p-4">
             <div className="flex justify-between items-center mb-4">
-              <Link to='profilepage' 
+              <Link to={`${userType === 'staff' ? 'Staff_Profilepage' : 'profilepage'}`} 
                 className="flex items-center text-gray-700 hover:text-gray-900 text-sm sm:text-base transition-colors duration-200"
               onClick={onClose}
               >
@@ -241,24 +284,7 @@ const ProfilePanel = ({ isOpen, onClose }) => {
 
           <hr className="border-gray-200" />
 
-          {/* Subscription Section */}
-          <div className="p-3 sm:p-4">
-            <div className="flex items-center mb-3">
-              <h3 className="text-base sm:text-lg font-medium">Subscription</h3>
-              <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full flex items-center">
-                <Crown className="w-3 h-3 mr-1" />
-                Premium Trial
-              </span>
-            </div>
-            <button 
-              className="text-indigo-600 hover:text-indigo-700 hover:underline text-xs sm:text-sm transition-colors duration-200"
-              onClick={() => toast('Manage subscription opened!', { icon: '👑' })}
-            >
-              Manage Subscription
-            </button>
-          </div>
-
-          <hr className="border-gray-200" />
+   
 
           {/* Help Section */}
           <div className="p-3 sm:p-4">
@@ -279,7 +305,7 @@ const ProfilePanel = ({ isOpen, onClose }) => {
         </div>
 
         {/* Fixed Bottom Section - Delete Account */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          {userType !== 'staff' ? (<div className="p-4 border-t border-gray-200 bg-gray-50">
           <button 
             className="flex items-center justify-center w-full text-red-500 hover:text-red-600 hover:bg-red-50 py-2 px-3 rounded-lg transition-all duration-200 text-sm sm:text-base"
             onClick={handleDeleteClick}
@@ -287,7 +313,8 @@ const ProfilePanel = ({ isOpen, onClose }) => {
             <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
             Delete My Account
           </button>
-        </div>
+        </div>) : null}
+        
       </div>
 
       {/* Delete Account Modal */}

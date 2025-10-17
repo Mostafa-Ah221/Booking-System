@@ -1,38 +1,56 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useEffect, useState } from 'react';
 import { createWorkSpace } from '../../redux/apiCalls/workspaceCallApi';
 import toast from "react-hot-toast";
 import { fetchProfileData } from '../../redux/apiCalls/ProfileCallApi';
+
 const Setup_1 = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate(); 
   const [businessName, setBusinessName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { profile, loading = false } = useSelector(state => state.profileData);
-console.log(profile?.user.name);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
     if (!businessName.trim()) {
       toast.error("Workspace name is required!");
       return;
     }
+    
+    if (isSubmitting) return; 
+    
     try {
+      setIsSubmitting(true); 
       const response = await dispatch(createWorkSpace(businessName.trim()));
-      // You can add navigation logic here if needed
+      
+      if (response && response.success) {
+        navigate('/layoutDashboard'); 
+      } else {
+        toast.error(response?.message || "Failed to create workspace");
+      }
     } catch (error) {
       console.error("Error occurred:", error);
       toast.error("An error occurred while creating the workspace.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleInputChange = (e) => {
     setBusinessName(e.target.value);
   };
+
   useEffect(() => {
     if (!profile) {
       dispatch(fetchProfileData());
-     
     }
   }, [dispatch, profile]);
+
   return (
     <div className="min-h-screen bg-white max-w-5xl m-auto">
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center">
@@ -64,57 +82,62 @@ console.log(profile?.user.name);
       <main className="container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
         <div className="flex-1">
           <div className="mb-8">
-<h1 className="text-gray-700 mb-2">
-  Welcome to Appoint Roll -{" "}
-  <span className="font-semibold text-purple-600">{profile?.user.name}</span>
-</h1>
+            <h1 className="text-gray-700 mb-2">
+              Welcome to Appoint Roll -{" "}
+              <span className="font-semibold text-purple-600">{profile?.user.name || "Workspace"}</span>
+            </h1>
             <h2 className="text-2xl font-bold mb-4">Let's get you meeting ready!</h2>
           </div>
 
-          <form className="max-w-xl">
+          <form className="max-w-xl" onSubmit={handleSubmit}>
             <div className="mb-6">
               <label className="block text-gray-700 mb-2">
-                Business name <span className="text-red-500">*</span>
+                workspace name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                placeholder="Enter Business Name"
+                placeholder="Enter workspace Name"
                 value={businessName}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                disabled={isSubmitting}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
-            <Link 
-              to="/layoutDashboard" 
-              className={`w-1/3 py-3 px-4 rounded font-medium transition-colors inline-block text-center ${
-                businessName.trim() 
+            <button
+              type="submit"
+              disabled={!businessName.trim() || isSubmitting}
+              className={`w-1/3 py-3 px-4 rounded font-medium transition-colors inline-flex items-center justify-center ${
+                businessName.trim() && !isSubmitting
                   ? 'bg-purple-600 text-white hover:bg-purple-700' 
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
-              onClick={(e) => {
-                if (!businessName.trim()) {
-                  e.preventDefault();
-                } else {
-                  handleSubmit();
-                }
-              }}
             >
-              Next
-            </Link>
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating...
+                </>
+              ) : (
+                'Next'
+              )}
+            </button>
           </form>
         </div>
 
         <div className="lg:w-1/3">
           <div className="bg-gray-50 p-6 rounded-lg">
             <h3 className="font-semibold mb-2">Step 1</h3>
-            <h2 className="text-2xl font-bold mb-4">Business details</h2>
+            <h2 className="text-2xl font-bold mb-4">workspace details</h2>
             <div className='flex gap-2'>
               <span className='h-2 w-20 bg-purple-600 rounded-md inline-block'></span>
               <span className='h-2 w-20 bg-gray-200 rounded-md inline-block'></span>
               <span className='h-2 w-20 bg-gray-200 rounded-md inline-block'></span>
               <span className='h-2 w-20 bg-gray-200 rounded-md inline-block'></span>
             </div>
-            <p className="text-gray-600 mb-8">Tell us about your business, and we'll work our magic.</p>
+            <p className="text-gray-600 mb-8">Tell us about your workspace, and we'll work our magic.</p>
             
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 bg-white rounded border border-purple-200">

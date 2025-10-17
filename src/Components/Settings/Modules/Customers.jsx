@@ -7,7 +7,7 @@ import EditCustomer from './EditCustomer';
 import RescheduleSidebar from '../../Dashboard/Appointments/RescheduleSidebar';
 import { usePermission } from '../../hooks/usePermission';
 import Loader from '../../Loader';
-import toast from "react-hot-toast";
+import { fetchAllInterviews } from '../../../redux/apiCalls/interviewCallApi';
 
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, customerName }) => {
   if (!isOpen) return null;
@@ -63,10 +63,12 @@ const Customers = () => {
   const customersPerPage = 9;
 
   const { customers, loading, error } = useSelector(state => state.customers);
+   const { allInterviews } = useSelector(state => state.interview);
   const dispatch = useDispatch();
 
   useEffect(() => {
     dispatch(getCustomers());
+    dispatch(fetchAllInterviews({ force: true }))
   }, [dispatch]);
 
   const handleOpen = () => setOpenForm('Invite_rec_modal');
@@ -149,7 +151,7 @@ const Customers = () => {
     return (
       <div className="flex justify-between items-center mt-6 px-4 py-3 bg-white border-t rounded-lg shadow-sm">
         <div className="text-sm text-gray-600">
-          Showing {indexOfFirstCustomer + 1} to {Math.min(indexOfLastCustomer, customersList.length)} of {customersList.length} customers
+          Showing {indexOfFirstCustomer + 1} to {Math.min(indexOfLastCustomer, customersList.length)} of {customersList.length} clients
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -208,7 +210,7 @@ const Customers = () => {
     <div className="w-full min-h-screen bg-gray-50">
       <div className="flex items-center justify-between p-6 bg-white border-b">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-gray-900">Customers</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Clients</h1>
           <span className="bg-gray-100 text-gray-600 text-sm px-2 py-1 rounded-md">
             {customersList.length}
           </span>
@@ -257,9 +259,9 @@ const Customers = () => {
             <div className="absolute -bottom-2 -left-4 text-blue-200 text-2xl">✨</div>
           </div>
           <div className="text-center">
-            <h2 className="text-xl font-semibold mb-2">No customers added</h2>
+            <h2 className="text-xl font-semibold mb-2">No clients added</h2>
             <p className="text-gray-600 max-w-md">
-              Add customers to book appointments with them. When customers book using your booking page, they'll be added here automatically.
+              Add clients to book appointments with them. When clients book using your booking page, they'll be added here automatically.
             </p>
           </div>
           {canCreateClient && (
@@ -358,7 +360,9 @@ const Customers = () => {
           setIsScheduleOpen(false);
           setClientData(null);
         }}
+         fetchInterviews={fetchAllInterviews}
         onScheduleSuccess={handleScheduleSuccess}
+        interviews={allInterviews}
       />
     </div>
   );

@@ -47,7 +47,7 @@ const SettingSidebar = ({ iconOnly = false }) => {
         { title: 'Basic Information', icon: Layout, path: "basic-info" },
         // { title: 'Business Hours', icon: Clock, path: "business-hours" },
         // { title: 'Custom Domain', icon: Globe, path: "custom-domain" },
-        { title: 'Recruiter', icon: Globe, path: "recruiters", permission: "view staff" }
+        { title: 'User', icon: Globe, path: "users", permission: "view staff" }
       ]
     },
     {
@@ -56,7 +56,7 @@ const SettingSidebar = ({ iconOnly = false }) => {
       items: [
         { title: 'Workspaces', icon: Layout, path: "workspaces" },
         // { title: 'In-person Locations', icon: MapPin, path: "person-location" },
-        { title: 'Customers', icon: User, path: "customers", permission: "view clients" },
+        { title: 'Clients', icon: User, path: "clients", permission: "view clients" },
         { title: 'Reports', icon: BarChart, path: "reports" }
       ]
     },
@@ -105,25 +105,21 @@ const SettingSidebar = ({ iconOnly = false }) => {
     dispatch(setExpandedSection(expandedSection === title ? null : title));
   };
 
-  // دالة محسنة للتحقق من الرابط النشط - تتعامل مع الهاش بدقة
   const isLinkActive = (path) => {
     const currentPathClean = location.pathname.slice(1);
     
-    // إذا كان المسار يحتوي على هاش
     if (path.includes('#')) {
       const [basePath, hash] = path.split('#');
       
-      // التحقق من أن المسار الأساسي متطابق
       if (!currentPathClean.includes(basePath)) {
         return false;
       }
       
-      // التحقق من الهاش في currentPath
-      // نفترض أن currentPath يحتوي على الهاش كجزء من المسار
+   
       return currentPathClean === path || currentPathClean.endsWith(`#${hash}`);
     }
     
-    // للمسارات العادية بدون هاش
+
     return currentPathClean === path || currentPathClean.includes(path);
   };
 
@@ -145,7 +141,6 @@ const SettingSidebar = ({ iconOnly = false }) => {
     }
   };
 
-  // Create a component for menu items that handles permissions correctly
   const MenuItem = ({ item, itemIndex }) => {
     const hasPermission = item.permission ? usePermission(item.permission) : true;
     

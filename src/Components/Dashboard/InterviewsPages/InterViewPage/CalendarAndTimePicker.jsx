@@ -21,10 +21,10 @@ export default function CalendarAndTimePicker({
   const formatTimeToHIS = (minutes) => {
     const h = Math.floor(minutes / 60).toString().padStart(2, '0');
     const m = (minutes % 60).toString().padStart(2, '0');
-    return `${h}:${m}:00`; // Always return HH:mm:ss format
+    return `${h}:${m}:00`; 
   };
 
-  const generateTimeOptions = (start, end, step = 60, disabledTimes = []) => {
+  const generateTimeOptions = (start, end, step = 60, disabledTimes = [], type = 'from') => {
     const startMin = parseTimeToMinutes(start);
     const endMin = parseTimeToMinutes(end);
     let options = [];
@@ -34,7 +34,16 @@ export default function CalendarAndTimePicker({
       const isDisabled = disabledTimes.some((disabled) => {
         const disabledFromMin = parseTimeToMinutes(disabled.from);
         const disabledToMin = parseTimeToMinutes(disabled.to);
-        return min >= disabledFromMin && min < disabledToMin;
+        
+        // For 'from' select: disable the exact 'from' time and anything between from-to
+        if (type === 'from') {
+          return min >= disabledFromMin && min < disabledToMin;
+        }
+        // For 'to' select: disable the exact 'to' time and anything between from-to
+        if (type === 'to') {
+          return min > disabledFromMin && min <= disabledToMin;
+        }
+        return false;
       });
 
       options.push({ time, disabled: isDisabled });
@@ -57,25 +66,30 @@ export default function CalendarAndTimePicker({
   const isDateAvailable = (date) => {
     if (!selectedStaff || !selectedStaff.available_dates?.length) return false;
 
-    const dateStr = date.toISOString().split('T')[0];
+    // Normalize date to midnight for comparison
+    const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
     if (
       selectedStaff.un_available_dates?.some((range) => {
         if (!range?.from || !range?.to || typeof range.from !== 'string' || typeof range.to !== 'string') return false;
-        const from = new Date(range.from.split(" ")[0]);
-        const to = new Date(range.to.split(" ")[0]);
+        const fromParts = range.from.split(" ")[0].split("-");
+        const toParts = range.to.split(" ")[0].split("-");
+        const from = new Date(fromParts[0], fromParts[1] - 1, fromParts[2]);
+        const to = new Date(toParts[0], toParts[1] - 1, toParts[2]);
         if (isNaN(from.getTime()) || isNaN(to.getTime())) return false;
-        return date >= from && date <= to;
+        return normalizedDate >= from && normalizedDate <= to;
       })
     )
       return false;
 
     const isAvailable = selectedStaff.available_dates.some((range) => {
       if (!range?.from || !range?.to || typeof range.from !== 'string' || typeof range.to !== 'string') return false;
-      const from = new Date(range.from.split(" ")[0]);
-      const to = new Date(range.to.split(" ")[0]);
+      const fromParts = range.from.split(" ")[0].split("-");
+      const toParts = range.to.split(" ")[0].split("-");
+      const from = new Date(fromParts[0], fromParts[1] - 1, fromParts[2]);
+      const to = new Date(toParts[0], toParts[1] - 1, toParts[2]);
       if (isNaN(from.getTime()) || isNaN(to.getTime())) return false;
-      return date >= from && date <= to;
+      return normalizedDate >= from && normalizedDate <= to;
     });
 
     return isAvailable;
@@ -84,12 +98,16 @@ export default function CalendarAndTimePicker({
   const isDateUnavailable = (date) => {
     if (!selectedStaff?.un_available_dates) return false;
     
+    const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
     return selectedStaff.un_available_dates.some((range) => {
       if (!range?.from || !range?.to) return false;
-      const from = new Date(range.from.split(" ")[0]);
-      const to = new Date(range.to.split(" ")[0]);
+      const fromParts = range.from.split(" ")[0].split("-");
+      const toParts = range.to.split(" ")[0].split("-");
+      const from = new Date(fromParts[0], fromParts[1] - 1, fromParts[2]);
+      const to = new Date(toParts[0], toParts[1] - 1, toParts[2]);
       if (isNaN(from.getTime()) || isNaN(to.getTime())) return false;
-      return date >= from && date <= to;
+      return normalizedDate >= from && normalizedDate <= to;
     });
   };
 
@@ -103,12 +121,16 @@ export default function CalendarAndTimePicker({
   const isDateOutsideAvailable = (date) => {
     if (!selectedStaff?.available_dates?.length) return true;
     
+    const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
     return !selectedStaff.available_dates.some((range) => {
       if (!range?.from || !range?.to) return false;
-      const from = new Date(range.from.split(" ")[0]);
-      const to = new Date(range.to.split(" ")[0]);
+      const fromParts = range.from.split(" ")[0].split("-");
+      const toParts = range.to.split(" ")[0].split("-");
+      const from = new Date(fromParts[0], fromParts[1] - 1, fromParts[2]);
+      const to = new Date(toParts[0], toParts[1] - 1, toParts[2]);
       if (isNaN(from.getTime()) || isNaN(to.getTime())) return false;
-      return date >= from && date <= to;
+      return normalizedDate >= from && normalizedDate <= to;
     });
   };
 
@@ -149,7 +171,6 @@ export default function CalendarAndTimePicker({
       (disabled) => disabled.date === dateStr
     ) || [];
 
-    // Ensure times are in HH:mm:ss format
     return dayTimes.map(timeSlot => ({
       ...timeSlot,
       from: timeSlot.from.includes(':') && timeSlot.from.split(':').length === 3 
@@ -158,7 +179,7 @@ export default function CalendarAndTimePicker({
       to: timeSlot.to.includes(':') && timeSlot.to.split(':').length === 3 
         ? timeSlot.to 
         : `${timeSlot.to}:00`,
-      disabledTimes // Attach disabled times for this date
+      disabledTimes 
     }));
   };
 
@@ -281,7 +302,7 @@ export default function CalendarAndTimePicker({
                   (disabled) => disabled.date === selectedDate.toISOString().split('T')[0]
                 ) || [];
 
-                const fromOptions = generateTimeOptions(slotFrom, slotTo, 60, disabledTimes);
+                const fromOptions = generateTimeOptions(slotFrom, slotTo, 60, disabledTimes, 'from');
                 const hasDisabledTimes = disabledTimes.length > 0;
 
                 return (
@@ -297,7 +318,7 @@ export default function CalendarAndTimePicker({
                             setSelectedTimeSlot({ 
                               ...selectedTimeSlot, 
                               from: newFrom, 
-                              to: "" // Reset to when from changes
+                              to: ""
                             });
                           }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -327,12 +348,13 @@ export default function CalendarAndTimePicker({
                           {selectedTimeSlot.from && (
                             (() => {
                               const fromMin = parseTimeToMinutes(selectedTimeSlot.from);
-                              const nextHourMin = fromMin + 60; // Start from next hour
+                              const nextHourMin = fromMin + 60; 
                               const toOptions = generateTimeOptions(
                                 formatTimeToHIS(nextHourMin),
                                 slotTo,
                                 60,
-                                disabledTimes
+                                disabledTimes,
+                                'to'
                               );
                               return toOptions.map(({ time, disabled }) => (
                                 <option 

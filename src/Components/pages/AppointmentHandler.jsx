@@ -110,6 +110,8 @@ export default function AppointmentHandler() {
 
   const appointment = appointmentData?.appointment;
 
+  
+
   return (
     <>
      <div className="max-w-4xl mx-auto px-6 py-8">

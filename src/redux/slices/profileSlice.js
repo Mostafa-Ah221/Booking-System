@@ -6,12 +6,16 @@ const dataProfileActions = createSlice({
     'name': 'dataProfile',
     initialState: {
         profile: null,
+        staffProfile:null,
         loading: false,
         error: null,
     },
     reducers: {
         setProfile(state, action) {
             state.profile = action.payload;
+        },
+        setStaffProfile(state, action) {
+            state.staffProfile = action.payload;
         },
         setLoading(state, action) {
             state.loading = action.payload;

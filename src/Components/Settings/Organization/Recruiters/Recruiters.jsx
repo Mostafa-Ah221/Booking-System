@@ -25,7 +25,7 @@ export const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, recruiterN
                     </div>
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900 text-center mb-2">
-                    Delete Recruiter
+                    Delete User
                 </h2>
                 <p className="text-gray-600 text-center mb-6">
                     Sure you want to delete {recruiterName}?
@@ -145,7 +145,7 @@ export default function Recruiters() {
         return (
             <div className="flex justify-between items-center mt-4 px-6 py-3 bg-white border-t">
                 <div className="text-sm text-gray-600">
-                    Showing {indexOfFirstRecruiter + 1} to {Math.min(indexOfLastRecruiter, filteredRecruiters.length)} of {filteredRecruiters.length} recruiters
+                    Showing {indexOfFirstRecruiter + 1} to {Math.min(indexOfLastRecruiter, filteredRecruiters.length)} of {filteredRecruiters.length} Users
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -200,7 +200,7 @@ export default function Recruiters() {
         <div className="container mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-bold text-gray-800">Recruiters</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">Users</h1>
                     <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">
                         {filteredRecruiters?.length || 0}
                     </span>
@@ -214,7 +214,7 @@ export default function Recruiters() {
                 <div className="relative">
                     <input
                         type="text"
-                        placeholder="Search recruiters..."
+                        placeholder="Search users..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full px-4 py-2 pr-10 pl-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -229,7 +229,7 @@ export default function Recruiters() {
                         onClick={handleOpen}
                     >
                         <span>+</span>
-                        New Recruiter
+                        New User
                     </button>
                 )}
             </div>
@@ -260,7 +260,7 @@ export default function Recruiters() {
                             {currentRecruiters.length === 0 ? (
                                 <tr>
                                     <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
-                                        {loading ? 'Loading recruiters...' : 'No data to display'}
+                                        {loading ? 'Loading users...' : 'No data to display'}
                                     </td>
                                 </tr>
                             ) : (

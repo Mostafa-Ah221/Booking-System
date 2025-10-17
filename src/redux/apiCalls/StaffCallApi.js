@@ -357,14 +357,20 @@ export function updateUnAvailabilStaff(id, formData) {
       const Token = localStorage.getItem("access_token");
       
       // Validate formData structure
-      if (!formData || (!formData.un_available_times && !formData.un_available_dates)) {
+      if (!formData) {
         throw new Error("Invalid availability data format");
       }
 
-      const requestBody = {
-        un_available_times: formData.un_available_times || [],
-        un_available_dates: formData.un_available_dates || []
-      };
+      // بناء الـ requestBody بناءً على الداتا الموجودة
+      const requestBody = {};
+      if (formData.un_available_times) {
+        requestBody.un_available_times = formData.un_available_times;
+      }
+      if (formData.un_available_dates) {
+        requestBody.un_available_dates = formData.un_available_dates;
+      }
+
+      console.log('Request body sent to API:', requestBody); 
 
       const response = await axios.post(
         `https://backend-booking.appointroll.com/api/staff/unavailability/update/${id}`,
@@ -415,7 +421,47 @@ export function updateUnAvailabilStaff(id, formData) {
     }
   };
 }
+export const updateShareLinkStaff = (newShareLink, id) => {
+  return async (dispatch, getState) => {
+    dispatch(staffAction.setLoading(true)); 
+    try {
+      const token = localStorage.getItem("access_token");
+      const url = `https://backend-booking.appointroll.com/api/staff/regenerate-share-link/${id}`;
 
+      // لو newShareLink هو null أو undefined، متبعتش share_link في الـ body
+      const requestBody = newShareLink ? { share_link: newShareLink } : {};
+
+      const response = await axios.post(
+        url,
+        requestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token,
+          },
+        }
+      );
+
+      if (response.data && response.data.data) {
+        
+        dispatch(staffAction.updateStaffShareLink({
+          id: id,
+          share_link: response.data.data
+        }));
+        
+        toast.success("Share link updated successfully");
+        return response.data.data;
+      }
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to update share link";
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      dispatch(staffAction.setLoading(false));
+    }
+  };
+};
 //  export function assignWorkSpToStaff(id, formData) {
 //     return async (dispatch) => {
 //       try {

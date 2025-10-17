@@ -246,8 +246,23 @@ const ForgetPassword = () => {
             </form>
 
             {/* Footer */}
-            <div className="mt-8 text-center text-sm text-gray-500">
-              <p>© 2024 BookingHub. All rights reserved.</p>
+            <div className="text-center mt-8">
+              <p className="text-gray-600 text-sm leading-relaxed">
+                <span className="font-medium text-gray-800">© 2025 Appointroll</span>
+                <span className="mx-2">•</span>
+                All Rights Reserved
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Powered by 
+                <a 
+                  href="http://egydesigner.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="ml-1 font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-300 hover:underline"
+                >
+                  EGYdesigner
+                </a>
+              </p>
             </div>
           </div>
         </div>

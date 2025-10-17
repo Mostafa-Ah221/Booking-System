@@ -55,6 +55,7 @@ const interviewsSlice = createSlice({
         state.error = null;
       }
     },
+    
     setError(state, action) {
       state.error = action.payload;
       state.loading = false;
@@ -85,6 +86,55 @@ const interviewsSlice = createSlice({
         state.interviews[interviewIndex].notifications = notifications;
       }
     },
+ updateInterviewShareLink(state, action) {
+  const { id, share_link } = action.payload;
+  
+  // حدث في interviews array
+  if (state.interviews) {
+    state.interviews = state.interviews.map(interview => 
+      interview.id === id 
+        ? { ...interview, share_link: share_link }
+        : interview
+    );
+  }
+  
+  // حدث في allInterviews 
+  if (state.allInterviews) {
+    state.allInterviews = state.allInterviews.map(interview => 
+      interview.id === id 
+        ? { ...interview, share_link: share_link }
+        : interview
+    );
+  }
+  
+  // حدث interview المفرد
+  if (state.interview?.id === id) {
+    state.interview = { ...state.interview, share_link: share_link };
+  }
+},
+    // ✅ Reducer جديد لإضافة interview
+    addInterviewToList(state, action) {
+      const newInterview = action.payload;
+      
+      // أضف للـ allInterviews
+      if (Array.isArray(state.allInterviews)) {
+        state.allInterviews.push(newInterview);
+      } else {
+        state.allInterviews = [newInterview];
+      }
+      
+      // أضف للـ interviews (لو متطابق مع الـ filters الحالية)
+      if (Array.isArray(state.interviews)) {
+        const matchesFilter = 
+          (!state.currentWorkspaceId || state.currentWorkspaceId === 0 || newInterview.work_space_id === state.currentWorkspaceId) &&
+          (!state.currentStaffId || newInterview.staff_id === state.currentStaffId);
+        
+        if (matchesFilter) {
+          state.interviews.push(newInterview);
+        }
+      }
+    }
+    
   }
 });
 

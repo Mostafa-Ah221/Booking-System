@@ -17,21 +17,21 @@ export default function Analytics() {
     const canViewStaff = usePermission("view staff");
     const canViewClients = usePermission("view clients");
 
-    const [activeTab, setActiveTab] = useState('appointments'); // قيمة افتراضية مؤقتة
+    const [activeTab, setActiveTab] = useState('appointments');
 
-    // useEffect لتحديث activeTab عند تحميل الصلاحيات
+  
     useEffect(() => {
-        // التأكد من أن الصلاحيات تحملت قبل التحديث
+     
         if (canViewAppointment !== undefined || canViewInterview !== undefined || 
             canViewStaff !== undefined || canViewClients !== undefined) {
             
-            // اختيار أول تبويب متاح
+         
             if (canViewAppointment) {
                 setActiveTab('appointments');
             } else if (canViewInterview) {
                 setActiveTab('interviews');
             } else if (canViewStaff) {
-                setActiveTab('recruiters');
+                setActiveTab('users');
             } else if (canViewClients) {
                 setActiveTab('customers');
             }
@@ -206,7 +206,7 @@ export default function Analytics() {
     } = useQuery({
         queryKey: ['analytics-recruiters', filters.recruiters],
         queryFn: fetchRecruiterAnalytics,
-        enabled: Boolean(canViewStaff), // تحويل إلى boolean صريح
+        enabled: Boolean(canViewStaff),
         refetchInterval: canViewStaff ? 5 * 60 * 1000 : false,
         staleTime: 2 * 60 * 1000,
         retry: 3,
@@ -234,14 +234,14 @@ export default function Analytics() {
         customers: clientsData
     };
 
-    // وظيفة للحصول على البيانات النشطة
+
     const getActiveData = () => {
         switch(activeTab) {
             case 'appointments':
                 return analyticsData.appointments;
             case 'interviews':
                 return analyticsData.interviews;
-            case 'recruiters':
+            case 'users':
                 return analyticsData.recruiters;
             case 'customers':
                 return analyticsData.customers;
@@ -297,7 +297,7 @@ export default function Analytics() {
     const tabs = [
         canViewAppointment && { id: 'appointments', label: 'Appointments', icon: <Calendar size={18} /> },
         canViewInterview && { id: 'interviews', label: 'Interviews', icon: <FileText size={18} />},
-        canViewStaff && { id: 'recruiters', label: 'Recruiters', icon: <Users size={18} /> },
+        canViewStaff && { id: 'users', label: 'Users', icon: <Users size={18} /> },
         canViewClients && { id: 'customers', label: 'customers', icon: <User size={18} /> }
     ].filter(Boolean);
 
@@ -447,13 +447,13 @@ export default function Analytics() {
                         onFiltersChange={(newFilters) => updateFilters('interviews', newFilters)}
                     />
                 );
-            case 'recruiters':
+            case 'users':
                 if (!canViewStaff) return null;
                 return (
                     <RecruitersContent 
                         data={activeData} 
                         filters={activeFilters}
-                        onFiltersChange={(newFilters) => updateFilters('recruiters', newFilters)}
+                        onFiltersChange={(newFilters) => updateFilters('users', newFilters)}
                     />
                 );
             case 'customers':

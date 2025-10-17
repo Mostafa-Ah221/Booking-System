@@ -70,7 +70,7 @@ export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
   }, []);
 
   return (
-    <div className="w-full flex items-center relative shadow-[0_6px_10px_-4px_rgba(0,0,0,0.1)]">
+    <div className="w-full flex items-center relative ">
       {/* Mobile Menu Button */}
       <div className="flex w-full items-center bg-white px-4 py-2 lg:hidden">
         <button 
@@ -83,12 +83,12 @@ export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
 
       <header className="w-full bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <div className="text-sm text-gray-500">
-          {/* Your trial ends in 15 days.
-          <a href="#" className="text-purple-600 ml-1 hover:underline">Upgrade now</a> */}
+         
         </div>
         
         <div className="flex items-center gap-4">
           {/* Add Button */}
+          
           <button 
             ref={buttonRef} 
             onClick={toggleMenu} 
@@ -108,7 +108,7 @@ export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
 
           {/* Settings Button */}
           <Link 
-            to='/setting' 
+            to='/layoutDashboard/setting' 
             className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
           >
             <Settings size={18} />

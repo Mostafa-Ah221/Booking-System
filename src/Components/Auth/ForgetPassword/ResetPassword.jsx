@@ -30,8 +30,8 @@ const ResetPassword = () => {
     
     if (!formData.code) {
       newErrors.code = "Verification code is required";
-    } else if (!/^\d+$/.test(formData.code)) {
-      newErrors.code = "Code must contain only numbers";
+    } else if (!/^\d{4}$/.test(formData.code)) {
+      newErrors.code = "Code must be exactly 4 digits";
     }
     
     if (!formData.password) {
@@ -244,7 +244,8 @@ const ResetPassword = () => {
                     name="code"
                     value={formData.code}
                     onChange={handleInputChange}
-                    placeholder="Enter verification code"
+                    placeholder="Enter 4-digit code"
+                    maxLength="4"
                     className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200 ${
                       errors.code 
                         ? 'border-red-300 bg-red-50' 
@@ -382,8 +383,23 @@ const ResetPassword = () => {
             </form>
 
             {/* Footer */}
-            <div className="mt-8 text-center text-sm text-gray-500">
-              <p>© 2024 BookingHub. All rights reserved.</p>
+           <div className="text-center mt-8">
+              <p className="text-gray-600 text-sm leading-relaxed">
+                <span className="font-medium text-gray-800">© 2025 Appointroll</span>
+                <span className="mx-2">•</span>
+                All Rights Reserved
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Powered by 
+                <a 
+                  href="http://egydesigner.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="ml-1 font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-300 hover:underline"
+                >
+                  EGYdesigner
+                </a>
+              </p>
             </div>
           </div>
         </div>

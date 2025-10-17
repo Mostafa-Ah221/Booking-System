@@ -81,6 +81,32 @@ const staffSlice = createSlice({
             state.staffs = state.staffs.filter(staff => staff.id !== staffId);
             state.filteredStaffs = state.filteredStaffs.filter(staff => staff.id !== staffId);
         },
+        updateStaffShareLink(state, action) {
+  const { id, share_link } = action.payload;
+  
+  // حدث في staffs array
+  if (state.staffs) {
+    state.staffs = state.staffs.map(staff => 
+      staff.id === id 
+        ? { ...staff, share_link: share_link }
+        : staff
+    );
+  }
+  
+  // حدث في filteredStaffs
+  if (state.filteredStaffs) {
+    state.filteredStaffs = state.filteredStaffs.map(staff => 
+      staff.id === id 
+        ? { ...staff, share_link: share_link }
+        : staff
+    );
+  }
+  
+  // حدث staff المفرد
+  if (state.staff?.id === id) {
+    state.staff = { ...state.staff, share_link: share_link };
+  }
+},
         
         setStaffsLoading(state, action) {
             state.staffsLoading = action.payload;

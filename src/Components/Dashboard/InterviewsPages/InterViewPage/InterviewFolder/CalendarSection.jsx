@@ -26,8 +26,8 @@ const CalendarSection = ({
   const { id } = useOutletContext();
   const dispatch = useDispatch();
 
-  // ✅ التعديل 1: دوال للتحقق من التواريخ المتاحة وغير المتاحة
-  // Helper function to check if a date is within workspace available dates
+
+
   const isDateInWorkspaceRange = (dateStr) => {
     if (!getWorkspaceData?.available_dates || getWorkspaceData.available_dates.length === 0) {
       return true; // If no restrictions, allow all dates
@@ -42,7 +42,7 @@ const CalendarSection = ({
     });
   };
 
-  // Helper function to check if a date is in workspace unavailable dates
+  
   const isDateInWorkspaceUnavailable = (dateStr) => {
     if (!getWorkspaceData?.un_available_dates || getWorkspaceData.un_available_dates.length === 0) {
       return false;
@@ -546,7 +546,7 @@ const CalendarSection = ({
                 'bg-blue-600 hover:bg-blue-700' : 
                 'bg-red-600 hover:bg-red-700'
               }`}
-               disabled={!rangeStart}
+              //  disabled={!rangeStart}
             >
               <Send size={16} className="mr-2" />
               <span className='text-sm'>Save</span>

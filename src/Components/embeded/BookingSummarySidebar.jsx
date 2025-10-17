@@ -15,7 +15,8 @@ const BookingSummarySidebar = ({
   formData,
   onFormChange,
   onScheduleAppointment,
-  isBooking
+  isBooking,
+   shareId 
 }) => {
   const [phoneValue, setPhoneValue] = useState(
     formData.code_phone && formData.phone 

@@ -178,7 +178,7 @@ const InterviewDetails = () => {
     const dataToSend = {
       name: formData.name,
       type: formData.type,
-      workspace_id: formData.workspace_id,
+      work_space_id: formData.workspace_id,
       duration_cycle: parseInt(formData.duration_cycle),
       duration_period: formData.duration_period,
       rest_cycle: formData.rest_cycle ? parseInt(formData.rest_cycle) : null,
@@ -186,9 +186,11 @@ const InterviewDetails = () => {
       mode: formData.mode,
       double_book: parseInt(formData.double_book),
       approve_appointment: parseInt(formData.approve_appointment),
-      max_clients: formData.max_clients ? parseInt(formData.max_clients) : null,
     };
 
+    if (formData.max_clients && formData.max_clients !== "") {
+    dataToSend.max_clients = parseInt(formData.max_clients);
+  }
     // Only include meeting_link if mode is online
     if (formData.mode === "online") {
       dataToSend.meeting_link = formData.meeting_link;
@@ -216,6 +218,8 @@ const InterviewDetails = () => {
     }
 
     try {
+      console.log(dataToSend);
+      
       const result = await dispatch(updateInterview(id, dataToSend));
 
       if (result?.success) {

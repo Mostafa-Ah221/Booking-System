@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Link, RefreshCw, Copy, Check } from 'lucide-react';
+import { X, RefreshCw} from 'lucide-react';
 
 const UpdateShareLinkModal = ({ isOpen, onClose, onUpdateLink, currentShareLink, loading = false }) => {
   const [shareLink, setShareLink] = useState('');
@@ -17,6 +17,7 @@ const UpdateShareLinkModal = ({ isOpen, onClose, onUpdateLink, currentShareLink,
     e.preventDefault();
     if (shareLink.trim()) {
       await onUpdateLink(shareLink.trim());
+      
       setShareLink('');
     }
   };
@@ -27,13 +28,7 @@ const UpdateShareLinkModal = ({ isOpen, onClose, onUpdateLink, currentShareLink,
     setShareLink(`${randomString}-${timestamp}`);
   };
 
-  const copyCurrentLink = () => {
-    if (currentShareLink) {
-      navigator.clipboard.writeText(currentShareLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+
 
   if (!isOpen) return null;
 

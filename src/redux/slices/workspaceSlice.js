@@ -3,8 +3,8 @@ import { createSlice } from "@reduxjs/toolkit";
 const workspaceSlice = createSlice({
   name: "workspaces",
   initialState: {
-    workspaces: null,        // للـ assigned workspaces (filtered)
-    allWorkspaces: null,     // للـ modal (all workspaces)
+    workspaces: null,
+    allWorkspaces: null,
     workspace: null,
     currentStaffId: null,
     loading: false,
@@ -29,6 +29,36 @@ const workspaceSlice = createSlice({
     setWorkspace(state, action) {
       state.workspace = action.payload;
     },
+    // ✅ Reducer جديد لتحديث workspace واحد
+    updateWorkspaceInList(state, action) {
+      const updatedWorkspace = action.payload;
+      
+      // تحديث في allWorkspaces
+      if (Array.isArray(state.allWorkspaces)) {
+        const index = state.allWorkspaces.findIndex(
+          ws => ws.id === updatedWorkspace.id
+        );
+        if (index !== -1) {
+          state.allWorkspaces[index] = {
+            ...state.allWorkspaces[index],
+            ...updatedWorkspace
+          };
+        }
+      }
+      
+      // تحديث في workspaces
+      if (Array.isArray(state.workspaces)) {
+        const index = state.workspaces.findIndex(
+          ws => ws.id === updatedWorkspace.id
+        );
+        if (index !== -1) {
+          state.workspaces[index] = {
+            ...state.workspaces[index],
+            ...updatedWorkspace
+          };
+        }
+      }
+    },
     setLoading(state, action) {
       state.loading = action.payload;
       if (action.payload) {
@@ -46,7 +76,27 @@ const workspaceSlice = createSlice({
     },
     clearAllWorkspaces(state) {
       state.allWorkspaces = null;
+    },
+    addWorkspaceToList(state, action) {
+    if (action.payload) {
+      if (Array.isArray(state.allWorkspaces)) {
+        state.allWorkspaces.push(action.payload);
+      }
+      if (Array.isArray(state.workspaces)) {
+        state.workspaces.push(action.payload);
+      }
     }
+  },
+  
+  removeWorkspaceFromList(state, action) {
+    const workspaceId = action.payload;
+    if (Array.isArray(state.allWorkspaces)) {
+      state.allWorkspaces = state.allWorkspaces.filter(ws => ws.id !== workspaceId);
+    }
+    if (Array.isArray(state.workspaces)) {
+      state.workspaces = state.workspaces.filter(ws => ws.id !== workspaceId);
+    }
+  },
   }
 });
 

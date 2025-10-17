@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X } from 'lucide-react';
-import { rescheduleAppointment, createAppointment, fetchAppointments } from '../../../redux/apiCalls/AppointmentCallApi';
+import {  createAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
 import DateTimeSelector from './DateTimeSelector';
 import Select from 'react-select';
 import moment from 'moment-timezone';
 import toast from "react-hot-toast";
-import { fetchInterviews } from '../../../redux/apiCalls/interviewCallApi';
 
 const RescheduleSidebar = ({ 
   isOpen, 
@@ -16,6 +15,10 @@ const RescheduleSidebar = ({
   currentFilters = {}, 
   onRescheduleSuccess,
   onScheduleSuccess,
+  fetchInterviews,
+  rescheduleAppointment,
+  fetchAppointments,
+  interviews = [],
   mode = 'reschedule'
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
@@ -26,14 +29,20 @@ const RescheduleSidebar = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [isInterviewsLoading, setIsInterviewsLoading] = useState(false);
+// console.log();
+
+
+
+
+
 
   const dispatch = useDispatch();
-  const { interviews = [] } = useSelector(state => state.interview);
 
   const timeZoneOptions = moment.tz.names().map((tz) => ({
     value: tz,
     label: tz,
   }));
+  
 
   const isRescheduleMode = mode === 'reschedule' && appointment;
   const isScheduleMode = mode === 'schedule' && clientData;
@@ -58,7 +67,7 @@ const RescheduleSidebar = ({
       setShowInterviewDropdown(false);
       setSelectedInterview(null);
 
-      if (interviews.length === 0 && !isInterviewsLoading) {
+      if (interviews?.length === 0 && !isInterviewsLoading) {
         setIsInterviewsLoading(true);
         dispatch(fetchInterviews(0)).finally(() => setIsInterviewsLoading(false));
       }
@@ -69,7 +78,7 @@ const RescheduleSidebar = ({
         });
         if (currentInterview) {
           setSelectedInterview(currentInterview);
-        } else if (interviews.length > 0) {
+        } else if (interviews?.length > 0) {
           setError('The related interview was not found for this appointment');
         } else {
           setError('Loading interviews...');
@@ -81,7 +90,11 @@ const RescheduleSidebar = ({
   }, [isOpen, appointment, interviews, mode, clientData, isRescheduleMode, isInterviewsLoading, dispatch]);
 
   const handleInterviewSelect = (interview) => {
+    
     setSelectedInterview(interview);
+   
+    
+    
     setSelectedDate(null);
     setSelectedTime(null);
     setShowInterviewDropdown(false);
@@ -102,7 +115,7 @@ const RescheduleSidebar = ({
     setError(null);
 
     const formattedDate = selectedDate.toLocaleDateString('en-CA');
-    const formattedTime = selectedTime?.slice(0, 5);
+    const formattedTime = selectedTime;
 
     try {
       let result;
@@ -113,6 +126,8 @@ const RescheduleSidebar = ({
           time: formattedTime,
           time_zone: selectedTimeZone,
         };
+        console.log(rescheduleData);
+        
         result = await dispatch(rescheduleAppointment(appointment.id, rescheduleData));
       } else if (isScheduleMode) {
         const scheduleData = {
@@ -171,7 +186,7 @@ const RescheduleSidebar = ({
         onClick={onClose}
       />
       
-      <div className="fixed right-0 top-0 h-full w-1/2 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
+      <div className="fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-lg font-semibold">{getTitle()}</h2>
           <button
@@ -235,7 +250,7 @@ const RescheduleSidebar = ({
 
                 {showInterviewDropdown && isScheduleMode && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                    {interviews.map((interview) => (
+                    {interviews?.map((interview) => (
                       <button
                         key={interview.id}
                         onClick={() => handleInterviewSelect(interview)}
@@ -280,6 +295,8 @@ const RescheduleSidebar = ({
                 selectedTime={selectedTime}
                 onDateSelect={setSelectedDate}
                 onTimeSelect={setSelectedTime}
+                appointment={appointment}
+                mode={mode}
               />
             )}
 

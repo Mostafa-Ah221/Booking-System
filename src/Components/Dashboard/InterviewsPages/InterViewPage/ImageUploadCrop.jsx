@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { IoIosCamera, IoMdClose } from "react-icons/io";
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -6,11 +6,18 @@ import toast from "react-hot-toast";
 
 const ImageUploadCrop = ({ isOpen, onClose, onImageUpdate, currentImage }) => {
   const [src, setSrc] = useState(null);
-  const [crop, setCrop] = useState();
+  const [crop, setCrop] = useState({
+    unit: 'px',
+    width: 200,
+    height: 200,
+    x: 0,
+    y: 0,
+    aspect: 1
+  });
   const [completedCrop, setCompletedCrop] = useState(null);
   const imgRef = useRef(null);
   const fileInputRef = useRef(null);
-  const cropContainerRef = useRef(null); // مرجع لحاوية ReactCrop
+  const cropContainerRef = useRef(null); 
   const [showColorPicker, setShowColorPicker] = useState(true);
 
   const colors = [
@@ -35,27 +42,31 @@ const ImageUploadCrop = ({ isOpen, onClose, onImageUpdate, currentImage }) => {
     }
   };
 
-  const onImageLoaded = (image) => {
-    imgRef.current = image;
+  const onImageLoad = (e) => {
+    const { width, height, naturalWidth, naturalHeight } = e.currentTarget;
+    imgRef.current = e.currentTarget;
 
-    // ✅ الحصول على عرض الحاوية
-    const containerWidth = cropContainerRef.current ? cropContainerRef.current.offsetWidth : 400; // القيمة الافتراضية 400 بكسل إذا لم تكن الحاوية متاحة
-    const cropWidth = (containerWidth * 2) / 3; // 2/3 من عرض الحاوية
+    const containerWidth = cropContainerRef.current ? cropContainerRef.current.offsetWidth : 400;
+    const displayedWidth = width;
+    const displayedHeight = height;
+    
+    const cropSize = Math.min((displayedWidth * 2) / 3, displayedWidth, displayedHeight);
 
-    // ✅ ضبط منطقة crop افتراضية بحجم 2/3 من عرض الحاوية
     const defaultCrop = {
       unit: 'px',
-      x: (image.width - cropWidth) / 2,
-      y: (image.height - cropWidth) / 2,
-      width: cropWidth,
-      height: cropWidth,
-      aspect: 1 // نسبة العرض إلى الارتفاع 1:1
+      width: cropSize,
+      height: cropSize,
+      x: (displayedWidth - cropSize) / 2,
+      y: (displayedHeight - cropSize) / 2,
+      aspect: 1
     };
 
     setCrop(defaultCrop);
     setCompletedCrop(defaultCrop);
+  };
 
-    return false;
+  const onCropChange = (newCrop) => {
+    setCrop(newCrop);
   };
 
   const onCropComplete = (crop) => {
@@ -75,6 +86,8 @@ const ImageUploadCrop = ({ isOpen, onClose, onImageUpdate, currentImage }) => {
     canvas.height = completedCrop.height;
 
     const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#FFFFFF'; 
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(
       image,
       completedCrop.x * scaleX,
@@ -129,7 +142,14 @@ const ImageUploadCrop = ({ isOpen, onClose, onImageUpdate, currentImage }) => {
 
   const handleClose = () => {
     setSrc(null);
-    setCrop();
+    setCrop({
+      unit: 'px',
+      width: 200,
+      height: 200,
+      x: 0,
+      y: 0,
+      aspect: 1
+    });
     setCompletedCrop(null);
     setShowColorPicker(true);
     onClose();
@@ -152,28 +172,27 @@ const ImageUploadCrop = ({ isOpen, onClose, onImageUpdate, currentImage }) => {
         {src ? (
           <>
             <div
-              ref={cropContainerRef} // مرجع لحاوية ReactCrop
+              ref={cropContainerRef}
               className="mb-4 flex justify-center"
               style={{ maxHeight: '60vh', maxWidth: '100%', overflow: 'auto' }}
             >
               <ReactCrop
-                src={src}
                 crop={crop}
-                onChange={(c) => setCrop(c)}
+                onChange={onCropChange}
                 onComplete={onCropComplete}
-                onImageLoaded={onImageLoaded}
+                aspect={1}
                 ruleOfThirds
-                keepSelection
               >
                 <img
                   ref={imgRef}
                   src={src}
                   alt="Crop preview"
+                  onLoad={onImageLoad}
                   style={{
-                    width: '100%', // 2/3 من عرض الحاوية
-                    maxHeight: '57vh', // تحديد أقصى ارتفاع للصورة
-                    objectFit: 'contain', // لضمان عرض الصورة بشكل متناسب
-                    margin: '0 auto' // لتوسيط الصورة
+                    width: '100%',
+                    maxHeight: '57vh',
+                    objectFit: 'contain',
+                    margin: '0 auto'
                   }}
                 />
               </ReactCrop>
@@ -183,7 +202,14 @@ const ImageUploadCrop = ({ isOpen, onClose, onImageUpdate, currentImage }) => {
               <button
                 onClick={() => {
                   setSrc(null);
-                  setCrop();
+                  setCrop({
+                    unit: 'px',
+                    width: 200,
+                    height: 200,
+                    x: 0,
+                    y: 0,
+                    aspect: 1
+                  });
                   setShowColorPicker(true);
                 }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"

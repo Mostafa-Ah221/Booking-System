@@ -6,11 +6,10 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProfileData, updateProfileData, updateShareLink } from '../../../redux/apiCalls/ProfileCallApi';
+import { fetchProfileData, updateProfileData, StaffFetchProfileData, StaffUpdateProfileData, updateShareLink } from '../../../redux/apiCalls/ProfileCallApi';
 import { IoIosCamera } from 'react-icons/io';
 import ImageUploadCrop from '../InterviewsPages/InterViewPage/ImageUploadCrop';
-import ShareModalProfile from './ShareModalPrpfile';
-import UpdateShareLinkModal from './UpdateShareLinkModal';
+import ShareBookingModal from './ShareModalPrpfile';
 
 
 const ProfilePage = () => {
@@ -23,10 +22,13 @@ const ProfilePage = () => {
   const [phoneValue, setPhoneValue] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [profileLoaded, setProfileLoaded] = useState(false);
-  
+  const userType = localStorage.getItem("userType");
+   
   const dispatch = useDispatch();
-  const { profile, loading = false } = useSelector(state => state.profileData);
-console.log(profile?.user.share_link);
+  const { profile, staffProfile, loading = false } = useSelector(state => state.profileData);
+
+  const currentProfile = userType === 'staff' ? staffProfile : profile;
+console.log(profile);
 
   const [profileData, setProfileData] = useState({
     name: '',
@@ -39,18 +41,22 @@ console.log(profile?.user.share_link);
     photo: null
   });
 
-  // تحسين useEffect لتجنب infinite loop
+
   useEffect(() => {
-    if (!profile && !loading && !profileLoaded) {
-      dispatch(fetchProfileData());
+    if (!currentProfile && !loading && !profileLoaded) {
+      if (userType === 'staff') {
+        dispatch(StaffFetchProfileData());
+      } else {
+        dispatch(fetchProfileData());
+      }
       setProfileLoaded(true);
     }
-  }, [dispatch, profile, loading, profileLoaded]);
+  }, [dispatch, currentProfile, loading, profileLoaded, userType]);
 
   // Update local state when profile data is loaded
   useEffect(() => {
-    if (profile?.user) {
-      const userData = profile.user;
+    if (currentProfile?.user) {
+      const userData = currentProfile.user;
       setProfileData({
         name: userData.name || '',
         email: userData.email || '',
@@ -70,15 +76,15 @@ console.log(profile?.user.share_link);
       // Set display image if exists
       setDisplayImage(userData.photo || null);
     }
-  }, [profile]);
+  }, [currentProfile]);
 
-  const handleInputChange = (field, value) => {
+  const   handleInputChange = (field, value) => {
     setProfileData(prev => ({
       ...prev,
       [field]: value
     }));
   };
-console.log(profile?.user?.status);
+  console.log(currentProfile?.user?.status);
 
   const handlePhoneChange = (value, country) => {
     setPhoneValue(value);
@@ -113,7 +119,6 @@ console.log(profile?.user?.status);
     setIsImageUploadOpen(false);
   };
 
-  // دالة لفتح نافذة ImageUploadCrop
   const handleImageClick = () => {
     if (isEditing) {
       setIsImageUploadOpen(true);
@@ -130,7 +135,11 @@ console.log(profile?.user?.status);
     });
 
     try {
-      await dispatch(updateProfileData(formData));
+      if (userType === 'staff') {
+        await dispatch(StaffUpdateProfileData(formData));
+      } else {
+        await dispatch(updateProfileData(formData));
+      }
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -139,8 +148,8 @@ console.log(profile?.user?.status);
 
   const handleCancel = () => {
     // Reset changes back to original profile data
-    if (profile?.user) {
-      const userData = profile.user;
+    if (currentProfile?.user) {
+      const userData = currentProfile.user;
       setProfileData({
         name: userData.name || '',
         email: userData.email || '',
@@ -166,13 +175,16 @@ console.log(profile?.user?.status);
     setIsEditing(false);
   };
 
-  // Handle update share link - إضافة إعادة تحميل البيانات
+  
   const handleUpdateShareLink = async (newShareLink) => {
     try {
       await dispatch(updateShareLink(newShareLink));
-      // إعادة تحميل البيانات بعد تحديث الـ share link
-      await dispatch(fetchProfileData());
-      setIsUpdateShareModalOpen(false);
+      if (userType === 'staff') {
+        await dispatch(StaffFetchProfileData());
+      } else {
+        await dispatch(fetchProfileData());
+      }
+      setIsShareModalOpen(false);
     } catch (error) {
       console.error('Error updating share link:', error);
     }
@@ -195,7 +207,7 @@ console.log(profile?.user?.status);
             src={displayImage} 
             alt="Profile"
             onError={(e) => {
-              setDisplayImage(null); // إزالة الصورة المكسورة وإظهار الأيقونة
+              setDisplayImage(null); 
             }}
           />
           {isEditing && (
@@ -208,7 +220,7 @@ console.log(profile?.user?.status);
       );
     }
 
-    // عرض الأيقونة عند عدم وجود صورة
+  
     return (
       <div className="flex flex-col items-center justify-center w-full h-full">
         {isEditing ? (
@@ -224,8 +236,8 @@ console.log(profile?.user?.status);
   };
 
   return (
-    <div className="min-h-screen flex justify-center">
-      <div className="w-full bg-white rounded-lg py-2 px-6">
+    <div className=" flex justify-center">
+      <div className="w-full bg-white rounded-lg h-full py-2 px-6">
         {/* Header */}
         <div className="border-b pb-4 mb-4">
           <div className="flex justify-between items-center gap-4">
@@ -235,7 +247,7 @@ console.log(profile?.user?.status);
           <div className="flex gap-6 mt-4 border-b justify-between">
             <div className='flex gap-6'>
 
-            {['Details', 'Availability'].map((tab) => (
+            {['Details'].map((tab) => (
               <button
                 key={tab}
                 className={`py-1  border-b-2 transition-colors text-sm sm:text-base ${
@@ -251,16 +263,9 @@ console.log(profile?.user?.status);
             </div>
             <div className='flex gap-2'>
 
+             
               <button 
-                  className="flex items-center gap-1 text-sm mb-2 px-2 lg:px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors" 
-                  title='Update Share Link'
-                  onClick={() => setIsUpdateShareModalOpen(true)}
-                >
-                  <Share2 className="w-3 h-3" />
-                   <span>Update Link</span> 
-                </button>
-              <button 
-                  className="flex items-center gap-1 text-sm mb-2  px-4 py-1 border rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-1 text-sm mb-2  px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
                   onClick={() => setIsShareModalOpen(true)}
                 title='Share Link'>
                   <Share2 className="w-3 h-3" />
@@ -285,12 +290,12 @@ console.log(profile?.user?.status);
                 
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-medium max-w-[250px] truncate tooltip whitespace-nowrap" title={profile?.user?.name}>
-                      {profile?.user?.name || 'Loading...'}
+                    <h2 className="text-lg font-medium max-w-[250px] truncate tooltip whitespace-nowrap" title={currentProfile?.user?.name}>
+                      {currentProfile?.user?.name || 'User Name'}
                     </h2>
                   </div>
-                  <p className="text-gray-600 text-sm max-w-[300px] truncate tooltip whitespace-nowrap" title={profile?.user?.email}>
-                    {profile?.user?.email || 'Loading...'}
+                  <p className="text-gray-600 text-sm max-w-[300px] truncate tooltip whitespace-nowrap" title={currentProfile?.user?.email}>
+                    {currentProfile?.user?.email || 'Loading...'}
                   </p>
                 </div>
               </div>
@@ -325,7 +330,7 @@ console.log(profile?.user?.status);
             </div>
 
             {/* Profile Form */}
-            <div className="space-y-8 max-h-96 overflow-y-auto pr-2">
+            <div className="space-y-8 max-h-96  pr-2 mb-9">
               {/* Basic Information Section */}
               <div className="bg-gray-50 p-6 rounded-lg">
                 <div className="flex items-center gap-2 mb-6">
@@ -350,7 +355,7 @@ console.log(profile?.user?.status);
                       />
                     ) : (
                       <div className="py-1 rounded-lg">
-                        <p className="text-gray-900">{profile?.user?.name || 'Not provided'}</p>
+                        <p className="text-gray-900">{currentProfile?.user?.name || 'Not provided'}</p>
                       </div>
                     )}
                   </div>
@@ -370,7 +375,7 @@ console.log(profile?.user?.status);
                       />
                     ) : (
                       <div className="py-1 rounded-lg">
-                        <p className="text-gray-900">{profile?.user?.email || 'Not provided'}</p>
+                        <p className="text-gray-900">{currentProfile?.user?.email || 'Not provided'}</p>
                       </div>
                     )}
                   </div>
@@ -406,8 +411,8 @@ console.log(profile?.user?.status);
                     ) : (
                       <div className="py-1 rounded-lg">
                         <p className="text-gray-900">
-                          {profile?.user?.phone_code && profile?.user?.phone 
-                            ? `${profile?.user.phone_code} ${profile?.user.phone}`
+                          {currentProfile?.user?.phone_code && currentProfile?.user?.phone 
+                            ? `${currentProfile?.user.phone_code} ${currentProfile?.user.phone}`
                             : 'Not provided'
                           }
                         </p>
@@ -418,15 +423,15 @@ console.log(profile?.user?.status);
                     <h2 className="block text-sm font-medium text-gray-500 mb-2">Status</h2>
                     <div
                       className={`py-1 rounded-lg w-fit ${
-                        profile?.user?.status == 1 ? "bg-green-100" : "bg-red-100"
+                        currentProfile?.user?.status == 1 ? "bg-green-100" : "bg-red-100"
                       }`}
                     >
                       <p
                         className={`px-2 py-1 ${
-                          profile?.user?.status == 1 ? "text-green-700" : "text-red-700"
+                          currentProfile?.user?.status == 1 ? "text-green-700" : "text-red-700"
                         }`}
                       >
-                        {profile?.user?.status == 1 ? "Active" : "Inactive"}
+                        {currentProfile?.user?.status == 1 ? "Active" : "Inactive"}
                       </p>
                     </div>
                   </div>
@@ -453,7 +458,7 @@ console.log(profile?.user?.status);
 
               {/* Security Section - Only show when editing */}
               {isEditing && (
-                <div className="bg-red-50 p-6 rounded-lg border border-red-100 mb-2">
+                <div className="bg-red-50 p-6 rounded-lg border border-red-100 mb-9">
                   <div className="flex items-center gap-2 mb-6">
                     <div className="w-1 h-6 bg-red-500 rounded-full"></div>
                     <h3 className="text-lg font-semibold text-gray-800">Security Settings</h3>
@@ -512,19 +517,13 @@ console.log(profile?.user?.status);
       </div>
 
       {/* Share Modal */}
-      <ShareModalProfile
-        isOpen={isShareModalOpen} 
-        onClose={() => setIsShareModalOpen(false)} 
-        shareLink={profile?.user?.share_link}
-        profile={profile}
-      />
-
-      {/* Update Share Link Modal */}
-      <UpdateShareLinkModal
-        isOpen={isUpdateShareModalOpen}
-        onClose={() => setIsUpdateShareModalOpen(false)}
+    
+      <ShareBookingModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        shareLink={userType === "staff" ? `Staff/${currentProfile?.user?.share_link}` : `Admin/${currentProfile?.user?.share_link}`}
+        profile={currentProfile?.user}
         onUpdateLink={handleUpdateShareLink}
-        currentShareLink={profile?.user?.share_link}
         loading={loading}
       />
     </div>

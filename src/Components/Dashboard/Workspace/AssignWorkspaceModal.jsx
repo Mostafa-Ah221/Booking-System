@@ -12,10 +12,8 @@ export default function AssignWorkspaceModal({ isOpen, onClose, workspaceId }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const { staffs,filteredStaffs, loading, error } = useSelector(state => state.staff);
-  
- 
-  
-  
+console.log(staffs);
+
   useEffect(() => {
     if (isOpen) {
       dispatch(getStaff());
@@ -30,23 +28,27 @@ export default function AssignWorkspaceModal({ isOpen, onClose, workspaceId }) {
 
    useEffect(() => {
     if (Array.isArray(filteredStaffs) && filteredStaffs.length > 0) {
-      const assignedStaffIds = filteredStaffs.map(staff => staff.id);
+     const assignedStaffIds = filteredStaffs
+      .filter(staff => staff.status !== "0") 
+      .map(staff => staff.id);
+
       setSelectedStaff(assignedStaffIds);
     }
   }, [filteredStaffs]);
-  const filteredStaff = Array.isArray(staffs) 
-    ? staffs.filter(staff => {
-        if (!staff || typeof staff.name !== 'string') {
-          return false;
-        }
-        
-        if (!searchQuery.trim()) {
-          return true;
-        }
-        
-        return staff.name.toLowerCase().includes(searchQuery.toLowerCase());
-      })
-    : [];
+ const filteredStaff = Array.isArray(staffs)
+  ? staffs.filter(staff => {
+      if (!staff || typeof staff.name !== 'string' || staff.status === "0") {
+        return false;
+      }
+
+      if (!searchQuery.trim()) {
+        return true;
+      }
+
+      return staff.name.toLowerCase().includes(searchQuery.toLowerCase());
+    })
+  : [];
+
 
   const handleSelectAll = () => {
     if (selectAll) {
@@ -87,13 +89,12 @@ export default function AssignWorkspaceModal({ isOpen, onClose, workspaceId }) {
       setSelectedStaff([]);
       setSelectAll(false);
       setSearchQuery("");
-      // ✅ إعادة تحميل الـ staff بعد الـ assignment
       dispatch(getStaff());
       onClose();
     }
   };
 
-  // ✅ إعادة تعيين الـ state لما الـ modal يتقفل
+ 
   useEffect(() => {
     if (!isOpen) {
       setSelectedStaff([]);
@@ -203,7 +204,11 @@ export default function AssignWorkspaceModal({ isOpen, onClose, workspaceId }) {
                         e.target.nextSibling.style.display = 'flex';
                       }}
                     />
-                  ) : null}
+                  ) :  (
+                          <div className="w-7 h-7 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-semibold uppercase">
+                            {staff?.name ? staff.name.charAt(0) : "?"}
+                          </div>
+                        )}
                   <div 
                     className={`w-7 h-7 rounded-full bg-blue-200 items-center justify-center text-blue-700 ${
                       staff?.photo ? 'hidden' : 'flex'

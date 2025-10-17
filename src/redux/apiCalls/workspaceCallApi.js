@@ -91,10 +91,10 @@ export function getAllWorkspaces({ force = false } = {}) {
 }
 
 // create a new workspace
- export function createWorkSpace(namespace) {
+export function createWorkSpace(namespace) {
   return async (dispatch) => {
     try {
-       const Token = localStorage.getItem("access_token");
+      const Token = localStorage.getItem("access_token");
       const response = await axios.post(
         `https://backend-booking.appointroll.com/api/workspace/store`,
         { name: namespace },
@@ -106,18 +106,27 @@ export function getAllWorkspaces({ force = false } = {}) {
         }
       );
       
-      if (response?.data?.message) {
-         await dispatch(getWorkspace(true));
+      if (response?.data?.status) {
+        // ✅ استخرج الـ workspace الصحيح من الـ response
+        const newWorkspace = response.data.data?.workspace || response.data.data;
+        
+        if (newWorkspace && newWorkspace.id) {
+          dispatch(workspaceAction.addWorkspaceToList(newWorkspace));
+        } else {
+          // لو الـ API مش راجع data كامل، اعمل fetch
+          await dispatch(getWorkspace({ force: true }));
+        }
+        
         toast.success(response?.data?.message, {
           position: 'top-center',         
           duration: 5000,
           icon: '✅',
           style: {
-          borderRadius: '8px',
-          background: '#333',
-          color: '#fff',
-          padding: '12px 16px',
-          fontWeight: '500',
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
           },
         });
        
@@ -125,6 +134,8 @@ export function getAllWorkspaces({ force = false } = {}) {
       } 
     } catch (error) {
       console.error("Error creating workspace:", error);
+      toast.error(error.response?.data?.message || "Failed to create workspace");
+      return { success: false };
     }
   };
 }
@@ -152,20 +163,26 @@ export function updataWorkspace(id, name) {
           duration: 5000,
           icon: '✅',
           style: {
-          borderRadius: '8px',
-          background: '#333',
-          color: '#fff',
-          padding: '12px 16px',
-          fontWeight: '500',
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
           },
         });
-        dispatch(getWorkspace(true));
+        
+     
+        if (response.data.data) {
+          dispatch(workspaceAction.updateWorkspaceInList(response.data.data));
+        } else {
+         
+          dispatch(getWorkspace({ force: true }));
+        }
+        
         return {
           success: true,
           message: response?.data.message
-          
         };
-        
       }
       
     } catch (error) {
@@ -382,39 +399,84 @@ export function updateUnAvailabilWorkspace(id, formData) {
     };
   }
 
-  export function deleteWorkspace (id){
-    return async (dispatch) => {
-      try {
-          const Token = localStorage.getItem("access_token");
-          const response= await axios.delete(`https://backend-booking.appointroll.com/api/workspace/delete/${id}`,
-            {
-            headers: {
-              "Content-Type": "application/json",
-              authorization: Token,
-            },
-          }
-          )
-           if (response.data.status) {
-            toast.success(response?.data?.message, {
-              position: 'top-center',         
-              duration: 5000,
-              icon: '✅',
-              style: {
-              borderRadius: '8px',
-              background: '#333',
-              color: '#fff',
-              padding: '12px 16px',
-              fontWeight: '500',
-              },
-            });
-            dispatch(getWorkspace(true));
-            return {
-              success: true,
-              message: response?.data.message
-            };
-          }
-      } catch (error) {
-          console.error("Error updating work space :", error);
+ export function deleteWorkspace(id) {
+  return async (dispatch) => {
+    try {
+      const Token = localStorage.getItem("access_token");
+      const response = await axios.delete(
+        `https://backend-booking.appointroll.com/api/workspace/delete/${id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            authorization: Token,
+          },
+        }
+      );
+      
+      if (response.data.status) {
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
+          },
+        });
+        
+        // ✅ امسح من القائمة مباشرة
+        dispatch(workspaceAction.removeWorkspaceFromList(id));
+        
+        return {
+          success: true,
+          message: response?.data.message
+        };
       }
+    } catch (error) {
+      console.error("Error deleting workspace:", error);
     }
-  }
+  };
+}
+
+export const updateShareLinkWorkspace = (newShareLink, id) => {
+  return async (dispatch, getState) => {
+    dispatch(workspaceAction.setLoading(true)); 
+    try {
+      const token = localStorage.getItem("access_token");
+      const url = `https://backend-booking.appointroll.com/api/workspace/regenerate-share-link/${id}`;
+
+      // لو newShareLink هو null أو undefined، متبعتش share_link في الـ body
+      const requestBody = newShareLink ? { share_link: newShareLink } : {};
+
+      const response = await axios.post(
+        url,
+        requestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token,
+          },
+        }
+      );
+
+      if (response.data) {
+        // ✅ حدث workspace المفرد
+        dispatch(workspaceAction.setWorkspace(response.data.data));
+        // ✅ حدث في القائمة
+        dispatch(workspaceAction.updateWorkspaceInList(response.data.data));
+
+        toast.success("Share link updated successfully");
+      }
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to update share link";
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      dispatch(workspaceAction.setLoading(false));
+    }
+  };
+};

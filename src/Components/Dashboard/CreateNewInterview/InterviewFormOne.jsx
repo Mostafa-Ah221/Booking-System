@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Camera, ChevronDown, X } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { createInterview, fetchInterviews } from '../../../redux/apiCalls/interviewCallApi';
-import { getWorkspace } from '../../../redux/apiCalls/workspaceCallApi';
+import { createInterview, fetchAllInterviews, fetchInterviews } from '../../../redux/apiCalls/interviewCallApi';
+import { getAllWorkspaces } from '../../../redux/apiCalls/workspaceCallApi';
 import ImageUploadCrop from '../InterviewsPages/InterViewPage/ImageUploadCrop';
 import Select from "react-select";
 import currencies from "world-currencies";
@@ -41,7 +41,8 @@ const InterviewFormOne = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const dispatch = useDispatch();
-  const { workspaces } = useSelector(state => state.workspace);
+  const { allWorkspaces } = useSelector(state => state.workspace);
+
 
   const currencyOptions = Object.keys(currencies).map(code => ({
     value: code,
@@ -49,51 +50,59 @@ const InterviewFormOne = () => {
   }));
 
   useEffect(() => {
-    dispatch(getWorkspace());
+    dispatch(getAllWorkspaces());
   }, [dispatch]);
 
-  const handleSubmit = () => {
-    if (!validateForm()) {
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    const dataToSend = {
-      ...formData,
-      photo: tempImage || formData.photo,
-      // Convert boolean to 0/1 for double_book and approve_appointment
-      double_book: formData.double_book ? 1 : 0,
-      approve_appointment: formData.approve_appointment ? 1 : 0,
-      // Convert numbers to correct type
-      work_space_id: formData.work_space_id ? parseInt(formData.work_space_id) : null,
-      duration_cycle: formData.duration_cycle ? parseInt(formData.duration_cycle) : null,
-      rest_cycle: formData.rest_cycle ? parseInt(formData.rest_cycle) : null,
-      price: formData.price ? parseFloat(formData.price) : null,
-      max_clients: formData.max_clients ? parseInt(formData.max_clients) : null,
-    };
-
-    // Remove unnecessary fields
-    if (dataToSend.mode !== 'online') {
-      delete dataToSend.meeting_link;
-    }
-    if (dataToSend.mode !== 'offline') {
-      delete dataToSend.offline_mode;
-      delete dataToSend.location;
-    }
-    if (dataToSend.offline_mode !== 'inhome') {
-      delete dataToSend.location;
-    }
-
-    console.log('Data to send:', dataToSend);
-    
-    dispatch(createInterview(dataToSend, navigate))
-      .then((result) => {
-        if (!result || !result.success) {
-          setIsLoading(false);
-        }
-      });
+const handleSubmit = async() => {
+  if (!validateForm()) {
+    return;
+  }
+  
+  setIsLoading(true);
+  
+  const dataToSend = {
+    ...formData,
+    photo: tempImage || formData.photo,
+    double_book: formData.double_book ? 1 : 0,
+    approve_appointment: formData.approve_appointment ? 1 : 0,
+    work_space_id: formData.work_space_id ? parseInt(formData.work_space_id) : null,
+    duration_cycle: formData.duration_cycle ? parseInt(formData.duration_cycle) : null,
+    rest_cycle: formData.rest_cycle ? parseInt(formData.rest_cycle) : null,
+    price: formData.price ? parseFloat(formData.price) : null,
+    max_clients: formData.max_clients ? parseInt(formData.max_clients) : null,
   };
+
+  // Remove unnecessary fields
+  if (dataToSend.mode !== 'online') {
+    delete dataToSend.meeting_link;
+  }
+  if (dataToSend.mode !== 'in-person') {
+    delete dataToSend.offline_mode;
+    delete dataToSend.location;
+  }
+  if (dataToSend.offline_mode !== 'inhouse ') {
+    delete dataToSend.location;
+  }
+
+  console.log('Data to send:', dataToSend);
+  
+  try {
+    const result = await dispatch(createInterview(dataToSend)); 
+    
+    console.log('Result:', result);
+    
+   if (result && result.success) {
+    dispatch(fetchAllInterviews());
+    navigate('/layoutDashboard/interviews');
+  } else {
+    
+    setIsLoading(false);
+  }
+  } catch (error) {
+    console.error('Submit error:', error);
+    setIsLoading(false);
+  }
+};
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -107,7 +116,7 @@ const InterviewFormOne = () => {
       ...prev,
       [name]: newValue,
       ...(name === 'mode' && newValue === 'online' ? { offline_mode: '', location: '' } : {}),
-      ...(name === 'offline_mode' && newValue !== 'inhome' ? { location: '' } : {})
+      ...(name === 'offline_mode' && newValue !== 'inhouse ' ? { location: '' } : {})
     }));
 
     if (errors[name]) {
@@ -164,9 +173,9 @@ const InterviewFormOne = () => {
     }
     
     // Mode validation
-    if (formData.mode === 'offline') {
-      if (!formData.offline_mode) newErrors.offline_mode = 'Offline mode is required';
-      if (formData.offline_mode === 'inhome' && !formData.location) {
+    if (formData.mode === 'in-person') {
+      if (!formData.offline_mode) newErrors.offline_mode = 'in-person mode is required';
+      if (formData.offline_mode === 'inhouse ' && !formData.location) {
         newErrors.location = 'Location is required for in-home interviews';
       }
     }
@@ -249,7 +258,7 @@ const InterviewFormOne = () => {
                 } ${!formData.work_space_id ? 'text-gray-800' : 'text-black'}`}
               >
                 <option value="" disabled>Select Work Space</option>
-                {workspaces?.workspaces.map((workspace) => (
+                {allWorkspaces?.map((workspace) => (
                   <option key={workspace.id} value={workspace.id}>
                     {workspace.name}
                   </option>
@@ -441,18 +450,19 @@ const InterviewFormOne = () => {
               >
                 <option value="" disabled>Select Mode</option>
                 <option value="online">Online</option>
-                <option value="offline">Offline</option>
+                <option value="in-person">In Persone</option>
+                <option value="phone">Phone</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             </div>
             {errors.mode && <p className="text-red-500 text-sm mt-1">{errors.mode}</p>}
           </div>
 
-          {/* Offline Mode or Meeting Link */}
-          {formData.mode === 'offline' ? (
+          {/* in-person Mode or Meeting Link */}
+          {formData.mode === 'in-person' ? (
             <div className="space-y-2 flex-1">
               <label className="block text-sm font-medium text-gray-700">
-                Offline Mode <span className="text-red-500">*</span>
+                in-person Mode <span className="text-red-500">*</span>
               </label>
               <div className="relative w-full">
                 <select
@@ -463,9 +473,9 @@ const InterviewFormOne = () => {
                     errors.offline_mode ? 'border-red-500' : ''
                   } ${!formData.offline_mode ? 'text-gray-400' : 'text-black'}`}
                 >
-                  <option value="" disabled>Select Offline Mode</option>
-                  <option value="inhome">In Home</option>
-                  <option value="homedelivery">Home delivery</option>
+                  <option value="" disabled>Select in-person Mode</option>
+                  <option value="inhouse">In House</option>
+                  <option value="athome">At Home</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               </div>
@@ -491,8 +501,8 @@ const InterviewFormOne = () => {
           ) : null}
         </div>
 
-        {/* Location - Only show if offline_mode is 'inhome' */}
-        {formData.offline_mode === 'inhome' && (
+        {/* Location - Only show if offline_mode is 'inhouse ' */}
+        {formData.offline_mode === 'inhouse ' && (
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
               Location <span className="text-red-500">*</span>

@@ -88,11 +88,11 @@ const ReadOnlyView = ({
   }, [activeSection]);
 
   const getCurrentAvailabilityMode = () => {
-    if (activeTab === 'unavailable-times' || activeTab === 'unavailable-dates') {
+    if (activeTab === 'unavailable-times' ) {
       return 'unavailable';
     }
     
-    if (activeTab === 'available-times' || activeTab === 'available-dates') {
+    if (activeTab === 'available-times' ) {
       return 'available';
     }
     
@@ -106,7 +106,7 @@ const ReadOnlyView = ({
         <div key={section.id} className="border rounded-lg">
           {section.id === 'working-hours' && activeSection === section.id && (
             <div className="border-b flex transition-all duration-300 ease-in-out opacity-100 max-h-16">
-              <button
+              {/* <button
                 onClick={() => handleTabChange('available-times')}
                 className={`px-4 py-2 text-sm transition-colors duration-200 ${
                   activeTab === 'available-times' && activeSection === section.id
@@ -115,8 +115,8 @@ const ReadOnlyView = ({
                 }`}
               >
                 Available Times
-              </button>
-              <button
+              </button> */}
+              {/* <button
                 onClick={() => handleTabChange('available-dates')}
                 className={`px-4 py-2 text-sm transition-colors duration-200 ${
                   activeTab === 'available-dates' && activeSection === section.id
@@ -125,10 +125,10 @@ const ReadOnlyView = ({
                 }`}
               >
                 Available Dates
-              </button>
+              </button> */}
             </div>
           )}
-          {section.id === 'unavailability' && activeSection === section.id && (
+          {/* {section.id === 'unavailability' && activeSection === section.id && (
             <div
               className="border-b flex transition-all duration-300 ease-in-out opacity-100 max-h-16"
             >
@@ -153,7 +153,7 @@ const ReadOnlyView = ({
                 Unavailable Dates
               </button>
             </div>
-          )}
+          )} */}
 
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-2">
@@ -177,7 +177,8 @@ const ReadOnlyView = ({
                   Edit
                 </button>
               ) : null
-            ) : section.id === 'unavailability' ? (
+            ) : 
+            section.id === 'unavailability' ? (
               <button
                 onClick={handleUnavailabilityAdd}
                 className="px-3 py-1 border border-red-600 text-red-600 rounded-md hover:bg-red-50 flex items-center text-sm transition-colors duration-200"
@@ -219,7 +220,7 @@ const ReadOnlyView = ({
                     isTimeSectionDisabled={isTimeSectionDisabled}
                   />
                 )}
-                {(activeTab === 'available-dates' || activeTab === 'unavailable-dates') && (
+                {/* {(activeTab === 'available-dates' || activeTab === 'unavailable-dates') && (
                   <CalendarSection
                     timeZone={timeZone}
                     currentMonth={currentMonth}
@@ -232,7 +233,7 @@ const ReadOnlyView = ({
                     availabilityMode={getCurrentAvailabilityMode()} 
                     onCancel={onCancel}
                   />
-                )}
+                )} */}
               </div>
             )}
           </div>

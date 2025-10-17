@@ -220,7 +220,7 @@ const InviteRecModal = ({ isOpen, onClose }) => {
                 <UserCheck className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold">Invite New Recruiter</h2>
+                <h2 className="text-2xl font-bold">Invite New Users</h2>
                 <p className="text-purple-100 text-sm">Add a new team member to your organization</p>
               </div>
             </div>
@@ -250,7 +250,7 @@ const InviteRecModal = ({ isOpen, onClose }) => {
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter recruiter's full name"
+                  placeholder="Enter User's full name"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 ${
@@ -270,7 +270,7 @@ const InviteRecModal = ({ isOpen, onClose }) => {
                 </label>
                 <input
                   type="email"
-                  placeholder="recruiter@company.com"
+                  placeholder="Users@company.com"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 ${

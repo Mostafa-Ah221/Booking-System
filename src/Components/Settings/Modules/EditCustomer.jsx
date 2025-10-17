@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, Calendar, Trash2, Edit2, User, Briefcase, Clock, Phone } from "lucide-react";
 import { useDispatch, useSelector } from 'react-redux';
-import { getCustomerById, updateCustomer } from "../../../redux/apiCalls/CustomerCallApi";
+import { getCustomerById, updateCustomer, deleteCustomer } from "../../../redux/apiCalls/CustomerCallApi";
 import { customerAction } from "../../../redux/slices/customersSlice";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -9,6 +9,51 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import {fetchAppointments} from '../../../redux/apiCalls/AppointmentCallApi';
 import RescheduleSidebar from "../../Dashboard/Appointments/RescheduleSidebar";
 import { usePermission } from "../../hooks/usePermission";
+import { fetchAllInterviews } from '../../../redux/apiCalls/interviewCallApi';
+
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, customerName }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <div className="flex justify-center mb-4">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+            <Trash2 className="w-8 h-8 text-red-600" />
+          </div>
+        </div>
+        <h2 className="text-xl font-semibold text-gray-900 text-center mb-2">
+          Delete Customer
+        </h2>
+        <p className="text-gray-600 text-center mb-6">
+          Sure you want to delete {customerName}?
+        </p>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={onConfirm}
+            className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition-colors font-medium"
+          >
+            Delete
+          </button>
+          <button
+            onClick={onClose}
+            className="bg-gray-200 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-300 transition-colors font-medium"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const EditCustomer = ({ customerId, onBack }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -21,25 +66,26 @@ const EditCustomer = ({ customerId, onBack }) => {
   });
   
   const [phoneValue, setPhoneValue] = useState("");
-  
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [clientData, setClientData] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const dispatch = useDispatch();
   const { customer, loading, error } = useSelector(state => state.customers);
   const { appointments } = useSelector((state) => state.appointments);
+  const { allInterviews } = useSelector(state => state.interview);
 
   useEffect(() => {
     if (customerId) {
       dispatch(fetchAppointments({ client_id: customerId }));
     }
   }, [customerId, dispatch]);
+
   useEffect(() => {
     if (customerId) {
       dispatch(getCustomerById(customerId));
     }
   }, [customerId, dispatch]);
-
 
   useEffect(() => {
     console.log('Customer data from Redux:', customer);
@@ -60,7 +106,6 @@ const EditCustomer = ({ customerId, onBack }) => {
   }, [customer]);
 
   const handleSave = () => {
-    
     dispatch(updateCustomer(customerId, editData));
     setIsEditing(false);
   };
@@ -89,13 +134,11 @@ const EditCustomer = ({ customerId, onBack }) => {
       [field]: value
     }));
 
-    // مسح أخطاء الحقل المحدد
     if (error?.[field]) {
       dispatch(customerAction.setError({ ...error, [field]: undefined }));
     }
   };
 
-  // دالة معالجة تغيير رقم الهاتف مطابقة لـ AddCustomerModal
   const handlePhoneChange = (value, country) => {
     setPhoneValue(value);
 
@@ -105,7 +148,6 @@ const EditCustomer = ({ customerId, onBack }) => {
       code_phone: `+${country.dialCode}`,
     }));
 
-    // التحقق حتى لو الرقم ناقص
     if (!value || value.length <= country.dialCode.length + 1) {
       dispatch(customerAction.setError({
         ...error,
@@ -128,11 +170,9 @@ const EditCustomer = ({ customerId, onBack }) => {
     }
   };
 
-  // Handle schedule appointment click - إضافة الدالة المطلوبة
   const handleScheduleClick = (customerData) => {
     console.log('Schedule clicked for:', customerData);
     
-    // تحضير بيانات العميل للسايدبار
     const clientInfo = {
       id: customerData?.client?.id || customerData?.id,
       name: customerData?.client?.name || customerData?.name || editData.name,
@@ -144,10 +184,24 @@ const EditCustomer = ({ customerId, onBack }) => {
     setIsScheduleOpen(true);
   };
 
-  // Handle schedule success - إضافة الدالة المطلوبة
   const handleScheduleSuccess = () => {
     console.log('Appointment scheduled successfully');
-    // alert('Appointment scheduled successfully!');
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    dispatch(deleteCustomer(customerId));
+    setShowDeleteModal(false);
+    if (onBack) {
+      onBack();
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
   };
 
   const handleBack = () => {
@@ -156,18 +210,10 @@ const EditCustomer = ({ customerId, onBack }) => {
     }
   };
 
-  const handleDelete = () => {
-    // Here you would dispatch a delete action
-    // dispatch(deleteCustomer(customerId));
-    // Then go back to customers list
-    if (onBack) {
-      onBack();
-    }
-  };
-const canEditClient = usePermission("edit clients");
-const canDeleteClient = usePermission("destroy clients");
-const canCreateClient = usePermission("create clients");
-  // Loading state
+  const canEditClient = usePermission("edit clients");
+  const canDeleteClient = usePermission("destroy clients");
+  const canCreateClient = usePermission("create clients");
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center">
@@ -176,7 +222,6 @@ const canCreateClient = usePermission("create clients");
     );
   }
 
-  // Error state
   if (error && typeof error === 'object' && error.message) {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center">
@@ -186,14 +231,13 @@ const canCreateClient = usePermission("create clients");
             onClick={handleBack}
             className="ml-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
           >
-            Back to Customers
+            Back to Clients
           </button>
         </div>
       </div>
     );
   }
 
-  // If no customer data
   if (!customer) {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center">
@@ -203,7 +247,7 @@ const canCreateClient = usePermission("create clients");
             onClick={handleBack}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            Back to Customers
+            Back to Clients
           </button>
         </div>
       </div>
@@ -211,7 +255,7 @@ const canCreateClient = usePermission("create clients");
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
@@ -230,7 +274,7 @@ const canCreateClient = usePermission("create clients");
             {canCreateClient && (
             <button 
               onClick={(e) => {
-                e.stopPropagation(); // Prevent card click when scheduling
+                e.stopPropagation();
                 handleScheduleClick(customer);
               }}
               className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2"
@@ -241,7 +285,7 @@ const canCreateClient = usePermission("create clients");
             )}
             {canDeleteClient && (
             <button 
-              onClick={handleDelete}
+              onClick={handleDeleteClick}
               className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
             >
               <Trash2 className="w-5 h-5" />
@@ -282,7 +326,6 @@ const canCreateClient = usePermission("create clients");
       {/* Content */}
       <div className="px-6 py-6">
         {activeTab === "customer" ? (
-          /* Profile Section */
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -333,7 +376,6 @@ const canCreateClient = usePermission("create clients");
               </div>
 
               {!isEditing ? (
-                /* View Mode */
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -357,7 +399,6 @@ const canCreateClient = usePermission("create clients");
                   </div>
                 </div>
               ) : (
-                /* Edit Mode */
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -394,7 +435,7 @@ const canCreateClient = usePermission("create clients");
                       </label>
                       <PhoneInput
                         country="eg"
-                        value={phoneValue} // عرض الرقم الكامل فقط
+                        value={phoneValue}
                         onChange={handlePhoneChange}
                         enableSearch={true}
                         searchPlaceholder="Search country"
@@ -418,110 +459,108 @@ const canCreateClient = usePermission("create clients");
             </div>
           </div>
         ) : (
-          /* Appointment History Tab */
-           <div className="p-6">
-          {appointments.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No appointments found</p>
-              <p className="text-gray-400 text-sm mt-1">Appointments will appear here when added</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-4 py-4 font-semibold text-gray-700 text-sm">
-                      <div className="flex items-center gap-2">
-                        #
-                      </div>
-                    </th>
-                    <th className="text-left px-4 py-4 font-semibold text-gray-700 text-sm">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4" />
-                        Name
-                      </div>
-                    </th>
-                    <th className="text-left px-4 py-4 font-semibold text-gray-700 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        Phone
-                      </div>
-                    </th>
-                    <th className="text-left px-4 py-4 font-semibold text-gray-700 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="w-4 h-4" />
-                        Interview Type
-                      </div>
-                    </th>
-                    <th className="text-left px-4 py-4 font-semibold text-gray-700 text-sm">
-                      Status
-                    </th>
-                    <th className="text-left px-4 py-4 font-semibold text-gray-700 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        Date
-                      </div>
-                    </th>
-                    <th className="text-left px-4 py-4 font-semibold text-gray-700 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        Time
-                      </div>
-                    </th>
-                    <th className="text-left px-4 py-4 font-semibold text-gray-700 text-sm">
-                      Work Space
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {appointments.map((appt, index) => (
-                    <tr 
-                      key={appt.id} 
-                      className="hover:bg-gray-50 transition-colors duration-200"
-                    >
-                      <td className="px-4 py-4 text-sm text-gray-600 font-medium">
-                        <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold">
-                          {index + 1}
+          <div className="p-6">
+            {appointments.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No appointments found</p>
+                <p className="text-gray-400 text-sm mt-1">Appointments will appear here when added</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-md">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100 border-b-2 border-gray-300">
+                      <th className="px-6 py-4 font-semibold text-sm text-left w-12 text-gray-700">
+                        <div className="flex items-center gap-2">#</div>
+                      </th>
+                      <th className="px-6 py-4 font-semibold text-sm text-left flex-1 min-w-[150px] text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4" />
+                          Name
                         </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="font-medium text-gray-900">{appt.name}</div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-gray-600 font-mono text-sm bg-gray-100 px-2 py-1 rounded inline-block">
-                          {appt.phone}
+                      </th>
+                      <th className="px-6 py-4 font-semibold text-sm text-left flex-1 min-w-[130px] text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4" />
+                          Phone
                         </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-sm font-medium inline-block">
-                          {appt.interview_name}
+                      </th>
+                      <th className="px-6 py-4 font-semibold text-sm text-left flex-1 min-w-[140px] text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-4 h-4" />
+                          Interview
                         </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div>
-                          
-                          {appt.status}
+                      </th>
+                      <th className="px-6 py-4 font-semibold text-sm text-left flex-1 min-w-[110px] text-gray-700">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 font-semibold text-sm text-left flex-1 min-w-[120px] text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Date
                         </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-gray-700 font-medium">{appt.date}</div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="text-gray-700 font-medium">{appt.time}</div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="bg-purple-50 text-purple-700 px-3 py-1 rounded-lg text-sm font-medium">
-                          {appt.work_space_name}
+                      </th>
+                      <th className="px-6 py-4 font-semibold text-sm text-left flex-1 min-w-[100px] text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          Time
                         </div>
-                      </td>
+                      </th>
+                      <th className="px-6 py-4 font-semibold text-sm text-left flex-1 min-w-[140px] text-gray-700">
+                        Work Space
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {appointments.map((appt, index) => (
+                      <tr 
+                        key={appt.id} 
+                        className="hover:bg-blue-50 transition-colors duration-200 border-b border-gray-200"
+                      >
+                        <td className="px-6 py-4 text-sm">
+                          <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-xs">
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          {appt.name}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <div className="text-gray-700 font-mono bg-gray-100 px-2 py-1 rounded inline-block">
+                            {appt.phone}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <div className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-medium inline-block">
+                            {appt.interview_name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <div className="inline-block">
+                            <span className="px-3 py-1.5 rounded-lg font-medium text-sm bg-green-100 text-green-700">
+                              {appt.status}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                          {appt.date}
+                        </td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                          {appt.time}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          <div className="bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg font-medium inline-block">
+                            {appt.work_space_name}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
       </div>
       
@@ -534,7 +573,17 @@ const canCreateClient = usePermission("create clients");
           setIsScheduleOpen(false);
           setClientData(null);
         }}
+        fetchInterviews={fetchAllInterviews}
         onScheduleSuccess={handleScheduleSuccess}
+        interviews={allInterviews}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        customerName={editData.name || 'this customer'}
       />
     </div>
   );

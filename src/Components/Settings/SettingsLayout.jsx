@@ -106,15 +106,15 @@ export default function SettingsLayout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div>
+        {/* <div>
           <NavDashbord 
             toggleSidebar={toggleSidebar} 
             isMobile={isCompactDisplay} 
             sidebarOpen={sidebarOpen}
           />
-        </div>
+        </div> */}
 
-        <div className="p-3 sm:p-4 lg:p-8 flex-1 overflow-auto bg-white rounded-lg shadow-md m-2 sm:mx-4 lg:mx-6 sm:my-3 lg:my-4">
+        <div className="p-3 sm:p-4 lg:p-8 flex-1 bg-white rounded-lg shadow-md m-2 sm:mx-4 lg:mx-6 sm:my-3 lg:my-4">
           <Outlet />
         </div>
       </div>

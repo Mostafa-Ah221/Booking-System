@@ -5,9 +5,10 @@ export const usePermission = (tagDescription) => {
   const permissions = useSelector((state) => state.permissions.permissions);
   const loading = useSelector((state) => state.permissions.loading);
   
-  // لو لسه بيحمل، ارجع null عشان نعرف إننا لسه مستنيين
+ 
+
   if (loading) {
-    return null;
+    return false;
   }
   
   return permissions.some((p) => p.tag_description === tagDescription);

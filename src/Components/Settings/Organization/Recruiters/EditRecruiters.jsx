@@ -238,7 +238,7 @@ export default function EditRecruiters({ isOpen, onCancel, recruiterId }) {
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-900">
-                        Edit Recruiter
+                        Edit User
                         {loading && <span className="text-sm text-blue-500 ml-2">(Loading...)</span>}
                     </h2>
                     <button

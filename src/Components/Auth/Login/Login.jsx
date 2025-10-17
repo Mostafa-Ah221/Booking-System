@@ -12,14 +12,13 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [userType, setUserType] = useState('customer');
   const navigate = useNavigate();
   const location = useLocation();
- const dispatch = useDispatch();
+  const dispatch = useDispatch();
 
   const access_token = location.state?.access_token || '';
-//  useEffect(() => {
-//     dispatch(getPermissions()); 
-//   }, [dispatch]);
+
   const validationSchema = Yup.object().shape({
     identify: Yup.string()
       .email("Invalid email address")
@@ -29,7 +28,6 @@ const Login = () => {
   });
 
   const handleLogin = async (values) => {
-    // const dispatch = useDispatc();
     setIsLoading(true);
     setApiError(null);
 
@@ -41,8 +39,12 @@ const Login = () => {
         formData.append("token", access_token);
       }
 
+      const apiEndpoint = userType === 'customer' 
+        ? "https://backend-booking.appointroll.com/api/login"
+        : "https://backend-booking.appointroll.com/api/staff/login";
+
       const response = await axios.post(
-        "https://backend-booking.appointroll.com/api/login",
+        apiEndpoint,
         formData,
         {
           headers: {
@@ -51,30 +53,52 @@ const Login = () => {
         }
       );
 
-      console.log("Full API Response:", response.data);
 
-      const accessToken = response?.data?.data?.user?.original?.access_token;
+     const accessToken = response?.data?.data?.user?.original?.access_token;
       if(accessToken){
         localStorage.setItem("access_token", accessToken);
-         dispatch(authActions.setToken(accessToken));
-        await dispatch(getPermissions());
+        dispatch(authActions.setToken(accessToken));
+        
+        // Only get permissions for customer
+        if(userType === 'customer') {
+          await dispatch(getPermissions());
+        }
       }
 
-      navigate("/layoutDashboard")
+      localStorage.setItem("userType", userType);
 
+      if(userType === 'customer') {
+        navigate("/layoutDashboard");
+      } else {
+        navigate("/staff_dashboard_layout");
+      }
     } catch (error) {
       console.error("Login Error:", error);
 
       let errorMessage = "Login failed. Please try again.";
 
       if (error.response) {
-        if (error.response.data.errors) {ز
-          const firstError = Object.values(error.response.data.errors)[0]?.[0];
-          errorMessage = firstError || errorMessage;
-        } else {
-          errorMessage = error.response.data.message || errorMessage;
+        const status = error.response.status;
+        const message = error.response.data.message;
+        
+        // Check if account is not verified
+        if (message === "not verified" && status === 401) {
+          navigate("/verify", {
+            state: {
+              email: values.identify
+            }
+          });
+          return; 
         }
-      }
+  
+  // Handle other errors
+  if (error.response.data.errors) {
+    const firstError = Object.values(error.response.data.errors)[0]?.[0];
+    errorMessage = firstError || errorMessage;
+  } else {
+    errorMessage = message || errorMessage;
+  }
+}
 
       setApiError(errorMessage);
     } finally {
@@ -154,12 +178,59 @@ const Login = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-gray-800">BookingHub</h2>
+              <h2 className="text-2xl font-bold text-gray-800">Appoint Roll</h2>
+            </div>
+
+            {/* User Type Toggle */}
+            <div className="mb-8">
+              <div className="relative inline-flex items-center justify-center w-full bg-gray-100 rounded-2xl p-1.5">
+                <div 
+                  className={`absolute h-[calc(100%-12px)] bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl transition-all duration-300 ease-in-out shadow-lg ${
+                    userType === 'customer' ? 'left-1.5 w-[calc(50%-6px)]' : 'left-[calc(50%+1.5px)] w-[calc(50%-6px)]'
+                  }`}
+                ></div>
+                
+                <button
+                  type="button"
+                  onClick={() => setUserType('customer')}
+                  className={`relative z-10 flex-1 py-3 px-6 text-sm font-semibold rounded-xl transition-all duration-300 ${
+                    userType === 'customer' 
+                      ? 'text-white' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>Customer</span>
+                  </div>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setUserType('staff')}
+                  className={`relative z-10 flex-1 py-3 px-6 text-sm font-semibold rounded-xl transition-all duration-300 ${
+                    userType === 'staff' 
+                      ? 'text-white' 
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>Staff</span>
+                  </div>
+                </button>
+              </div>
             </div>
 
             {/* Header */}
             <div className="text-center lg:text-left mb-8">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Sign In</h2>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                Sign In as {userType === 'customer' ? 'Customer' : 'Staff'}
+              </h2>
               <p className="text-gray-600">Access your dashboard and manage your bookings</p>
             </div>
 
@@ -280,7 +351,7 @@ const Login = () => {
               </button>
 
               {/* Forgot Password */}
-              <div className="text-center">
+               <div className="text-center">
                 <button
                   type="button"
                   onClick={() => navigate("/forget-password")}
@@ -289,7 +360,7 @@ const Login = () => {
                   Forgot your password?
                 </button>
               </div>
-
+              
               {/* Sign Up Link */}
               <div className="text-center pt-4 border-t border-gray-200">
                 <p className="text-gray-600 mb-3">
@@ -310,8 +381,23 @@ const Login = () => {
             </form>
 
             {/* Footer */}
-            <div className="mt-8 text-center text-sm text-gray-500">
-              <p>© 2024 BookingHub. All rights reserved.</p>
+             <div className="text-center  mt-8">
+              <p className="text-gray-600 text-sm leading-relaxed">
+                <span className="font-medium text-gray-800">© 2025 Appointroll</span>
+                <span className="mx-2">•</span>
+                All Rights Reserved
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Powered by 
+                <a 
+                  href="http://egydesigner.com/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="ml-1 font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-300 hover:underline"
+                >
+                  EGYdesigner
+                </a>
+              </p>
             </div>
           </div>
         </div>

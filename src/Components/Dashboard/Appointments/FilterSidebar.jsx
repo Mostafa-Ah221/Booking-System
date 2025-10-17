@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X, ChevronDown, Search } from 'lucide-react';
-import { getCustomers} from "../../../redux/apiCalls/CustomerCallApi";
 
-const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
+
+const FilterSidebar = ({ 
+  isOpen, 
+  onClose, 
+  onApply, 
+  currentFilters,
+  getCustomers, // Optional now
+  workspaces,
+  interviews,
+  customers 
+}) => {
   const [selectedInterviews, setSelectedInterviews] = useState([]);
   const [selectedWorkspaces, setSelectedWorkspaces] = useState([]);
   const [selectedClients, setSelectedClients] = useState([]);
@@ -12,7 +21,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
   const [workspaceSearchKeyword, setWorkspaceSearchKeyword] = useState('');
   const [clientSearchKeyword, setClientSearchKeyword] = useState('');
   
-  // State for collapsible sections
   const [openSections, setOpenSections] = useState({
     interviews: false,
     workspaces: false,
@@ -21,18 +29,13 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
   });
 
   const dispatch = useDispatch();
-  
-  // استخدام البيانات من Redux state بدلاً من appointments
-  const { interviews = [] } = useSelector(state => state.interview || {});
-  const { workspaces = [] } = useSelector(state => state.workspace || {});
-  const { customers = [] } = useSelector(state => state.customers || {});
-// console.log(workspaces);
-// console.log(customers);
 
-  // Fetch customers data
+  // Fetch customers data only if getCustomers function is provided
   useEffect(() => {
-    dispatch(getCustomers());
-  }, [dispatch]);
+    if (getCustomers && typeof getCustomers === 'function') {
+      dispatch(getCustomers());
+    }
+  }, [dispatch, getCustomers]);
 
   const formattedInterviews = Array.isArray(interviews) ? interviews.map(interview => ({
     id: interview.id,
@@ -52,7 +55,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
     initial: (client.name || client.title || 'UC').substring(0, 1).toUpperCase()
   })) : [];
 
-  // Appointment statuses
   const appointmentStatuses = [
     { id: 'upcoming', name: 'Upcoming', color: 'bg-green-500' },
     { id: 'rescheduled', name: 'Rescheduled', color: 'bg-yellow-500' },
@@ -62,7 +64,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
     { id: 'cancelled', name: 'Cancelled', color: 'bg-red-500' }
   ];
 
-  // Initialize filters from props
   useEffect(() => {
     if (currentFilters) {
       setSelectedInterviews(currentFilters.interviews || []);
@@ -72,15 +73,14 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
     }
   }, [currentFilters]);
 
-  // Filter interviews based on search
   const filteredInterviews = formattedInterviews.filter(interview =>
     interview.name.toLowerCase().includes(searchKeyword.toLowerCase())
   );
 
-  // Filter workspaces based on search
   const filteredWorkspaces = formattedWorkspaces.filter(workspace =>
     workspace.name.toLowerCase().includes(workspaceSearchKeyword.toLowerCase())
   );
+  
   const filteredClients = formattedClients.filter(client =>
     client.name.toLowerCase().includes(clientSearchKeyword.toLowerCase())
   );
@@ -128,7 +128,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
   };
 
   const handleCancel = () => {
-    // Reset to current filters or empty
     setSelectedInterviews(currentFilters?.interviews || []);
     setSelectedWorkspaces(currentFilters?.workspaces || []);
     setSelectedClients(currentFilters?.clients || []);
@@ -139,7 +138,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
     onClose();
   };
 
-  // Clear all filters
   const handleClearAll = () => {
     setSelectedInterviews([]);
     setSelectedWorkspaces([]);
@@ -152,17 +150,17 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
 
   if (!isOpen) return null;
 
+  // Check if clients section should be shown
+  const showClientsSection = getCustomers && formattedClients.length >= 0;
+
   return (
     <>
-      {/* Overlay */}
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 z-40"
         onClick={onClose}
       />
       
-      {/* Sidebar */}
       <div className="fixed right-0 top-0 h-[87vh] w-96 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800">Advanced Filters</h2>
           <div className="flex items-center gap-2">
@@ -181,7 +179,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex flex-col h-full">
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             
@@ -210,7 +207,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
                 
                 {openSections.interviews && (
                   <>
-                    {/* Search */}
                     <div className="p-3 border-t border-gray-200">
                       <div className="relative">
                         <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -224,7 +220,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
                       </div>
                     </div>
 
-                    {/* Interview List */}
                     <div className="max-h-48 overflow-y-auto border-t border-gray-200">
                       {filteredInterviews.length > 0 ? (
                         filteredInterviews.map(interview => (
@@ -282,7 +277,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
                 
                 {openSections.workspaces && (
                   <>
-                    {/* Search */}
                     <div className="p-3 border-t border-gray-200">
                       <div className="relative">
                         <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -296,7 +290,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
                       </div>
                     </div>
 
-                    {/* Workspace List */}
                     <div className="max-h-48 overflow-y-auto border-t border-gray-200">
                       {filteredWorkspaces.length > 0 ? (
                         filteredWorkspaces.map(workspace => (
@@ -329,77 +322,77 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
               </div>
             </div>
 
-            {/* Clients Section */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Clients ({formattedClients.length})
-              </label>
-              <div className="border border-gray-300 rounded-lg">
-                <div 
-                  className="p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => toggleSection('clients')}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      {selectedClients.length} client{selectedClients.length !== 1 ? 's' : ''} selected
-                    </span>
-                    <ChevronDown 
-                      size={16} 
-                      className={`text-gray-500 transition-transform duration-200 ${
-                        openSections.clients ? 'rotate-180' : ''
-                      }`} 
-                    />
+            {/* Clients Section - Only show if getCustomers is provided */}
+            {showClientsSection && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Clients ({formattedClients.length})
+                </label>
+                <div className="border border-gray-300 rounded-lg">
+                  <div 
+                    className="p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => toggleSection('clients')}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">
+                        {selectedClients.length} client{selectedClients.length !== 1 ? 's' : ''} selected
+                      </span>
+                      <ChevronDown 
+                        size={16} 
+                        className={`text-gray-500 transition-transform duration-200 ${
+                          openSections.clients ? 'rotate-180' : ''
+                        }`} 
+                      />
+                    </div>
                   </div>
-                </div>
-                
-                {openSections.clients && (
-                  <>
-                    {/* Search */}
-                    <div className="p-3 border-t border-gray-200">
-                      <div className="relative">
-                        <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search clients"
-                          value={clientSearchKeyword}
-                          onChange={(e) => setClientSearchKeyword(e.target.value)}
-                          className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Client List */}
-                    <div className="max-h-48 overflow-y-auto border-t border-gray-200">
-                      {filteredClients.length > 0 ? (
-                        filteredClients.map(client => (
-                          <div key={client.id} className="flex items-center p-3 hover:bg-gray-50">
-                            <input
-                              type="checkbox"
-                              id={`client-${client.id}`}
-                              checked={selectedClients.includes(client.id)}
-                              onChange={() => handleClientToggle(client.id)}
-                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <div className="flex items-center ml-3">
-                              <div className="w-6 h-6 bg-green-500 rounded text-white text-xs flex items-center justify-center font-medium mr-2">
-                                {client.initial}
-                              </div>
-                              <label htmlFor={`client-${client.id}`} className="text-sm text-gray-700 cursor-pointer">
-                                {client.name}
-                              </label>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-3 text-sm text-gray-500 text-center">
-                          {formattedClients.length === 0 ? 'No clients available' : 'No clients found'}
+                  
+                  {openSections.clients && (
+                    <>
+                      <div className="p-3 border-t border-gray-200">
+                        <div className="relative">
+                          <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Search clients"
+                            value={clientSearchKeyword}
+                            onChange={(e) => setClientSearchKeyword(e.target.value)}
+                            className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
                         </div>
-                      )}
-                    </div>
-                  </>
-                )}
+                      </div>
+
+                      <div className="max-h-48 overflow-y-auto border-t border-gray-200">
+                        {filteredClients.length > 0 ? (
+                          filteredClients.map(client => (
+                            <div key={client.id} className="flex items-center p-3 hover:bg-gray-50">
+                              <input
+                                type="checkbox"
+                                id={`client-${client.id}`}
+                                checked={selectedClients.includes(client.id)}
+                                onChange={() => handleClientToggle(client.id)}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <div className="flex items-center ml-3">
+                                <div className="w-6 h-6 bg-green-500 rounded text-white text-xs flex items-center justify-center font-medium mr-2">
+                                  {client.initial}
+                                </div>
+                                <label htmlFor={`client-${client.id}`} className="text-sm text-gray-700 cursor-pointer">
+                                  {client.name}
+                                </label>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-sm text-gray-500 text-center">
+                            {formattedClients.length === 0 ? 'No clients available' : 'No clients found'}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Appointment Status Section */}
             <div>
@@ -426,7 +419,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
                 </div>
                 {openSections.appointmentStatus && (
                   <div className="p-3 border-t border-gray-200">
-                    {/* Add "All" option */}
                     <div className="flex items-center mb-2">
                       <div className="w-3 h-3 bg-gray-400 rounded-full mr-3"></div>
                       <label className="text-sm text-gray-700 cursor-pointer flex-1">
@@ -463,7 +455,6 @@ const FilterSidebar = ({ isOpen, onClose, onApply, currentFilters }) => {
             </div>
           </div>
 
-          {/* Footer Buttons */}
           <div className="p-6 border-t border-gray-200 bg-gray-50">
             <div className="flex gap-3">
               <button

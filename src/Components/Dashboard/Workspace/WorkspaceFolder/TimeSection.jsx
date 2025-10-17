@@ -124,6 +124,8 @@ const TimeSection = ({
       }
     } catch (error) {
       toast.error(`Error saving times: ${error.message || 'An unexpected error occurred'}`);
+      console.log();
+      
     }
   };
 

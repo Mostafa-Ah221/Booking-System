@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import ReadOnlyView from './ReadOnlyView';
 import { getStaffById, updateAvailabilStaff, updateUnAvailabilStaff} from '../../../../../redux/apiCalls/StaffCallApi';
 import { useParams } from 'react-router-dom';
+import { staffAction } from '../../../../../redux/slices/staffSlice';
 
 const StaffAvailability = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -97,31 +98,34 @@ const StaffAvailability = () => {
     }
   }, [dispatch, id]);
 
-  const handleSaveUnAvailableTimes = useCallback(async (formData) => {
-    try {
-      const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
-      
-      if (!unAvailableTimes || unAvailableTimes.length === 0) {
-        throw new Error('No unavailable times provided');
-      }
-      
-      const payload = { un_available_times: unAvailableTimes };
-      const result = await dispatch(updateUnAvailabilStaff(id, payload));
-      
-      if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
-        toast.success('Unavailable times saved successfully!');
-        setIsTimeSectionDisabled(true);
-        setIsEditing(false);
-        return { success: true };
-      } else {
-        throw new Error(result?.message || result?.error || 'Save failed');
-      }
-    } catch (error) {
-
-      toast.error(`Error saving unavailable times: ${error.message}`);
-      return { success: false, error: error.message };
+ const handleSaveUnAvailableTimes = useCallback(async (formData) => {
+  try {
+    const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
+    
+    const payload = {};
+    if (unAvailableTimes.length > 0) {
+      payload.un_available_times = unAvailableTimes;
     }
-  }, [dispatch, id]);
+
+
+
+    const result = await dispatch(updateUnAvailabilStaff(id, payload));
+    
+    if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
+      toast.success('Unavailable times saved successfully!');
+      setIsTimeSectionDisabled(true);
+      setIsEditing(false);
+      await dispatch(getStaffById(id));
+      return { success: true };
+    }
+  } catch (error) {
+    console.error('Full error object:', error); 
+    console.error('Error response:', error.response?.data?.message?.error?.[0]); 
+    
+    toast.error(`Error saving unavailable times: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}, [dispatch, id]);
 
   const handleSaveAvailableDates = useCallback(async (formData) => {
     try {
@@ -166,7 +170,10 @@ const StaffAvailability = () => {
         throw new Error("Invalid date range format");
       }
       
-      const payload = { un_available_dates: unAvailableDates };
+      const payload = { 
+      un_available_dates: unAvailableDates.length > 0 ? unAvailableDates : {} 
+    };
+      
       const result = await dispatch(updateUnAvailabilStaff(id, payload));
       
       if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
@@ -197,11 +204,11 @@ const StaffAvailability = () => {
   const handleSaveTimes = useCallback((formData) => {
     const currentMode = activeTab.includes('unavailable') ? 'unavailable' : 'available';
     
-    const timesData = formData.available_times || formData.un_available_times;
-    if (!timesData || timesData.length === 0) {
-      toast.error('Please select at least one day and time slot');
-      return Promise.resolve({ success: false, error: 'No times data' });
-    }
+    // const timesData = formData.available_times || formData.un_available_times;
+    // if (!timesData || timesData.length === 0) {
+    //   toast.error('Please select at least one day and time slot');
+    //   return Promise.resolve({ success: false, error: 'No times data' });
+    // }
     
     if (currentMode === 'available') {
       return handleSaveAvailableTimes(formData);

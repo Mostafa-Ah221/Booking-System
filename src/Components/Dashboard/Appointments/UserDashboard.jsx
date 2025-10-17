@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAppointments, getAppointmentById, deleteAppointment, statusAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
+import { fetchAppointments, getAppointmentById, deleteAppointment, statusAppointment,rescheduleAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
 import { CalendarDays, Clock, Plus, ChevronDown } from 'lucide-react';
 import { BsFilterRight } from "react-icons/bs";
 import FilterSidebar from './FilterSidebar';
@@ -9,13 +9,13 @@ import RescheduleSidebar from './RescheduleSidebar';
 import { fetchInterviews } from '../../../redux/apiCalls/interviewCallApi';
 import Loader from '../../Loader';
 import { getWorkspace } from '../../../redux/apiCalls/workspaceCallApi';
-import TestRoles from '../../testApis';
 import { usePermission } from '../../hooks/usePermission';
 import AddAppointment from './AddAppointment';
 import toast from "react-hot-toast";
 import { FiLayout } from "react-icons/fi";
 import ColumnManagerSidebar from './ColumnManagerSidebar';
 import { useConfirmationToast } from './useConfirmationToast'; 
+import { getCustomers} from "../../../redux/apiCalls/CustomerCallApi";
 
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('');
@@ -33,6 +33,7 @@ const UserDashboard = () => {
   const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const appointmentsPerPage = 11;
+console.log(selectedAppointment);
 
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('appointmentColumns');
@@ -87,11 +88,13 @@ const UserDashboard = () => {
   const dropdownRef = useRef(null);
   const dispatch = useDispatch();
   const { showConfirmationToast } = useConfirmationToast();
+   const { interviews = [] } = useSelector(state => state.interview);
   const { appointments = [], loading = false, error } = useSelector(state => state.appointments || {});
-  const { interviews } = useSelector(state => state.interview);
   const { workspace, workspaces } = useSelector(state => state.workspace);
   const workspaceId = workspace ? workspace.id : 0;
-  console.log(appointments);
+  
+  const { customers = [] } = useSelector(state => state.customers || {});
+console.log(appointments);
 
   useEffect(() => {
     const queryParams = {};
@@ -110,7 +113,6 @@ const UserDashboard = () => {
 
   useEffect(() => {
   const handleClickOutside = (event) => {
-    // تأكد أن النقرة مش داخل أي dropdown مفتوح
     const clickedInsideDropdown = event.target.closest('.dropdown-container');
     if (!clickedInsideDropdown && openDropdown !== null) {
       setOpenDropdown(null);
@@ -783,14 +785,19 @@ const UserDashboard = () => {
         onClose={handleCancelFilters}
         onApply={handleApplyFilters}
         currentFilters={currentFilters}
+        getCustomers={getCustomers}
+        interviews={interviews}
+        workspaces={workspaces}
+        customers={customers}
       />
       
       <AddAppointment
         isOpen={isAddAppointmentOpen}
         onClose={handleCloseAddAppointment}
+        mode="schedule"
       />
       
-      <TestRoles/>
+   
       
       <AppointmentDetailsSidebar 
         appointment={selectedAppointment}
@@ -813,6 +820,10 @@ const UserDashboard = () => {
         isOpen={isRescheduleOpen}
         onClose={() => setIsRescheduleOpen(false)}
         onRescheduleSuccess={handleRescheduleSuccess}
+        fetchInterviews={fetchInterviews}
+        rescheduleAppointment={rescheduleAppointment}
+        fetchAppointments={fetchAppointments}
+        interviews={interviews}
       />
 
       <ColumnManagerSidebar

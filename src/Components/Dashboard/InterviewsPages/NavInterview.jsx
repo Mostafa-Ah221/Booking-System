@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Share2, MoreVertical, X, Copy, ExternalLink, Trash2 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { editInterviewById, deleteInterview } from '../../../redux/apiCalls/interviewCallApi';
+import { editInterviewById, deleteInterview, updateShareLinkIntreview } from '../../../redux/apiCalls/interviewCallApi';
 import ShareModal from './InterViewPage/ShareModal';
+import ShareBookingModal from '../Profile_Page/ShareModalPrpfile';
 
 export default function NavInterview() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false); 
@@ -16,7 +17,7 @@ export default function NavInterview() {
   const menuButtonRef = useRef(null);
   const dispatch = useDispatch();
   
-  const { interview } = useSelector(state => state.interview);
+  const { interview, loading } = useSelector(state => state.interview);
 
   useEffect(() => {
     if (id) {
@@ -51,7 +52,7 @@ export default function NavInterview() {
   // Handle booking page click
   const handleBookingPageClick = (e) => {
     e.preventDefault();
-    const bookingLink = `${window.location.origin}/share/${interview?.share_link}`;
+    const bookingLink = `${window.location.origin}/${interview?.share_link}`;
     window.open(bookingLink, '_blank');
     setShowMenuModal(false); 
   };
@@ -61,6 +62,15 @@ export default function NavInterview() {
     e.preventDefault();
     // Add your copy logic here
     setShowMenuModal(false);
+  };
+
+  const handleUpdateShareLink = async (newShareLink, id) => {
+    try {
+      await dispatch(updateShareLinkIntreview(newShareLink, id));
+      setIsShareModalOpen(false);
+    } catch (error) {
+      console.error('Error updating share link:', error);
+    }
   };
 
   // Handle delete functionality
@@ -99,6 +109,7 @@ export default function NavInterview() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+             
               <button 
                 className="flex items-center space-x-2 px-4 py-2 border rounded-lg hover:bg-gray-50"
                 onClick={handleShareClick}
@@ -148,11 +159,13 @@ export default function NavInterview() {
         </div>
       )}
 
-      {/* استخدام ShareModal المكون الجاهز */}
-      <ShareModal
+      <ShareBookingModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        interview={interview}
+        shareLink={interview?.share_link}
+        profile={interview}
+        onUpdateLink={handleUpdateShareLink}
+        loading={loading}
       />
 
       {/* Delete Confirmation Modal */}

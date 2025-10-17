@@ -13,7 +13,7 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
     id: null
   });
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // إضافة state للتحميل
+  const [isLoading, setIsLoading] = useState(false); 
   const dispatch = useDispatch();
   
   useEffect(() => {

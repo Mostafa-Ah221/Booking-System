@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, Share, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { getWorkspace, deleteWorkspace } from '../../../../redux/apiCalls/workspaceCallApi';
+import { getAllWorkspaces, deleteWorkspace } from '../../../../redux/apiCalls/workspaceCallApi';
 import WorkspaceModal from '../../../Dashboard/AddMenus/ModelsForAdd/NewWorkspace';
+import DeleteWorkspaceModal from '../../../Dashboard/DeleteWorkspaceModal';
+import { workspaceAction } from '../../../../redux/slices/workspaceSlice';
+import toast from 'react-hot-toast';
+import Loader from '../../../Loader';
 
 const DropdownMenu = ({ isOpen, onClose, children }) => {
   if (!isOpen) return null;
@@ -16,12 +20,17 @@ const DropdownMenu = ({ isOpen, onClose, children }) => {
 
 const WorkspaceManag = () => {
   const dispatch = useDispatch();
-  const { workspaces } = useSelector(state => state.workspace);
+  const { allWorkspaces, workspace } = useSelector(state => state.workspace);
   
   // Modal states
   const [isNewWorkspaceModalOpen, setIsNewWorkspaceModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [workspaceToEdit, setWorkspaceToEdit] = useState(null);
+  
+  // Delete modal states
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [workspaceToDelete, setWorkspaceToDelete] = useState(null);
+  const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
   
   // UI states
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,8 +39,16 @@ const WorkspaceManag = () => {
 
   // Fetch workspaces on mount
   useEffect(() => {
-    dispatch(getWorkspace());
+    dispatch(getAllWorkspaces({ force: true }));
   }, [dispatch]);
+
+  // ✅ إضافة: Refresh workspaces عند إغلاق الـ modals
+  useEffect(() => {
+    if (!isNewWorkspaceModalOpen && !isEditModalOpen) {
+      // Re-fetch after modal closes to ensure data is fresh
+      dispatch(getAllWorkspaces({ force: true }));
+    }
+  }, [isNewWorkspaceModalOpen, isEditModalOpen, dispatch]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -55,20 +72,57 @@ const WorkspaceManag = () => {
   };
 
   // Handle editing a workspace
-  const handleEdit = (workspace) => {
-    setWorkspaceToEdit(workspace);
+  const handleEdit = (workspaceItem) => {
+    setWorkspaceToEdit(workspaceItem);
     setIsEditModalOpen(true);
     setOpenMenuId(null);
   };
 
-  // Handle deleting a workspace
-  const handleDelete = async (id) => {
+  // Handle delete click - open modal
+  const handleDeleteClick = (workspaceItem, e) => {
+    e.stopPropagation();
+    setWorkspaceToDelete(workspaceItem);
+    setIsDeleteModalOpen(true);
+    setOpenMenuId(null);
+  };
+
+  // Handle confirm delete
+  const handleConfirmDelete = async () => {
+    if (!workspaceToDelete) return;
+    
+    setIsDeletingWorkspace(true);
+    
     try {
-      await dispatch(deleteWorkspace(id));
-      setOpenMenuId(null);
+      const response = await dispatch(deleteWorkspace(workspaceToDelete.id));
+      
+      if (response?.success || response?.payload?.success) {
+        if (workspace && workspace.id === workspaceToDelete.id) {
+          const mySpace = {
+            id: 0,
+            name: "My Space"
+          };
+          dispatch(workspaceAction.setWorkspace(mySpace));
+        }
+        
+        // ✅ إعادة تحميل القائمة بعد الحذف
+        dispatch(getAllWorkspaces({ force: true }));
+      } else {
+        toast.error('Error deleting workspace');
+      }
     } catch (error) {
       console.error('Error deleting workspace:', error);
+      toast.error('Error deleting workspace');
+    } finally {
+      setIsDeletingWorkspace(false);
+      setIsDeleteModalOpen(false);
+      setWorkspaceToDelete(null);
     }
+  };
+
+  // Handle close delete modal
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setWorkspaceToDelete(null);
   };
 
   // Handle opening new workspace modal
@@ -76,14 +130,16 @@ const WorkspaceManag = () => {
     setIsNewWorkspaceModalOpen(true);
   };
 
-  // Handle closing modals
+  // ✅ تعديل: إغلاق المودال + إعادة تحميل البيانات
   const handleCloseNewWorkspaceModal = () => {
     setIsNewWorkspaceModalOpen(false);
+    // سيتم reload تلقائي من useEffect
   };
 
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
     setWorkspaceToEdit(null);
+    // سيتم reload تلقائي من useEffect
   };
 
   const toggleSearch = () => {
@@ -93,9 +149,17 @@ const WorkspaceManag = () => {
     }
   };
 
-  const filteredWorkspaces = workspaces.filter(workspace =>
-    workspace.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredWorkspaces = allWorkspaces?.filter(workspaceItem =>
+    workspaceItem.name.toLowerCase().includes(searchQuery.toLowerCase())
+  ) || [];
+
+  if (!allWorkspaces) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-gray-500"><Loader /></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4">
@@ -106,7 +170,7 @@ const WorkspaceManag = () => {
             <div className="flex items-center gap-2">
               <h1 className="text-lg sm:text-xl font-semibold">Workspaces</h1>
               <span className="bg-gray-100 px-2 py-1 rounded-md text-xs sm:text-sm">
-                {workspaces.length}
+                {allWorkspaces?.length || 0}
               </span>
             </div>
             <div className="flex items-center gap-2 sm:hidden">
@@ -169,36 +233,36 @@ const WorkspaceManag = () => {
         {/* Workspace Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredWorkspaces.length > 0 ? (
-            filteredWorkspaces.map(workspace => (
+            filteredWorkspaces.map(workspaceItem => (
               <div
-                key={workspace.id}
+                key={workspaceItem.id}
                 className="p-4 bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-red-200 rounded-lg flex items-center justify-center font-medium">
-                      {getInitials(workspace.name)}
+                      {getInitials(workspaceItem.name)}
                     </div>
-                    <span className="font-medium text-sm">{workspace.name}</span>
+                    <span className="font-medium text-sm">{workspaceItem.name}</span>
                   </div>
                   <div className="relative dropdown-container">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setOpenMenuId(openMenuId === workspace.id ? null : workspace.id);
+                        setOpenMenuId(openMenuId === workspaceItem.id ? null : workspaceItem.id);
                       }}
                       className="p-1 hover:bg-gray-100 rounded-full"
                     >
                       <MoreVertical className="w-4 h-4 text-gray-500" />
                     </button>
                     <DropdownMenu
-                      isOpen={openMenuId === workspace.id}
+                      isOpen={openMenuId === workspaceItem.id}
                       onClose={() => setOpenMenuId(null)}
                     >
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleEdit(workspace);
+                          handleEdit(workspaceItem);
                         }}
                         className="w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-50"
                       >
@@ -206,10 +270,7 @@ const WorkspaceManag = () => {
                         <span>Edit</span>
                       </button>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(workspace.id);
-                        }}
+                        onClick={(e) => handleDeleteClick(workspaceItem, e)}
                         className="w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-50 text-red-600"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -218,18 +279,6 @@ const WorkspaceManag = () => {
                     </DropdownMenu>
                   </div>
                 </div>
-                {/* <div className="flex justify-end items-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Add share functionality
-                    }}
-                    className="flex items-center gap-2 text-purple-600 px-3 py-1 rounded-md hover:bg-purple-50 transition-colors"
-                  >
-                    <Share className="w-4 h-4" />
-                    <span>Share</span>
-                  </button>
-                </div> */}
               </div>
             ))
           ) : (
@@ -251,6 +300,15 @@ const WorkspaceManag = () => {
         isOpen={isEditModalOpen} 
         onClose={handleCloseEditModal}
         editWorkspace={workspaceToEdit}
+      />
+
+      {/* Modal for deleting workspace */}
+      <DeleteWorkspaceModal
+        isOpen={isDeleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        workspaceName={workspaceToDelete?.name}
+        isDeleting={isDeletingWorkspace}
       />
     </div>
   );

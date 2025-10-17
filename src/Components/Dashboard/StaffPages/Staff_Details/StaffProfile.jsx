@@ -3,30 +3,47 @@ import { Edit, User, Save, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateStaff } from '../../../../redux/apiCalls/StaffCallApi';
 import { useParams } from 'react-router-dom';
+import { usePermission } from '../../../hooks/usePermission';
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { IoIosCamera } from 'react-icons/io';
+import { CgProfile } from 'react-icons/cg';
+import ImageUploadCrop from '../../InterviewsPages/InterViewPage/ImageUploadCrop';
 
 export default function StaffProfile({ staff: staffResponse }) {
   const dispatch = useDispatch();
   const { loading } = useSelector(state => state.staff);
   const { id } = useParams();
+  const canEditStaff = usePermission("edit staff");
   
   // Extract actual staff data from response
   const staff = staffResponse?.staff || staffResponse;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
+  const [displayImage, setDisplayImage] = useState(staff?.photo || null);
+  const [phoneValue, setPhoneValue] = useState(
+    staff?.phone_code && staff?.phone 
+      ? `${staff.phone_code}${staff.phone}` 
+      : ""
+  );
+  const [phoneError, setPhoneError] = useState("");
+
   const [formData, setFormData] = useState({
     name: staff?.name || '',
     email: staff?.email || '',
     phone_code: staff?.phone_code || '+20',
     phone: staff?.phone || '',
     status: staff?.status || 1,
-    photo: staff?.photo || null,
+    over_time: staff?.over_time !== undefined ? staff?.over_time : 1,
+    photo: null,
     password: '',
     new_password: '',
     new_password_confirmation: ''
   });
 
   const [errors, setErrors] = useState({});
-  const fileInputRef = useRef(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -44,47 +61,42 @@ export default function StaffProfile({ staff: staffResponse }) {
     }
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file type - same as AddStaff
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        setErrors(prev => ({
-          ...prev,
-          photo: "Please select a valid image file (JPEG, PNG, GIF, WebP)",
-        }));
-        return;
-      }
+  const handlePhoneChange = (value, country) => {
+    setPhoneValue(value);
 
-      // Validate file size (max 5MB) - same as AddStaff
-      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-      if (file.size > maxSize) {
-        setErrors(prev => ({
-          ...prev,
-          photo: "Image size should be less than 5MB",
-        }));
-        return;
-      }
+    setFormData(prev => ({
+      ...prev,
+      phone: value.replace(`+${country.dialCode}`, ""),
+      phone_code: `+${country.dialCode}`,
+    }));
 
-      setFormData(prev => ({
-        ...prev,
-        photo: file // Store the file object
-      }));
-      
-      // Clear error
-      setErrors(prev => ({
-        ...prev,
-        photo: ''
-      }));
-      
-      console.log('Selected file:', file.name, file);
+    // Validate phone number
+    if (!value || value.length <= country.dialCode.length + 1) {
+      setPhoneError("Please enter a valid phone number");
+      return;
+    }
+
+    const phoneNumber = parsePhoneNumberFromString(value, country.countryCode?.toUpperCase());
+    
+    if (!phoneNumber || !phoneNumber.isValid()) {
+      setPhoneError("The phone number is invalid for this country");
+    } else {
+      setPhoneError("");
     }
   };
 
-  const handleAvatarClick = () => {
+  const handleImageUpdate = (imageFile) => {
+    setFormData(prev => ({
+      ...prev,
+      photo: imageFile
+    }));
+    setDisplayImage(URL.createObjectURL(imageFile));
+    setIsImageUploadOpen(false);
+  };
+
+  const handleImageClick = () => {
     if (isEditing) {
-      fileInputRef.current.click();
+      setIsImageUploadOpen(true);
     }
   };
 
@@ -96,25 +108,53 @@ export default function StaffProfile({ staff: staffResponse }) {
       phone_code: staff?.phone_code || '+20',
       phone: staff?.phone || '',
       status: staff?.status || 1,
-      photo: staff?.photo || null,
+      over_time: staff?.over_time !== undefined ? staff?.over_time : 1,
+      photo: null,
       password: '',
       new_password: '',
       new_password_confirmation: ''
     });
+    setDisplayImage(staff?.photo || null);
+    setPhoneValue(
+      staff?.phone_code && staff?.phone 
+        ? `${staff.phone_code}${staff.phone}` 
+        : ""
+    );
+    setPhoneError("");
   };
 
   const handleCancelClick = () => {
     setIsEditing(false);
     setErrors({});
-    // Reset photo to original
-    setFormData(prev => ({
-      ...prev,
-      photo: staff?.photo || null
-    }));
+    setPhoneError("");
+    // Reset to original values
+    setFormData({
+      name: staff?.name || '',
+      email: staff?.email || '',
+      phone_code: staff?.phone_code || '+20',
+      phone: staff?.phone || '',
+      status: staff?.status || 1,
+      over_time: staff?.over_time !== undefined ? staff?.over_time : 1,
+      photo: null,
+      password: '',
+      new_password: '',
+      new_password_confirmation: ''
+    });
+    setDisplayImage(staff?.photo || null);
+    setPhoneValue(
+      staff?.phone_code && staff?.phone 
+        ? `${staff.phone_code}${staff.phone}` 
+        : ""
+    );
   };
 
   const handleSaveClick = async () => {
     setErrors({});
+
+    // Validate phone
+    if (phoneError) {
+      return;
+    }
 
     // Validate new password confirmation
     if (formData.new_password && formData.new_password !== formData.new_password_confirmation) {
@@ -122,7 +162,7 @@ export default function StaffProfile({ staff: staffResponse }) {
       return;
     }
 
-    // Create FormData for file upload - same as AddStaff approach
+    // Create FormData for file upload
     const submissionData = new FormData();
     
     // Add all non-empty fields to FormData
@@ -131,6 +171,7 @@ export default function StaffProfile({ staff: staffResponse }) {
     if (formData.phone_code) submissionData.append('phone_code', formData.phone_code);
     if (formData.phone) submissionData.append('phone', formData.phone);
     submissionData.append('status', formData.status);
+    submissionData.append('over_time', formData.over_time);
     
     // Handle photo upload - only if it's a new File object
     if (formData.photo instanceof File) {
@@ -148,7 +189,6 @@ export default function StaffProfile({ staff: staffResponse }) {
     for (let [key, value] of submissionData.entries()) {
       console.log(`${key}: ${value}`);
     }
-    console.log("Original form data:", formData);
 
     const result = await dispatch(updateStaff(id, submissionData));
 
@@ -171,11 +211,55 @@ export default function StaffProfile({ staff: staffResponse }) {
     return errors[field] || '';
   };
 
+  const renderProfileImage = () => {
+    if (loading && !displayImage) {
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+        </div>
+      );
+    }
+
+    if (displayImage) {
+      return (
+        <>
+          <img 
+            className='w-full h-full rounded-full object-cover' 
+            src={displayImage} 
+            alt="Profile"
+            onError={(e) => {
+              setDisplayImage(null);
+            }}
+          />
+          {isEditing && (
+            <span className='w-full h-full absolute top-0 left-0 flex justify-center items-center group'>
+              <span className='group-hover:opacity-30 duration-300 w-full h-full absolute top-0 opacity-0 left-0 bg-slate-800 rounded-full'></span>
+              <IoIosCamera className='absolute text-white text-2xl opacity-0 group-hover:opacity-100'/>
+            </span>
+          )}
+        </>
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center w-full h-full">
+        {isEditing ? (
+          <>
+            <IoIosCamera className="text-3xl mb-1 text-blue-600" />
+            <div className="text-xs text-center text-blue-600 font-medium">Add Photo</div>
+          </>
+        ) : (
+          <User className="w-8 h-8 text-gray-400" />
+        )}
+      </div>
+    );
+  };
+
   // If no staff data after extraction
   if (!staff) {
     return (
       <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <p className="text-gray-500 text-center">No staff data available</p>
+        <p className="text-gray-500 text-center">No recruiter data available</p>
       </div>
     );
   }
@@ -188,27 +272,12 @@ export default function StaffProfile({ staff: staffResponse }) {
           <div className="flex items-center gap-4">
             {/* Avatar */}
             <div
-              className={`w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center ${
+              className={`relative w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden ${
                 isEditing ? 'cursor-pointer hover:opacity-80' : ''
               }`}
-              onClick={handleAvatarClick}
+              onClick={handleImageClick}
             >
-              {formData.photo && (typeof formData.photo === 'string' || formData.photo instanceof File) ? (
-                <img
-                  src={formData.photo instanceof File ? URL.createObjectURL(formData.photo) : formData.photo}
-                  alt={staff.name}
-                  className="w-16 h-16 rounded-full object-cover"
-                />
-              ) : (
-                <User className="w-8 h-8 text-gray-400" />
-              )}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                accept="image/jpeg,image/png,image/gif,image/webp"
-                className="hidden"
-              />
+              {renderProfileImage()}
             </div>
 
             {/* Name, Email, Role */}
@@ -216,7 +285,7 @@ export default function StaffProfile({ staff: staffResponse }) {
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-xl font-semibold text-gray-900">{staff?.name}</h2>
                 <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                  {staff?.role || 'Staff'}
+                  {staff?.role || 'Recruiter'}
                 </span>
               </div>
               <p className="text-gray-600">{staff?.email}</p>
@@ -225,13 +294,13 @@ export default function StaffProfile({ staff: staffResponse }) {
 
           {/* Edit/Save/Cancel Buttons */}
           {!isEditing ? (
-            <button
+            canEditStaff && (<button
               onClick={handleEditClick}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Edit className="w-4 h-4" />
               Edit
-            </button>
+            </button>) 
           ) : (
             <div className="flex gap-2">
               <button
@@ -308,35 +377,31 @@ export default function StaffProfile({ staff: staffResponse }) {
             )}
           </div>
 
-          {/* Phone Number */}
+          {/* Phone Number with PhoneInput */}
           <div>
             <label className="block text-sm font-medium text-gray-500 mb-2">Phone Number</label>
             {isEditing ? (
               <div>
-                <div className="flex">
-                  <select
-                    name="phone_code"
-                    value={formData.phone_code}
-                    onChange={handleInputChange}
-                    className="px-3 py-2 border border-r-0 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                  >
-                    <option value="+20">+20</option>
-                    <option value="+1">+1</option>
-                    <option value="+44">+44</option>
-                    <option value="+966">+966</option>
-                  </select>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className={`flex-1 px-3 py-2 border rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      getErrorMessage('phone') ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                </div>
-                {getErrorMessage('phone') && (
-                  <p className="text-red-500 text-sm mt-1">{getErrorMessage('phone')}</p>
+                <PhoneInput
+                  country="eg"
+                  value={formData.phone}
+                  onChange={handlePhoneChange}
+                  enableSearch={true}
+                  searchPlaceholder="Search country"
+                  inputProps={{
+                    name: "phone",
+                    className: "!pl-16 w-full py-2 px-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                    placeholder: "Enter phone number"
+                  }}
+                  containerClass="w-full"
+                  buttonClass="!border-r !bg-gray-50 !px-3 !py-2 !rounded-l-lg !border-gray-300"
+                  dropdownClass="!bg-white !border !shadow-lg !rounded-lg !mt-1"
+                  searchClass="!p-3 !border-b !border-gray-200"
+                />
+                {(phoneError || getErrorMessage('phone')) && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {phoneError || getErrorMessage('phone')}
+                  </p>
                 )}
               </div>
             ) : (
@@ -365,6 +430,30 @@ export default function StaffProfile({ staff: staffResponse }) {
                   staff?.status == 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                 }`}>
                   {staff?.status == 1 ? 'Active' : 'Inactive'}
+                </span>
+              </p>
+            )}
+          </div>
+
+          {/* Over Time */}
+          <div>
+            <label className="block text-sm font-medium text-gray-500 mb-2">Over Time</label>
+            {isEditing ? (
+              <select
+                name="over_time"
+                value={formData.over_time}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={1}>Active</option>
+                <option value={0}>Inactive</option>
+              </select>
+            ) : (
+              <p className="text-gray-900 font-medium">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  staff?.over_time == 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {staff?.over_time == 1 ? 'Active' : 'Inactive'}
                 </span>
               </p>
             )}
@@ -430,6 +519,14 @@ export default function StaffProfile({ staff: staffResponse }) {
           )}
         </div>
       </div>
+
+      {/* ImageUploadCrop Component */}
+      <ImageUploadCrop
+        isOpen={isImageUploadOpen}
+        onClose={() => setIsImageUploadOpen(false)}
+        onImageUpdate={handleImageUpdate}
+        currentImage={displayImage}
+      />
     </div>
   );
 }

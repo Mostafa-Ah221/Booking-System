@@ -214,83 +214,103 @@ export function editInterviewById(id) {
           };
         }
 // create a new interview function
-export function createInterview(formData, navigate) {
-  return async (dispatch) => {
-    dispatch(interviewAction.setLoading(true));
-
-    try {
-      const token = localStorage.getItem("access_token");
-
-      const data = new FormData();
-      for (const key in formData) {
-        if (formData[key]) {
-          data.append(key, formData[key]);
-        }
-      }
-
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/interview/store`,
-        data,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': token,
-          },
-        }
-      );
-
-      console.log("Full API Response:", response.data);
-
+export function createInterview(formData) { 
+  return async (dispatch) => { 
+    dispatch(interviewAction.setLoading(true)); 
+ 
+    try { 
+      const token = localStorage.getItem("access_token"); 
+ 
+      const data = new FormData(); 
+      for (const key in formData) { 
+        if (formData[key]) { 
+          data.append(key, formData[key]); 
+        } 
+      } 
+ 
+      const response = await axios.post( 
+        `https://backend-booking.appointroll.com/api/interview/store`, 
+        data, 
+        { 
+          headers: { 
+            'Content-Type': 'multipart/form-data', 
+            'Authorization': token, 
+          }, 
+        } 
+      ); 
+ 
+      console.log("Full API Response:", response.data); 
+ 
       if (response.data.status) {
-        dispatch(interviewAction.setError(null));
-         toast.success(response?.data.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
-            borderRadius: '8px',
-            background: '#333',
-            color: '#fff',
-            padding: '12px 16px',
-            fontWeight: '500',
-            },
-          });
-          await dispatch(fetchInterviews())
-          navigate('/layoutDashboard/interviews');
-        return {
-          success: true,
-          message: response?.data.message || "Interview created successfully"
-        };
-      }
-    } catch (error) {
-      console.error("Error creating interview:", error.response?.data || error);
-
-      if (error.response && error.response.data) {
-  const { errors } = error.response.data;
-
-        if (errors) {
-          Object.values(errors).forEach((fieldErrors) => {
-            fieldErrors.forEach((msg) => {
-              toast.error(msg);
-            });
-          });
+        const newInterview = response.data.data?.interview || response.data.data;
+        
+        if (newInterview && newInterview.id) {
+          dispatch(interviewAction.addInterviewToList(newInterview));
         } else {
-          toast.error("Something went wrong, please try again.");
+          console.warn("API didn't return interview data, fetching manually");
+          await dispatch(fetchAllInterviews({ force: true }));
         }
-
-        return {
-          success: false,
-          message: "Validation failed",
-        };
+        
+        dispatch(interviewAction.setError(null)); 
+        
+        toast.success(response?.data.message, { 
+          position: 'top-center',          
+          duration: 5000, 
+          icon: '✅', 
+          style: { 
+            borderRadius: '8px', 
+            background: '#333', 
+            color: '#fff', 
+            padding: '12px 16px', 
+            fontWeight: '500', 
+          }, 
+        }); 
+        
+        return { 
+          success: true, 
+          message: response?.data.message || "Interview created successfully",
+          data: newInterview
+        }; 
       }
-
-      dispatch(interviewAction.setError(errorMessage));
       
-   
-    } finally {
-      dispatch(interviewAction.setLoading(false));
-    }
-  };
+      return {
+        success: false,
+        message: "Failed to create interview"
+      };
+      
+    } catch (error) { 
+      if (error.response && error.response.data) { 
+        const { errors } = error.response.data; 
+
+        console.log(error);
+        
+        if (errors) { 
+          Object.values(errors).forEach((fieldErrors) => { 
+            fieldErrors.forEach((msg) => { 
+              toast.error(msg); 
+            }); 
+          }); 
+        } else { 
+          toast.error("Something went wrong, please try again."); 
+        } 
+ 
+        return { 
+          success: false, 
+          message: "Validation failed", 
+        }; 
+      } 
+ 
+      dispatch(interviewAction.setError(error.message)); 
+      
+      return {
+        success: false,
+        message: error.message || "An error occurred"
+      };
+ 
+    } finally { 
+      dispatch(interviewAction.setLoading(false)); 
+    } 
+  }; 
 }
 
 
@@ -372,15 +392,18 @@ export function updateUnAvailability(id, formData) {
       const Token = localStorage.getItem("access_token");
       
       // Validate formData structure
-      if (!formData || (!formData.un_available_times && !formData.un_available_dates)) {
+      if (!formData ) {
         throw new Error("Invalid availability data format");
       }
 
       // Prepare the request body according to API template
-      const requestBody = {
-        un_available_times: formData.un_available_times || [],
-        un_available_dates: formData.un_available_dates || []
-      };
+     const requestBody = {};
+      if (formData.un_available_times) {
+        requestBody.un_available_times = formData.un_available_times;
+      }
+      if (formData.un_available_dates) {
+        requestBody.un_available_dates = formData.un_available_dates;
+      }
 
       const response = await axios.post(
         `https://backend-booking.appointroll.com/api/interview/unavailability/update/${id}`,
@@ -695,3 +718,43 @@ export function updateInterviewType(id, type) {
     }
   };
 }
+export const updateShareLinkIntreview = (newShareLink, id) => {
+  return async (dispatch, getState) => {
+    dispatch(interviewAction.setLoading(true)); 
+    try {
+      const token = localStorage.getItem("access_token");
+      const url = `https://backend-booking.appointroll.com/api/interview/regenerate-share-link/${id}`;
+
+      // لو newShareLink هو null أو undefined، متبعتش share_link في الـ body
+      const requestBody = newShareLink ? { share_link: newShareLink } : {};
+
+      const response = await axios.post(
+        url,
+        requestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token,
+          },
+        }
+      );
+
+      if (response.data && response.data.data) {
+        console.log('Response:', response.data.data);
+        dispatch(interviewAction.updateInterviewShareLink({
+          id: id,
+          share_link: response.data.data
+        }));
+        
+        toast.success("Share link updated successfully");
+      }
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to update share link";
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      dispatch(interviewAction.setLoading(false));
+    }
+  };
+};

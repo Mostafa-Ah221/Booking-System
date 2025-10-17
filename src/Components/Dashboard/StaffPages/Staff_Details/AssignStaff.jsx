@@ -5,17 +5,21 @@ import { fetchInterviews } from '../../../../redux/apiCalls/interviewCallApi';
 import { getWorkspace } from '../../../../redux/apiCalls/workspaceCallApi';
 import AssignModal from './AssignModal';
 import { useParams } from 'react-router-dom';
+import Staff_ShareBookingModal from '../../../Staff_Dashboard/Staff_ShareBookingModal';
 
 const AssignStaff = ({ staff }) => {
   const [openMenu, setOpenMenu] = useState(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [activeTab, setActiveTab] = useState('workspace');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const dispatch = useDispatch();
   const { interviews, loading: interviewsLoading } = useSelector(state => state.interview);
   const { workspaces, loading: workspacesLoading } = useSelector(state => state.workspace);
 
-  const { id } = useParams(); 
+  const { id } = useParams();
 
   useEffect(() => {
     if (id) {
@@ -24,25 +28,68 @@ const AssignStaff = ({ staff }) => {
     }
   }, [dispatch, id]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      const isMenuButton = event.target.closest('.menu-button');
+      const isDropdown = event.target.closest('.dropdown-menu');
+      
+      if (!isMenuButton && !isDropdown) {
+        setOpenMenu(null);
+      }
+    };
+
+    if (openMenu !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openMenu]);
+
   const tabs = [
     { key: 'workspace', label: 'Assign Workspace' },
     { key: 'interview', label: 'Assign Interview' }
   ];
 
   const getFilteredData = () => {
+    let data = [];
     if (activeTab === 'workspace') {
-      // ✅ تأكد إن workspaces.workspaces موجودة وهي array
-      return Array.isArray(workspaces?.workspaces) ? workspaces.workspaces : [];
+      data = Array.isArray(workspaces) ? workspaces : [];
     } else {
-      // ✅ تأكد إن interviews موجودة وهي array
-      return Array.isArray(interviews) ? interviews : [];
+      data = Array.isArray(interviews) ? interviews : [];
     }
+
+    if (searchTerm.trim()) {
+      return data.filter(item => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return data;
   };
 
   const filteredData = getFilteredData();
-  
-  // ✅ تحديد حالة الـ loading حسب الـ tab النشط
   const isLoading = activeTab === 'workspace' ? workspacesLoading : interviewsLoading;
+
+  const handleShareClick = (item, e) => {
+    e.stopPropagation();
+    setSelectedItem(item);
+    setIsShareModalOpen(true);
+    setOpenMenu(null);
+  };
+
+  const handleCloseShareModal = () => {
+    setIsShareModalOpen(false);
+    setSelectedItem(null);
+  };
+
+  const handleRemoveClick = (item, e) => {
+    e.stopPropagation();
+    console.log("Remove:", item);
+    setOpenMenu(null);
+  };
 
   return (
     <>
@@ -88,31 +135,24 @@ const AssignStaff = ({ staff }) => {
                 <input
                   type="text"
                   placeholder={`Search ${activeTab === 'workspace' ? 'workspaces' : 'interviews'}...`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
                 />
               </div>
-              <button
-                onClick={() => setIsAssignModalOpen(true)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 flex items-center gap-2 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="mt-0.5">
-                  Assign {activeTab === 'workspace' ? 'Workspace' : 'Interview'}
-                </span>
-              </button>
             </div>
           </div>
 
           {/* Content */}
           <div className="content">
-            {/* ✅ إضافة loading state */}
+            {/* Loading state */}
             {isLoading ? (
               <div className="text-center py-12">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
                 <p className="mt-3 text-sm text-gray-500">Loading...</p>
               </div>
             ) : activeTab === 'workspace' ? (
-              // 🌟 Card View for Workspaces
+              // Card View for Workspaces
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredData.length > 0 ? (
                   filteredData.map((workspaceItem) => {
@@ -128,7 +168,6 @@ const AssignStaff = ({ staff }) => {
                         key={workspaceItem.id}
                         className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow flex justify-between items-start"
                       >
-                        {/* Left - icon + name */}
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-sm font-semibold">
                             {initials}
@@ -143,27 +182,26 @@ const AssignStaff = ({ staff }) => {
                           </div>
                         </div>
 
-                        {/* Right - menu */}
                         <div className="relative">
                           <button
                             onClick={() =>
                               setOpenMenu(openMenu === workspaceItem.id ? null : workspaceItem.id)
                             }
-                            className="p-1 hover:bg-gray-100 rounded"
+                            className="p-1 hover:bg-gray-100 rounded menu-button"
                           >
                             <MoreVertical className="w-5 h-5 text-gray-400" />
                           </button>
 
                           {openMenu === workspaceItem.id && (
-                            <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                              <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                            <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 dropdown-menu">
+                              <button 
+                                onClick={(e) => handleShareClick(workspaceItem, e)}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                              >
                                 <Share2 className="w-4 h-4" />
                                 Share
                               </button>
-                              <button className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-2">
-                                <Trash2 className="w-4 h-4" />
-                                Remove
-                              </button>
+                              
                             </div>
                           )}
                         </div>
@@ -172,12 +210,14 @@ const AssignStaff = ({ staff }) => {
                   })
                 ) : (
                   <div className="text-center py-8 text-gray-500 col-span-full">
-                    <p className="text-sm">No workspace assignments found</p>
+                    <p className="text-sm">
+                      {searchTerm ? 'No workspaces found matching your search' : 'No workspace assignments found'}
+                    </p>
                   </div>
                 )}
               </div>
             ) : (
-              // 📋 Table View for Interviews
+              // Table View for Interviews
               <>
                 <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="col-span-4">Event Type Name</div>
@@ -229,21 +269,21 @@ const AssignStaff = ({ staff }) => {
                             <div className="relative">
                               <button
                                 onClick={() => setOpenMenu(openMenu === session.id ? null : session.id)}
-                                className="p-1 hover:bg-gray-100 rounded"
+                                className="p-1 hover:bg-gray-100 rounded menu-button"
                               >
                                 <MoreVertical className="w-5 h-5 text-gray-400" />
                               </button>
 
                               {openMenu === session.id && (
-                                <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                                  <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                                <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 dropdown-menu">
+                                  <button 
+                                    onClick={(e) => handleShareClick(session, e)}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                  >
                                     <Share2 className="w-4 h-4" />
                                     Share
                                   </button>
-                                  <button className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center gap-2">
-                                    <Trash2 className="w-4 h-4" />
-                                    Remove
-                                  </button>
+                                 
                                 </div>
                               )}
                             </div>
@@ -253,7 +293,9 @@ const AssignStaff = ({ staff }) => {
                     })
                   ) : (
                     <div className="text-center py-8 text-gray-500">
-                      <p className="text-sm">No interview assignments found</p>
+                      <p className="text-sm">
+                        {searchTerm ? 'No interviews found matching your search' : 'No interview assignments found'}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -269,6 +311,14 @@ const AssignStaff = ({ staff }) => {
         onClose={() => setIsAssignModalOpen(false)}
         activeTab={activeTab}
         staffId={id}
+      />
+
+      {/* Share Modal */}
+      <Staff_ShareBookingModal
+        isOpen={isShareModalOpen}
+        onClose={handleCloseShareModal}
+                shareLink={activeTab === 'workspace' ? `Space/${selectedItem?.share_link}` : selectedItem?.share_link}
+        profile={selectedItem}
       />
     </>
   );
