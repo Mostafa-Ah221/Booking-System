@@ -114,7 +114,7 @@ export default function SettingsLayout() {
           />
         </div> */}
 
-        <div className="p-3 sm:p-4 lg:p-8 flex-1 bg-white rounded-lg shadow-md m-2 sm:mx-4 lg:mx-6 sm:my-3 lg:my-4">
+        <div className=" p-3 sm:p-4 lg:p-8 flex-1 bg-white rounded-lg shadow-md m-2 sm:mx-4 lg:mx-6 sm:my-3 lg:my-4">
           <Outlet />
         </div>
       </div>

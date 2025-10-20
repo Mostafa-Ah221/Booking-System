@@ -12,9 +12,10 @@ import { usePermission } from '../../../hooks/usePermission';
 const Interviews = () => {
   const dispatch = useDispatch();
   const { interviews, loading = false, currentWorkspaceId } = useSelector(state => state.interview);
+  const { profile: profileData } = useSelector(state => state.profileData);
   const { workspace } = useSelector(state => state.workspace);
   const workspaceId = workspace ? workspace.id : 0;
-const canEditInterviewf = usePermission("edit interview");
+  const canEditInterviewf = usePermission("edit interview");
 
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -23,7 +24,7 @@ const canEditInterviewf = usePermission("edit interview");
   const [interviewToDelete, setInterviewToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const interviewsPerPage = 9;
-
+  const org_share_link = profileData?.user.share_link;
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -70,7 +71,7 @@ const handleUpdateShareLink = async (newShareLink,id) => {
 
   const handleBookingPageClick = (interview, e) => {
     e.preventDefault();
-    const bookingLink = `${window.location.origin}/${interview?.share_link}`;
+    const bookingLink = `${window.location.origin}/${org_share_link}/service/${interview?.share_link}`;
     window.open(bookingLink, '_blank');
     setActiveMenuId(null);
   };
@@ -298,12 +299,12 @@ const handleUpdateShareLink = async (newShareLink,id) => {
        <ShareBookingModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        shareLink={selectedInterview?.share_link}
+        shareLink={`service/${selectedInterview?.share_link}`}
         profile={selectedInterview}
         onUpdateLink={handleUpdateShareLink}
         loading={loading}
         canShowEdit={canEditInterviewf}
-      />
+       />
 
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

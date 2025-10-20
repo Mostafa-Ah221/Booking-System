@@ -206,8 +206,12 @@ export default function StaffComp() {
             onClick={() => setIsAddStaffOpen(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
           >
-            <Plus className="w-4 h-4" />
-            New Recruiter
+            <Plus className="w-5 h-5" />
+            <div className='flex flex-col'>
+            <span>New Recruiter</span>
+            
+            <span className=" text-[9px] ml-3">(Staff, Doctors, or Team Members)</span>
+            </div>
           </button>}
          
         </div>
@@ -326,7 +330,7 @@ export default function StaffComp() {
       <ShareBookingModal
         isOpen={isShareModalOpen} 
         onClose={() => setIsShareModalOpen(false)} 
-        shareLink={`Staff/${selectedStaff?.share_link}`}
+        shareLink={`s/${selectedStaff?.share_link}`}
         profile={selectedStaff}
         onUpdateLink={handleUpdateShareLink}
         canShowEdit={canEditStaff}

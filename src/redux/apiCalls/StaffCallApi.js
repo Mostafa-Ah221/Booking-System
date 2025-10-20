@@ -150,6 +150,84 @@ export function addStaff(staffData) {
         }
     };
 }
+
+export function inviteStaff(inviteData) {
+    return async (dispatch) => {
+        try {
+            dispatch(staffAction.setLoading(true));
+            dispatch(staffAction.clearError());
+            
+            const Token = localStorage.getItem("access_token");
+
+            console.log("Sending Invite Data to API:", inviteData);
+
+            const response = await axios.post(
+                `https://backend-booking.appointroll.com/api/staff/send-invite`,
+                inviteData, 
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        authorization: Token,
+                    },
+                }
+            );
+            
+            if (response?.data?.status) {
+                toast.success(response.data.message || "Invitation sent successfully!", {
+                    position: "top-center",
+                    duration: 5000,
+                    icon: "📧",
+                    style: {
+                        borderRadius: "8px",
+                        background: "#333",
+                        color: "#fff",
+                        padding: "12px 16px",
+                        fontWeight: "500",
+                    },
+                });
+
+                dispatch(staffAction.setLoading(false));
+                return { success: true, data: response.data };
+            } else {
+                dispatch(staffAction.setLoading(false));
+                return { 
+                    success: false, 
+                    error: { 
+                        response: { 
+                            data: { 
+                                errors: { general: "Unexpected response format" } 
+                            } 
+                        } 
+                    } 
+                };
+            }
+        } catch (error) {
+            const serverErrors = error?.response?.data?.errors || {};
+            console.error("Error sending invitation:", error);
+            console.error("Server errors:", serverErrors);
+            
+            dispatch(staffAction.setLoading(false));
+            dispatch(staffAction.setError(serverErrors));
+            
+            // عرض رسالة خطأ
+            const errorMessage = error?.response?.data?.message || "Failed to send invitation";
+            toast.error(errorMessage, {
+                position: "top-center",
+                duration: 5000,
+                icon: "❌",
+                style: {
+                    borderRadius: "8px",
+                    background: "#333",
+                    color: "#fff",
+                    padding: "12px 16px",
+                    fontWeight: "500",
+                },
+            });
+            
+            return { success: false, error };
+        }
+    };
+}
 export function getStaffById(staffId) {
     return async (dispatch) => {
         try {

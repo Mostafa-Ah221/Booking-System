@@ -107,9 +107,8 @@ const handlePhoneChange = (value, country) => {
     handleClose();
 
   } catch (error) {
-    // لو فشل
     dispatch(customerAction.setError(error));
-    console.error("Failed to add customer:", error);
+    console.error("Failed to add Client:", error);
   } finally {
     dispatch(customerAction.setLoading(false));
   }
@@ -121,7 +120,7 @@ const handlePhoneChange = (value, country) => {
       <div className="bg-white p-6 rounded-lg shadow-lg w-96">
         {/* Header */}
         <div className="flex justify-between items-center border-b pb-2">
-          <h2 className="text-lg font-semibold">Add Customer</h2>
+          <h2 className="text-lg font-semibold">Add Client</h2>
           <button onClick={handleClose} className="p-1 hover:bg-gray-200 rounded-full">
             <X className="w-5 h-5 text-gray-600" />
           </button>
@@ -132,14 +131,14 @@ const handlePhoneChange = (value, country) => {
           {/* Name */}
           <div>
             <label className="block text-sm font-medium">
-              Customer Name <span className="text-red-500">*</span>
+              Client Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               name="name"
               value={formCustomerData.name}
               onChange={handleInputChange}
-              placeholder="Enter customer name"
+              placeholder="Enter Client name"
               className="w-full p-2 border rounded-lg focus:ring focus:ring-indigo-300"
             />
             {error?.name && <p className="text-red-500 text-sm">{error.name}</p>}

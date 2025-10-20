@@ -83,7 +83,45 @@ export function staff_GetAppointmentById(id) {
       }
     };
   }
-
+export function getDetailsStaff() {
+    return async (dispatch) => {
+        try {
+            dispatch(staffApisActions.setLoading(true));
+            const Token = localStorage.getItem("access_token");
+            
+            const response = await axios.get(
+                `https://backend-booking.appointroll.com/api/staff/edit`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        authorization: Token,
+                    },
+                }
+            );
+            
+            console.log("getStaffById response:", response.data);
+            
+            dispatch(staffApisActions.setStaff(response?.data?.data));
+            dispatch(staffApisActions.setLoading(false));
+            
+            return {
+                success: true,
+                data: response?.data?.data
+            };
+        } catch (error) {
+            console.error("Error fetching staff by ID:", error);
+            dispatch(staffApisActions.setLoading(false));
+            
+            const errorMessage = error.response?.data?.message || error.message || "Failed to fetch staff details";
+            dispatch(staffApisActions.setError(errorMessage));
+            
+            return {
+                success: false,
+                message: errorMessage 
+            };
+        }
+    };
+}
 
  export function staff_UpdateAppointmentStatus(id, statusData) {
   return async (dispatch) => {
@@ -429,3 +467,184 @@ export function staff_GetWorkspaces({ force = false } = {}) {
     }
   };
 }
+
+export function updateAvailabil_DashboardStaff(formData) {
+  return async (dispatch) => {
+    dispatch(staffApisActions.setLoading(true));
+    
+    try {
+      const Token = localStorage.getItem("access_token");
+      
+      if (!formData || (!formData.available_times && !formData.available_dates)) {
+        throw new Error("Invalid availability data format");
+      }
+
+      const requestBody = {
+        available_times: formData.available_times || [],
+        available_dates: formData.available_dates || []
+      };
+
+      const response = await axios.post(
+        `https://backend-booking.appointroll.com/api/staff/availability/update`,
+        requestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: Token,
+          },
+        }
+      );
+      
+      if (response.data.status) {
+        // await dispatch(getStaffById(id));
+        dispatch(staffApisActions.setError(null));
+        
+        return {
+          status: true,
+          message: response.data.message || "Availability updated successfully",
+          data: response.data.data || null
+        };
+      } else {
+        throw new Error(response.data.message || "Failed to update availability");
+        
+      }
+    } catch (error) {
+      console.error("Error updating availability:", error);
+      
+      let errorMessage = "Failed to update availability";
+      let errorDetails = null;
+      
+      if (error.response) {
+        errorMessage = error.response.data.message || errorMessage;
+        errorDetails = error.response.data.errors || null;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      dispatch(staffApisActions.setError(errorMessage));
+      
+      return {
+        status: false,
+        message: errorMessage,
+        errors: errorDetails,
+        code: error.response?.status || 500
+      };
+    } finally {
+      dispatch(staffApisActions.setLoading(false));
+    }
+  };
+}
+
+export function updateUnAvailabil_DashboardStaff(formData) {
+  return async (dispatch) => {
+    dispatch(staffApisActions.setLoading(true));
+    
+    try {
+      const Token = localStorage.getItem("access_token");
+      
+      // Validate formData structure
+      if (!formData) {
+        throw new Error("Invalid availability data format");
+      }
+
+     
+      const requestBody = {};
+      if (formData.un_available_times) {
+        requestBody.un_available_times = formData.un_available_times;
+      }
+      if (formData.un_available_dates) {
+        requestBody.un_available_dates = formData.un_available_dates;
+      }
+
+      console.log('Request body sent to API:', requestBody); 
+
+      const response = await axios.post(
+        `https://backend-booking.appointroll.com/api/staff/unavailability/update`,
+        requestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: Token,
+          },
+        }
+      );
+      
+      if (response.data.status) {
+        // await dispatch(getStaffById(id));
+        dispatch(staffApisActions.setError(null));
+        
+        return {
+          status: true,
+          message: response.data.message || "Un Availability updated successfully",
+          data: response.data.data || null
+        };
+      } else {
+        throw new Error(response.data.message || "Failed to update Un availability");
+      }
+    } catch (error) {
+      console.error("Error updating Un availability:", error);
+      
+      let errorMessage = "Failed to update Un availability";
+      let errorDetails = null;
+      
+      if (error.response) {
+        errorMessage = error.response.data.message || errorMessage;
+        errorDetails = error.response.data.errors || null;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      dispatch(staffApisActions.setError(errorMessage));
+      
+      return {
+        status: false,
+        message: errorMessage,
+        errors: errorDetails,
+        code: error.response?.status || 500
+      };
+    } finally {
+      dispatch(staffApisActions.setLoading(false));
+    }
+  };
+}
+
+export const updateShareLink_DashboardStaff = (newShareLink) => {
+  return async (dispatch, getState) => {
+    dispatch(staffApisActions.setLoading(true)); 
+    try {
+      const token = localStorage.getItem("access_token");
+      const url = `https://backend-booking.appointroll.com/api/staff/regenerate-staff-share-link`;
+
+    
+      const requestBody = newShareLink ? { share_link: newShareLink } : {};
+
+      const response = await axios.post(
+        url,
+        requestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token,
+          },
+        }
+      );
+
+      if (response.data && response.data.data) {
+        
+        dispatch(staffApisActions.updateStaffShareLink({
+          share_link: response.data.data
+        }));
+        
+        toast.success("Share link updated successfully");
+        return response.data.data;
+      }
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to update share link";
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      dispatch(staffApisActions.setLoading(false));
+    }
+  };
+};

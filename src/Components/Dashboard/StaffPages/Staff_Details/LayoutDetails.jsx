@@ -28,10 +28,8 @@ export default function LayoutDetails() {
     }
   }, [id, dispatch]);
 
-  console.log('Staff data:', staff);
-
   const handleBackClick = () => {
-    navigate('/layoutDashboard/staffPage');
+    navigate('/layoutDashboard/recruiterPage');
   };
 
   const handleShareClick = () => {
@@ -88,7 +86,7 @@ export default function LayoutDetails() {
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <h1 className="text-xl font-semibold text-gray-900">{staff?.staff.name || 'Loading...'}</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{staff?.staff.name || 'user name'}</h1>
         </div>
 
         <button 
@@ -129,7 +127,7 @@ export default function LayoutDetails() {
       <ShareModalProfile
         isOpen={isShareModalOpen} 
         onClose={() => setIsShareModalOpen(false)} 
-        shareLink={`Staff/${staff?.staff.share_link}`}
+        shareLink={`s/${staff?.staff.share_link}`}
         profile={staff?.staff}
       />
     </div>

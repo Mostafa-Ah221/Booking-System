@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useOutletContext } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux';
 import { editInterviewById, updateInterview, updateInterviewType } from '../../../../redux/apiCalls/interviewCallApi';
@@ -28,10 +28,11 @@ const InterviewDetails = () => {
     currency: "",
     payment_details: "",
     mode: "",
-    offline_mode: "",
+    inperson_mode: "",
     location: "",
     double_book: "0",
     approve_appointment: "0",
+    require_staff_select: "0",
     max_clients: "",
     meeting_link: "",
     photo: null
@@ -51,8 +52,6 @@ const InterviewDetails = () => {
   const dispatch = useDispatch();
   const { interview, loading } = useSelector(state => state.interview);
   const { workspaces } = useSelector(state => state.workspace);
-
-
 
   useEffect(() => {
     if (id) {
@@ -75,10 +74,11 @@ const InterviewDetails = () => {
         currency: interview.currency || "",
         payment_details: interview.payment_details || "",
         mode: interview.mode || "",
-        offline_mode: interview.offline_mode || "",
+        inperson_mode: interview.inperson_mode || "",
         location: interview.location || "",
-        double_book: interview.double_book || 0,
-        approve_appointment: interview.approve_appointment || 0,
+        double_book: interview.double_book || "0",
+        approve_appointment: interview.approve_appointment || "0",
+        require_staff_select: interview.require_staff_select || "0",
         max_clients: interview.max_clients || "",
         meeting_link: interview.meeting_link || "",
         photo: interview.photo || null
@@ -99,11 +99,9 @@ const InterviewDetails = () => {
       setFormData(prev => ({
         ...prev,
         [name]: newValue,
-        // Reset offline_mode, location, and meeting_link when mode changes
-        ...(name === "mode" && newValue === "online" ? { offline_mode: "", location: "" } : {}),
-        ...(name === "mode" && newValue === "offline" ? { meeting_link: "" } : {}),
-        // Reset location when offline_mode changes from inhome
-        ...(name === "offline_mode" && newValue !== "inhome" ? { location: "" } : {})
+        ...(name === "mode" && newValue === "online" ? { inperson_mode: "", location: "" } : {}),
+        ...(name === "mode" && newValue !== "online" ? { meeting_link: "" } : {}),
+        ...(name === "inperson_mode" && newValue !== "inhouse" ? { location: "" } : {})
       }));
     }
 
@@ -116,24 +114,23 @@ const InterviewDetails = () => {
   };
 
   const handleSelectChange = (name, value) => {
-  setFormData(prev => ({
-    ...prev,
-    [name]: value,
-    ...(name === "type" && value === "one-to-one" ? { max_clients: "" } : {})
-  }));
-
-  if (errors[name]) {
-    setErrors(prev => ({
+    setFormData(prev => ({
       ...prev,
-      [name]: undefined
+      [name]: value,
+      ...(name === "type" && value === "one-to-one" ? { max_clients: "" } : {})
     }));
-  }
 
-  if (name === "type" && id) {
-    dispatch(updateInterviewType(id, value));
-  }
-};
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
 
+    if (name === "type" && id) {
+      dispatch(updateInterviewType(id, value));
+    }
+  };
 
   const handleImageUpdate = (imageFile) => {
     setTempImage(imageFile);
@@ -155,16 +152,12 @@ const InterviewDetails = () => {
       if (!formData.payment_details) newErrors.payment_details = "Payment details are required for paid interviews";
     }
 
-    if (formData.mode === "offline") {
-      if (!formData.offline_mode) newErrors.offline_mode = "Offline mode is required";
-      if (formData.offline_mode === "inhome" && !formData.location) {
-        newErrors.location = "Location is required for in-home interviews";
+    if (formData.mode === "inperson") {
+      if (!formData.inperson_mode) newErrors.inperson_mode = "In-person mode is required";
+      if (formData.inperson_mode === "inhouse" && !formData.location) {
+        newErrors.location = "Location is required for in-house interviews";
       }
     }
-
-    // if (formData.mode === "online" && !formData.meeting_link) {
-    //   newErrors.meeting_link = "Meeting link is required for online interviews";
-    // }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -186,21 +179,20 @@ const InterviewDetails = () => {
       mode: formData.mode,
       double_book: parseInt(formData.double_book),
       approve_appointment: parseInt(formData.approve_appointment),
+      require_staff_select: parseInt(formData.require_staff_select),
     };
 
     if (formData.max_clients && formData.max_clients !== "") {
-    dataToSend.max_clients = parseInt(formData.max_clients);
-  }
-    // Only include meeting_link if mode is online
+      dataToSend.max_clients = parseInt(formData.max_clients);
+    }
+
     if (formData.mode === "online") {
       dataToSend.meeting_link = formData.meeting_link;
     }
 
-    // Only include offline_mode and location if mode is offline
-    if (formData.mode === "offline") {
-      dataToSend.offline_mode = formData.offline_mode;
-      // Send location only for inhome
-      if (formData.offline_mode === "inhome" && formData.location) {
+    if (formData.mode === "inperson") {
+      dataToSend.inperson_mode = formData.inperson_mode;
+      if (formData.inperson_mode === "inhouse" && formData.location) {
         dataToSend.location = formData.location;
       }
     }
@@ -565,32 +557,33 @@ const InterviewDetails = () => {
                 >
                   <option value="" disabled>Select Mode</option>
                   <option value="online">Online</option>
-                  <option value="offline">Offline</option>
+                  <option value="inperson">In Person</option>
+                  <option value="phone">Phone</option>
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               </div>
               {errors.mode && <p className="text-red-500 text-sm mt-1">{errors.mode}</p>}
             </div>
 
-            {formData.mode === "offline" ? (
+            {formData.mode === "inperson" ? (
               <div className="space-y-2 flex-1">
                 <label className="block text-sm font-medium text-gray-700">
-                  Offline Mode <span className="text-red-500">*</span>
+                  In-Person Mode <span className="text-red-500">*</span>
                 </label>
                 <div className="relative w-full">
                   <select
-                    name="offline_mode"
-                    value={formData.offline_mode}
+                    name="inperson_mode"
+                    value={formData.inperson_mode}
                     onChange={handleInputChange}
-                    className={`w-full outline-none p-2.5 border rounded-lg appearance-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.offline_mode ? 'border-red-500' : ''} ${!formData.offline_mode ? 'text-gray-400' : 'text-black'}`}
+                    className={`w-full outline-none p-2.5 border rounded-lg appearance-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.inperson_mode ? 'border-red-500' : ''} ${!formData.inperson_mode ? 'text-gray-400' : 'text-black'}`}
                   >
-                    <option value="" disabled>Select Offline Mode</option>
-                    <option value="inhome">In Home</option>
-                    <option value="homedelivery">Home Delivery</option>
+                    <option value="" disabled>Select In-Person Mode</option>
+                    <option value="inhouse">In House</option>
+                    <option value="athome">At Home</option>
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                 </div>
-                {errors.offline_mode && <p className="text-red-500 text-sm mt-1">{errors.offline_mode}</p>}
+                {errors.inperson_mode && <p className="text-red-500 text-sm mt-1">{errors.inperson_mode}</p>}
               </div>
             ) : formData.mode === "online" ? (
               <div className="space-y-2 flex-1">
@@ -610,7 +603,7 @@ const InterviewDetails = () => {
             ) : null}
           </div>
 
-          {formData.mode === "offline" && formData.offline_mode === "inhome" && (
+          {formData.mode === "inperson" && formData.inperson_mode === "inhouse" && (
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
                 Location <span className="text-red-500">*</span>
@@ -648,21 +641,6 @@ const InterviewDetails = () => {
               </div>
             </div>
 
-            {formData.type !== "one-to-one" && (
-              <div className="space-y-2 flex-1">
-                <label className="block text-sm font-medium text-gray-700">Maximum Clients</label>
-                <input
-                  type="number"
-                  name="max_clients"
-                  value={formData.max_clients}
-                  onChange={handleInputChange}
-                  placeholder="Maximum Clients per Time Slot (optional)"
-                  min="1"
-                  className="w-full outline-none p-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-            )}
-
             <div className="space-y-2 flex-1">
               <label className="block text-sm font-medium text-gray-700">Require Appointment Approval</label>
               <div className="relative w-full">
@@ -678,7 +656,38 @@ const InterviewDetails = () => {
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               </div>
             </div>
+
+            <div className="space-y-2 flex-1">
+              <label className="block text-sm font-medium text-gray-700">Require Staff Selection</label>
+              <div className="relative w-full">
+                <select
+                  name="require_staff_select"
+                  value={formData.require_staff_select}
+                  onChange={(e) => handleSelectChange("require_staff_select", e.target.value)}
+                  className="w-full outline-none p-2.5 border rounded-lg appearance-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
           </div>
+
+          {formData.type !== "one-to-one" && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Maximum Clients</label>
+              <input
+                type="number"
+                name="max_clients"
+                value={formData.max_clients}
+                onChange={handleInputChange}
+                placeholder="Maximum Clients per Time Slot (optional)"
+                min="1"
+                className="w-full outline-none p-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+          )}
 
           <div className="flex gap-4 pt-6">
             <button
@@ -791,10 +800,15 @@ const InterviewDetails = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               )}
-              {interview?.mode === "offline" && (
+              {interview?.mode === "inperson" && (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+              {interview?.mode === "phone" && (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
               )}
               {interview?.mode || "Not specified"}
@@ -808,14 +822,14 @@ const InterviewDetails = () => {
             </div>
           )}
 
-          {interview?.mode === "offline" && (
+          {interview?.mode === "inperson" && (
             <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-500 mb-2">Offline Mode</h4>
-              <p className="text-gray-800 font-medium">{interview?.offline_mode || "Not specified"}</p>
+              <h4 className="text-sm font-medium text-gray-500 mb-2">In-Person Mode</h4>
+              <p className="text-gray-800 font-medium">{interview?.inperson_mode || "Not specified"}</p>
             </div>
           )}
 
-          {interview?.offline_mode === "inhome" && interview?.location && (
+          {interview?.inperson_mode === "inhouse" && interview?.location && (
             <div className="p-4 bg-gray-50 rounded-lg">
               <h4 className="text-sm font-medium text-gray-500 mb-2">Location</h4>
               <p className="text-gray-800 font-medium">{interview.location}</p>
@@ -827,17 +841,22 @@ const InterviewDetails = () => {
             <p className="text-gray-800 font-medium">{interview?.double_book === "1" ? "Yes" : "No"}</p>
           </div>
 
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-500 mb-2">Require Appointment Approval</h4>
+            <p className="text-gray-800 font-medium">{interview?.approve_appointment === "1" ? "Yes" : "No"}</p>
+          </div>
+
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-500 mb-2">Require Staff Selection</h4>
+            <p className="text-gray-800 font-medium">{interview?.require_staff_select === "1" ? "Yes" : "No"}</p>
+          </div>
+
           {interview?.type !== "one-to-one" && (
             <div className="p-4 bg-gray-50 rounded-lg">
               <h4 className="text-sm font-medium text-gray-500 mb-2">Maximum Clients</h4>
               <p className="text-gray-800 font-medium">{interview?.max_clients || "Not specified"}</p>
             </div>
           )}
-
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-500 mb-2">Require Appointment Approval</h4>
-            <p className="text-gray-800 font-medium">{interview?.approve_appointment === "1" ? "Yes" : "No"}</p>
-          </div>
         </div>
       </div>
     </div>

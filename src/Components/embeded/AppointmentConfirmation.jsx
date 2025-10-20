@@ -31,18 +31,31 @@ export default function AppointmentConfirmation() {
 console.log(appointmentData);
 
   const getBasePath = () => {
-    const pathname = location.pathname;
-    
-    if (pathname.includes('/Admin/')) {
-      return `/Admin/${idAdmin}`;
-    } else if (pathname.includes('/Staff/')) {
-      return `/Staff/${idCustomer}`;
-    } else if (pathname.includes('/Space/')) {
-      return `/Space/${idSpace}`;
-    } else {
-      return `/${id}`;
-    }
-  };
+  const pathname = location.pathname;
+  const pathParts = pathname.split("/").filter(Boolean);
+  const orgBase = pathParts[0];
+
+  if (pathname.includes("/w/")) {
+    // Workspace
+    const workspaceSlug = pathParts[2];
+    return `/${orgBase}/w/${workspaceSlug}`;
+  } 
+  else if (pathname.includes("/s/")) {
+    // Staff
+    const staffSlug = pathParts[2];
+    return `/${orgBase}/s/${staffSlug}`;
+  } 
+  else if (pathname.includes("/service/")) {
+    // Service
+    const serviceSlug = pathParts[2];
+    return `/${orgBase}/service/${serviceSlug}`;
+  } 
+  else {
+    // Organization فقط
+    return `/${orgBase}`;
+  }
+};
+
 
   const basePath = getBasePath();
   const fetchAppointmentData = async () => {
@@ -200,7 +213,9 @@ console.log(appointmentData);
               <span>Book another appointment</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
+            <a href='https://appointroll.com' className='inline-flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-colors shadow-md hover:shadow-lg ml-2'>To Site</a>
           </div>
+       
         ) : ""}
         
       </div>

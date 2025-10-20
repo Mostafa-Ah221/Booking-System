@@ -15,12 +15,7 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
   const [active, setActive] = useState("");
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState(null);
-  const [workspaceToEdit, setWorkspaceToEdit] = useState(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isNewWorkspaceModalOpen, setIsNewWorkspaceModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [workspaceToDelete, setWorkspaceToDelete] = useState(null);
   
   
   const mySpaceRef = useRef(null);
@@ -54,6 +49,10 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
   ? "Staff_Interviews"
        : location.pathname.includes("Staff_Profilepage") || location.pathname.includes("Staff_Profilepage")
       ? "Staff_Profilepage"
+       : location.pathname.includes("Staff_Analytics") || location.pathname.includes("Staff_Analytics")
+      ? "Staff_Analytics"
+       : location.pathname.includes("Staff_Availability") || location.pathname.includes("Staff_Availability")
+      ? "Staff_Availability"
       : location.pathname.includes("Staff_Appointment")
       ? "Staff_Appointment"
       : "Staff_Profilepage";
@@ -63,6 +62,8 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
 
   const menuItems = [
     { name: "My Profile", icon: <User size={18} />, path: "Staff_Profilepage" },
+    { name: "Analytics", icon: <User size={18} />, path: "Staff_Analytics" },
+    { name: "Availability", icon: <User size={18} />, path: "Staff_Availability" },
     { name: "Appointments", icon: <Calendar size={18} />, path: "Staff_Appointment" },
     { name: "Interviews", icon: <FileText size={18} />, path: "Staff_Interviews" },
   ];
@@ -123,25 +124,7 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
     setSearchQuery('');
   };
 
-  const toggleMenu = (workspaceId, e) => {
-    e.stopPropagation(); 
-    setActiveMenuId(activeMenuId === workspaceId ? null : workspaceId);
-  };
-
-  const handleNewWorkspaceClick = () => {
-    setIsNewWorkspaceModalOpen(true);
-    setIsWorkspaceOpen(false);
-    setSearchQuery('');
-  };
-
-  const handleCloseNewWorkspaceModal = () => {
-    setIsNewWorkspaceModalOpen(false);
-  };
-
-  const handleCloseEditModal = () => {
-    setIsEditModalOpen(false);
-    setWorkspaceToEdit(null);
-  };
+  
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);

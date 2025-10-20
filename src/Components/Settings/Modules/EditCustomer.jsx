@@ -31,7 +31,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, customerName }) =
           </div>
         </div>
         <h2 className="text-xl font-semibold text-gray-900 text-center mb-2">
-          Delete Customer
+          Delete Client
         </h2>
         <p className="text-gray-600 text-center mb-6">
           Sure you want to delete {customerName}?
@@ -226,7 +226,7 @@ const EditCustomer = ({ customerId, onBack }) => {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center">
         <div className="p-4 bg-red-100 text-red-700 rounded-lg">
-          Error: {error.message || 'Failed to load customer'}
+          Error: {error.message || 'Failed to load Client'}
           <button 
             onClick={handleBack}
             className="ml-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
@@ -307,7 +307,7 @@ const EditCustomer = ({ customerId, onBack }) => {
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
-              Customer information
+              Client information
             </button>
             <button
               onClick={() => setActiveTab("appointment")}

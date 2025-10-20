@@ -10,6 +10,7 @@ import { fetchProfileData, updateProfileData, StaffFetchProfileData, StaffUpdate
 import { IoIosCamera } from 'react-icons/io';
 import ImageUploadCrop from '../InterviewsPages/InterViewPage/ImageUploadCrop';
 import ShareBookingModal from './ShareModalPrpfile';
+import { updateShareLink_DashboardStaff } from '../../../redux/apiCalls/StaffapiCalls/StaffapiCalls';
 
 
 const ProfilePage = () => {
@@ -28,7 +29,6 @@ const ProfilePage = () => {
   const { profile, staffProfile, loading = false } = useSelector(state => state.profileData);
 
   const currentProfile = userType === 'staff' ? staffProfile : profile;
-console.log(profile);
 
   const [profileData, setProfileData] = useState({
     name: '',
@@ -42,7 +42,7 @@ console.log(profile);
   });
 
 
-  useEffect(() => {
+    useEffect(() => {
     if (!currentProfile && !loading && !profileLoaded) {
       if (userType === 'staff') {
         dispatch(StaffFetchProfileData());
@@ -53,7 +53,6 @@ console.log(profile);
     }
   }, [dispatch, currentProfile, loading, profileLoaded, userType]);
 
-  // Update local state when profile data is loaded
   useEffect(() => {
     if (currentProfile?.user) {
       const userData = currentProfile.user;
@@ -78,13 +77,13 @@ console.log(profile);
     }
   }, [currentProfile]);
 
-  const   handleInputChange = (field, value) => {
+  const handleInputChange = (field, value) => {
     setProfileData(prev => ({
       ...prev,
       [field]: value
     }));
   };
-  console.log(currentProfile?.user?.status);
+  // console.log(currentProfile?.user?.status);
 
   const handlePhoneChange = (value, country) => {
     setPhoneValue(value);
@@ -175,13 +174,13 @@ console.log(profile);
     setIsEditing(false);
   };
 
-  
   const handleUpdateShareLink = async (newShareLink) => {
     try {
-      await dispatch(updateShareLink(newShareLink));
       if (userType === 'staff') {
+        await dispatch(updateShareLink_DashboardStaff(newShareLink));
         await dispatch(StaffFetchProfileData());
       } else {
+        await dispatch(updateShareLink(newShareLink));
         await dispatch(fetchProfileData());
       }
       setIsShareModalOpen(false);
@@ -518,14 +517,16 @@ console.log(profile);
 
       {/* Share Modal */}
     
-      <ShareBookingModal
+    <ShareBookingModal 
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        shareLink={userType === "staff" ? `Staff/${currentProfile?.user?.share_link}` : `Admin/${currentProfile?.user?.share_link}`}
+        shareLink={userType === "staff" ? `s/${currentProfile?.user?.share_link}` : null}
         profile={currentProfile?.user}
         onUpdateLink={handleUpdateShareLink}
         loading={loading}
       />
+
+
     </div>
   );
 };

@@ -21,30 +21,39 @@ export default function BookingSummary() {
 const { id, idAdmin, idCustomer, idSpace } = useParams();
 
 const share_link =  id || idAdmin|| idCustomer|| idSpace
-console.log(responseData);
 
 const getBasePath = () => {
-    const pathname = location.pathname;
-    
-    if (pathname.includes('/Admin/')) {
-      return `/Admin/${idAdmin}`;
-    } else if (pathname.includes('/Staff/')) {
-      return `/Staff/${idCustomer}`;
-    } else if (pathname.includes('/Space/')) {
-      return `/Space/${idSpace}`;
-    } else {
-      return `/${id}`;
-    }
-  };
+  const pathname = location.pathname;
+  const pathParts = pathname.split("/").filter(Boolean);
+  const idAdmin_or = pathParts[0];
+
+  if (pathname.includes("/w/")) {
+    // Workspace
+    const idSpace = pathParts[2];
+    return `/${idAdmin_or}/w/${idSpace}`;
+  } 
+  else if (pathname.includes("/s/")) {
+    // Staff
+    const idCustomer = pathParts[2];
+    return `/${idAdmin_or}/s/${idCustomer}`;
+  } 
+  else if (pathname.includes("/service/")) {
+    // Service
+    const id = pathParts[2];
+    return `/${idAdmin_or}/service/${id}`;
+  } 
+  else {
+    // Organization
+    return `/${idAdmin_or}`;
+  }
+};
+
 
   const basePath = getBasePath();
-
   const fetchAppointmentData = async () => {
     try {
       const result = await dispatch(getAppointmentByIdPublic(responseData?.data.id));
       setAppointmentData(result?.appointment);
-      console.log();
-      
     } catch (error) {
       console.error('Error:', error);
     }
@@ -91,17 +100,22 @@ const getBasePath = () => {
     }
   };
 
-  const handleAddToCalendar = () => {
-    const title = encodeURIComponent("Appointment");
-    const details = encodeURIComponent(`Appointment with ${responseData?.data.name || 'Customer'}`);
-    const location = encodeURIComponent("Online / Office");
-    const startDate = new Date(`${appointmentData?.date}T${appointmentData?.time}`).toISOString().replace(/-|:|\.\d+/g, "");
-    const endDate = new Date(new Date(`${appointmentData?.date}T${appointmentData?.time}`).getTime() + 30 * 60000)
-      .toISOString().replace(/-|:|\.\d+/g, "");
+ const handleAddToCalendar = () => {
+  const title = encodeURIComponent("Appointment");
+  const details = encodeURIComponent(`Appointment with ${responseData?.data.name || 'Customer'}`);
+  const location = encodeURIComponent("Online / Office");
 
-    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${startDate}/${endDate}`;
-    window.open(url, "_blank");
-  };
+  const start = new Date(`${appointmentData?.date}T${appointmentData?.time}`);
+  const duration = Number(appointmentData?.duration_cycle) ; 
+  const end = new Date(start.getTime() + duration * 60000);
+
+  const startDate = start.toISOString().replace(/-|:|\.\d+/g, "");
+  const endDate = end.toISOString().replace(/-|:|\.\d+/g, "");
+
+  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${startDate}/${endDate}`;
+  window.open(url, "_blank");
+};
+
 
   const handleDownloadICS = () => {
     const startDate = new Date(`${appointmentData?.date}T${appointmentData?.time}`).toISOString().replace(/-|:|\.\d+/g, "");

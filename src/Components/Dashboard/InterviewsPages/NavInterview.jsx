@@ -16,7 +16,8 @@ export default function NavInterview() {
   const menuModalRef = useRef(null);
   const menuButtonRef = useRef(null);
   const dispatch = useDispatch();
-  
+  const { profile: profileData } = useSelector(state => state.profileData);
+  const org_share_link = profileData?.user.share_link;
   const { interview, loading } = useSelector(state => state.interview);
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function NavInterview() {
     };
   }, [showMenuModal]);
 
-  // دالة لفتح الـ ShareModal
+ 
   const handleShareClick = () => {
     setIsShareModalOpen(true);
   };
@@ -52,7 +53,7 @@ export default function NavInterview() {
   // Handle booking page click
   const handleBookingPageClick = (e) => {
     e.preventDefault();
-    const bookingLink = `${window.location.origin}/${interview?.share_link}`;
+    const bookingLink = `${window.location.origin}/${org_share_link}/service/${interview?.share_link}`;
     window.open(bookingLink, '_blank');
     setShowMenuModal(false); 
   };
@@ -162,7 +163,7 @@ export default function NavInterview() {
       <ShareBookingModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        shareLink={interview?.share_link}
+        shareLink={`service/${interview?.share_link}`}
         profile={interview}
         onUpdateLink={handleUpdateShareLink}
         loading={loading}

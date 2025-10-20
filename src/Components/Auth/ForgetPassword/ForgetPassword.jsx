@@ -3,19 +3,21 @@ import axios from 'axios';
 import { Mail, ArrowLeft, Shield, Lock } from 'lucide-react';
 import * as Yup from 'yup';
 import { useFormik } from 'formik';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const ForgetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const navigate = useNavigate();
-
+  const location = useLocation();
+  const from = location.state?.from;
   const validationSchema = Yup.object().shape({
     email: Yup.string()
       .email("Invalid email address")
       .required("Email is required"),
   });
+console.log(from?.userType);
 
   const handleForgetPassword = async (values) => {
     setIsLoading(true);
@@ -25,9 +27,9 @@ const ForgetPassword = () => {
     try {
       const formData = new FormData();
       formData.append("email", values.email);
-
+      const endPoint=from?.userType === 'customer' ? "https://backend-booking.appointroll.com/api/forgot-password" : "https://backend-booking.appointroll.com/api/staff/forgot-password";
       const response = await axios.post(
-        "https://backend-booking.appointroll.com/api/forgot-password",
+        endPoint,
         formData,
         {
           headers: {
@@ -40,6 +42,7 @@ const ForgetPassword = () => {
       navigate("/reset-password", {
         state: {
           email: response?.data?.data?.user?.email,
+          from: from
         },
       });
       setSuccessMessage("Password reset instructions have been sent to your email.");

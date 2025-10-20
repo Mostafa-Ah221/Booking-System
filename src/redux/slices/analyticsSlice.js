@@ -9,7 +9,7 @@ const initialState = {
   error: null,
 };
 
-const analyticsSlice = createSlice({
+const analyticsSlice = createSlice({ 
   name: "analytics",
   initialState,
   reducers: {

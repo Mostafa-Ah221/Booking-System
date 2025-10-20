@@ -294,14 +294,14 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
             <ShareBookingModal
               isOpen={isWorkspaceShareModalOpen} 
               onClose={handleCloseWorkspaceShareModal} 
-              shareLink={selectedWorkspace ? `Space/${selectedWorkspace?.share_link}` : ''}
+              shareLink={selectedWorkspace ? `w/${selectedWorkspace?.share_link}` : ''}
               profile={selectedWorkspace}
               onUpdateLink={handleUpdateShareLink}
             />
           </div>
         );
       
-      case 'interviews':
+       case 'interviews':
         return (
           <>
             {/* Search Section */}
@@ -474,7 +474,7 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
              <ShareBookingModal
               isOpen={isShareModalOpen} 
               onClose={handleCloseModal} 
-              shareLink={selectedInterview ? `${selectedInterview?.share_link}` : ''}
+              shareLink={selectedInterview ? `service/${selectedInterview?.share_link}` : ''}
               profile={selectedInterview}
               onUpdateLink={handleUpdateInterviewShareLink}
             />

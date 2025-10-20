@@ -56,6 +56,7 @@ const Login = () => {
 
      const accessToken = response?.data?.data?.user?.original?.access_token;
       if(accessToken){
+        localStorage.setItem("userType", userType);
         localStorage.setItem("access_token", accessToken);
         dispatch(authActions.setToken(accessToken));
         
@@ -65,7 +66,7 @@ const Login = () => {
         }
       }
 
-      localStorage.setItem("userType", userType);
+      
 
       if(userType === 'customer') {
         navigate("/layoutDashboard");
@@ -354,7 +355,14 @@ const Login = () => {
                <div className="text-center">
                 <button
                   type="button"
-                  onClick={() => navigate("/forget-password")}
+                  onClick={() => 
+                        navigate("/forget-password", {
+                          state: {
+                            from: {userType},
+                          },
+                        })
+                      }
+
                   className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-200 hover:underline"
                 >
                   Forgot your password?

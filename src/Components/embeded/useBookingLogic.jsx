@@ -33,21 +33,36 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // دالة لتحديد الـ path الصحيح بناءً على الـ route الحالي
-  const getNavigationPath = () => {
-    const pathname = location.pathname;
-    
-    if (pathname.includes('/Admin/')) {
-      return `/Admin/${share_link}/appointmentConfirmation`;
-    } else if (pathname.includes('/Staff/')) {
-      return `/Staff/${share_link}/appointmentConfirmation`;
-    } else if (pathname.includes('/Space/')) {
-      return `/Space/${share_link}/appointmentConfirmation`;
-    } else {
-      // Default path (share)
-      return `/${id}/appointmentConfirmation`;
-    }
-  };
+ 
+ const getNavigationPath = () => {
+  const pathname = location.pathname;
+
+  // مثال: /@KXPF/w/hr-department
+  // نطلع أول جزء اللي بعد /
+  const pathParts = pathname.split("/").filter(Boolean); // => ["@KXPF", "w", "hr-department"]
+  const orgBase = pathParts[0]; // => "@KXPF"
+
+  if (pathname.includes("/w/")) {
+    // Workspace
+    const workspaceSlug = pathParts[2]; // hr-department
+    return `/${orgBase}/w/${workspaceSlug}/appointmentConfirmation`;
+  } 
+  else if (pathname.includes("/s/")) {
+    // Staff
+    const staffSlug = pathParts[2];
+    return `/${orgBase}/s/${staffSlug}/appointmentConfirmation`;
+  } 
+  else if (pathname.includes("/service/")) {
+    // Service
+    const serviceSlug = pathParts[2];
+    return `/${orgBase}/service/${serviceSlug}/appointmentConfirmation`;
+  } 
+  else {
+    // Organization only
+    return `/${orgBase}/appointmentConfirmation`;
+  }
+};
+
 
   const convertDateToISO = (dateStr) => {
     try {
@@ -342,6 +357,8 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
     }
     
     const apiData = await response.json();
+    console.log(apiData);
+    
     
     if (!apiData.data || !apiData.data.interview) {
       throw new Error('Invalid API response structure');

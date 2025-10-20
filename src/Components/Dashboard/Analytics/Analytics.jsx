@@ -42,7 +42,6 @@ export default function Analytics() {
     const [showAppointmentFilters, setShowAppointmentFilters] = useState(false);
     const dropdownRef = useRef(null);
 
-    // State للـ filters لكل تبويب
     const [filters, setFilters] = useState({
         appointments: {
             start_date: '',
@@ -166,7 +165,7 @@ export default function Analytics() {
         return data;
     };
 
-    // استخدام multiple useQuery hooks مع dependency على الـ filters والصلاحيات
+    
     const {
         data: appointmentsData,
         isLoading: appointmentsLoading,
@@ -176,7 +175,7 @@ export default function Analytics() {
     } = useQuery({
         queryKey: ['analytics-appointments', filters.appointments],
         queryFn: fetchAppointmentAnalytics,
-        enabled: Boolean(canViewAppointment), // تحويل إلى boolean صريح
+        enabled: Boolean(canViewAppointment),
         refetchInterval: canViewAppointment ? 5 * 60 * 1000 : false,
         staleTime: 2 * 60 * 1000,
         retry: 3,
@@ -261,7 +260,7 @@ export default function Analytics() {
         }));
     };
 
-    // وظيفة للحصول على الفلاتر النشطة
+
     const getActiveFilters = () => {
         return filters[activeTab] || {};
     };
@@ -290,25 +289,23 @@ export default function Analytics() {
         updateFilters('appointments', clearedFilters);
     };
 
-    // Check if appointment filters are active
+ 
     const hasActiveAppointmentFilters = filters.appointments.start_date || filters.appointments.end_date;
 
-    // بيانات التبويبات
     const tabs = [
         canViewAppointment && { id: 'appointments', label: 'Appointments', icon: <Calendar size={18} /> },
         canViewInterview && { id: 'interviews', label: 'Interviews', icon: <FileText size={18} />},
-        canViewStaff && { id: 'users', label: 'Users', icon: <Users size={18} /> },
-        canViewClients && { id: 'customers', label: 'customers', icon: <User size={18} /> }
+        canViewStaff && { id: 'users', label: 'Recruiter', icon: <Users size={18} /> },
+        canViewClients && { id: 'customers', label: 'Clients', icon: <User size={18} /> }
     ].filter(Boolean);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
         setIsDropdownOpen(false);
     };
-
     const currentTab = tabs.find(tab => tab.id === activeTab);
 
-    // التحقق من loading state - فقط للتبويبات المفعلة
+
     const isLoading = (
         (canViewAppointment && appointmentsLoading) ||
         (canViewInterview && interviewsLoading) ||
@@ -316,7 +313,7 @@ export default function Analytics() {
         (canViewClients && clientsLoading)
     );
     
-    // التحقق من error state - فقط للتبويبات المفعلة
+
     const isError = (
         (canViewAppointment && appointmentsError) ||
         (canViewInterview && interviewsError) ||

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, RefreshCw, Copy } from 'lucide-react';
+import { fetchProfileData, StaffFetchProfileData } from '../../../redux/apiCalls/ProfileCallApi';
+import { useDispatch, useSelector } from 'react-redux';
 
 const ShareBookingModal = ({ 
   isOpen, 
@@ -15,9 +17,22 @@ const ShareBookingModal = ({
   const [newShareLink, setNewShareLink] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
+  const [orgBase, setOrgBase] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const userType = localStorage.getItem("userType");
-  console.log(shareLink);
-  
+  const dispatch = useDispatch();
+  const { profile: profileData, staffProfile } = useSelector(state => state.profileData);
+
+
+
+  // Organization share_link
+  useEffect(() => {
+    if (profileData?.user?.share_link) {
+      setOrgBase(profileData?.user.share_link);
+    } else if (staffProfile?.user?.customer_share_link) {
+      setOrgBase(staffProfile?.user.customer_share_link);
+    }
+  }, [profileData, staffProfile]);
   
   // Reset edit mode when modal opens/closes
   useEffect(() => {
@@ -26,16 +41,21 @@ const ShareBookingModal = ({
       setNewShareLink('');
       setCopiedLink(false);
       setCopiedEmbed(false);
+      setIsSaving(false);
     }
   }, [isOpen]);
 
-  const bookingLink = shareLink 
-    ? `${window.location.origin}/${shareLink}` 
-    : '';
-  
-  const embedCode = shareLink 
-    ? `<embed src="${window.location.origin}/${shareLink}" width="100%" height="600px" />` 
-    : '';
+  const bookingLink = shareLink
+    ? `${window.location.origin}/${orgBase}/${shareLink}`
+    : orgBase
+      ? `${window.location.origin}/${orgBase}`
+      : '';
+
+  const embedCode = shareLink
+    ? `<embed src="${window.location.origin}/${orgBase}/${shareLink}" width="100%" height="600px" />`
+    : orgBase
+      ? `<embed src="${window.location.origin}/${orgBase}" width="100%" height="600px" />`
+      : '';
 
   const handleCopyLink = (text) => {
     navigator.clipboard.writeText(text);
@@ -56,17 +76,31 @@ const ShareBookingModal = ({
     }
   };
 
+  useEffect(() => {
+    if (userType === 'staff') {
+      dispatch(StaffFetchProfileData());
+    } else {
+      dispatch(fetchProfileData());
+    }
+  }, [dispatch, userType]);
+
   const handleSave = async () => {
     if (newShareLink.trim() && onUpdateLink) {
-      await onUpdateLink(newShareLink.trim(), profile?.id); 
-      setEditMode(false);
-      setNewShareLink('');
+      setIsSaving(true);
+      try {
+        await onUpdateLink(newShareLink.trim(), profile?.id);
+        setEditMode(false);
+        setNewShareLink('');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
   const handleCancel = () => {
     setEditMode(false);
     setNewShareLink('');
+    setIsSaving(false);
   };
 
   if (!isOpen) return null;
@@ -118,25 +152,26 @@ const ShareBookingModal = ({
             {editMode ? (
               // Edit Mode
               <div className="space-y-3">
-                 <div className="relative">
-                    {(shareLink?.includes('Staff') || shareLink?.includes('Admin')) && (
+                <div className="relative">
+                  {!(shareLink?.includes('service') || shareLink?.includes('w')) && (
                     <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-700 font-medium pointer-events-none">
                       @
                     </span>
                   )}
+
                   <input
                     type="text"
                     value={newShareLink}
                     onChange={(e) => setNewShareLink(e.target.value)}
                     className="w-full px-4 py-2.5 pr-10 pl-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    placeholder={ 'Enter share link'}
-                    disabled={loading}
+                    placeholder="Enter share link"
+                    disabled={isSaving || loading}
                   />
                   <button
                     type="button"
                     onClick={handleGenerateRandom}
                     className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded transition-colors"
-                    disabled={loading}
+                    disabled={isSaving || loading}
                   >
                     <RefreshCw className="w-4 h-4 text-gray-500" />
                   </button>
@@ -145,16 +180,16 @@ const ShareBookingModal = ({
                   <button
                     onClick={handleCancel}
                     className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-                    disabled={loading}
+                    disabled={isSaving || loading}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSave}
-                    disabled={!newShareLink.trim() || loading}
+                    disabled={!newShareLink.trim() || isSaving || loading}
                     className="px-4 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Saving...' : 'Save'}
+                    {isSaving || loading ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </div>
@@ -162,25 +197,31 @@ const ShareBookingModal = ({
               // View Mode
               <div className="flex items-center gap-2">
                 <div className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700 overflow-hidden overflow-ellipsis whitespace-nowrap">
-                  {shareLink ? bookingLink : 'No share link available'}
+                  {orgBase || shareLink ? bookingLink : 'No share link available'}
                 </div>
-                {shareLink && userType === 'customer' && canShowEdit && (
+                {(shareLink || orgBase) && canShowEdit && (
                   <button
                     onClick={() => setEditMode(true)}
                     className="p-2.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors"
                     title="Edit link"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
                     </svg>
                   </button>
                 )}
+
                 <button
                   onClick={() => handleCopyLink(bookingLink)}
-                  disabled={!shareLink}
+                  disabled={!bookingLink}
                   className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                    !shareLink 
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                    !bookingLink
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       : copiedLink
                         ? 'bg-green-600 text-white'
                         : 'bg-purple-600 hover:bg-purple-700 text-white'
@@ -242,7 +283,7 @@ const ShareBookingModal = ({
           )}
 
           {/* Warning message */}
-          {!shareLink && (
+          {!(orgBase || shareLink) && (
             <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
               <p className="text-sm text-yellow-800">
                 Share link is not available. Please create a share link first.

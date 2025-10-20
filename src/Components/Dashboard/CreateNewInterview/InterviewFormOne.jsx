@@ -29,10 +29,11 @@ const InterviewFormOne = () => {
     payment_details: '',
     currency: '',
     mode: '',
-    offline_mode: '',
+    inperson_mode: '',
     location: '',
     double_book: false,
-    approve_appointment: false, 
+    approve_appointment: false,
+    require_staff_select: false,
     max_clients: '',
     meeting_link: ""
   });
@@ -65,6 +66,7 @@ const handleSubmit = async() => {
     photo: tempImage || formData.photo,
     double_book: formData.double_book ? 1 : 0,
     approve_appointment: formData.approve_appointment ? 1 : 0,
+    require_staff_select: formData.require_staff_select ? 1 : 0,
     work_space_id: formData.work_space_id ? parseInt(formData.work_space_id) : null,
     duration_cycle: formData.duration_cycle ? parseInt(formData.duration_cycle) : null,
     rest_cycle: formData.rest_cycle ? parseInt(formData.rest_cycle) : null,
@@ -76,11 +78,11 @@ const handleSubmit = async() => {
   if (dataToSend.mode !== 'online') {
     delete dataToSend.meeting_link;
   }
-  if (dataToSend.mode !== 'in-person') {
-    delete dataToSend.offline_mode;
+  if (dataToSend.mode !== 'inperson') {
+    delete dataToSend.inperson_mode;
     delete dataToSend.location;
   }
-  if (dataToSend.offline_mode !== 'inhouse ') {
+  if (dataToSend.inperson_mode !== 'inhouse') {
     delete dataToSend.location;
   }
 
@@ -115,8 +117,8 @@ const handleSubmit = async() => {
     setFormData(prev => ({
       ...prev,
       [name]: newValue,
-      ...(name === 'mode' && newValue === 'online' ? { offline_mode: '', location: '' } : {}),
-      ...(name === 'offline_mode' && newValue !== 'inhouse ' ? { location: '' } : {})
+      ...(name === 'mode' && newValue === 'online' ? { inperson_mode: '', location: '' } : {}),
+      ...(name === 'inperson_mode' && newValue !== 'inhouse' ? { location: '' } : {})
     }));
 
     if (errors[name]) {
@@ -173,9 +175,9 @@ const handleSubmit = async() => {
     }
     
     // Mode validation
-    if (formData.mode === 'in-person') {
-      if (!formData.offline_mode) newErrors.offline_mode = 'in-person mode is required';
-      if (formData.offline_mode === 'inhouse ' && !formData.location) {
+    if (formData.mode === 'inperson') {
+      if (!formData.inperson_mode) newErrors.inperson_mode = 'in person mode is required';
+      if (formData.inperson_mode === 'inhouse' && !formData.location) {
         newErrors.location = 'Location is required for in-home interviews';
       }
     }
@@ -450,7 +452,7 @@ const handleSubmit = async() => {
               >
                 <option value="" disabled>Select Mode</option>
                 <option value="online">Online</option>
-                <option value="in-person">In Persone</option>
+                <option value="inperson">In Persone</option>
                 <option value="phone">Phone</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
@@ -459,19 +461,19 @@ const handleSubmit = async() => {
           </div>
 
           {/* in-person Mode or Meeting Link */}
-          {formData.mode === 'in-person' ? (
+          {formData.mode === 'inperson' ? (
             <div className="space-y-2 flex-1">
               <label className="block text-sm font-medium text-gray-700">
                 in-person Mode <span className="text-red-500">*</span>
               </label>
               <div className="relative w-full">
                 <select
-                  name="offline_mode"
-                  value={formData.offline_mode}
+                  name="inperson_mode"
+                  value={formData.inperson_mode}
                   onChange={handleInputChange}
                   className={`w-full outline-none p-2.5 border rounded-lg appearance-none focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                    errors.offline_mode ? 'border-red-500' : ''
-                  } ${!formData.offline_mode ? 'text-gray-400' : 'text-black'}`}
+                    errors.inperson_mode ? 'border-red-500' : ''
+                  } ${!formData.inperson_mode ? 'text-gray-400' : 'text-black'}`}
                 >
                   <option value="" disabled>Select in-person Mode</option>
                   <option value="inhouse">In House</option>
@@ -479,7 +481,7 @@ const handleSubmit = async() => {
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               </div>
-              {errors.offline_mode && <p className="text-red-500 text-sm mt-1">{errors.offline_mode}</p>}
+              {errors.inperson_mode && <p className="text-red-500 text-sm mt-1">{errors.inperson_mode}</p>}
             </div>
           ) : formData.mode === 'online' ? (
             <div className="space-y-2 flex-1">
@@ -501,8 +503,8 @@ const handleSubmit = async() => {
           ) : null}
         </div>
 
-        {/* Location - Only show if offline_mode is 'inhouse ' */}
-        {formData.offline_mode === 'inhouse ' && (
+        {/* Location - Only show if inperson_mode is 'inhouse ' */}
+        {formData.inperson_mode === 'inhouse' && (
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
               Location <span className="text-red-500">*</span>
@@ -552,6 +554,25 @@ const handleSubmit = async() => {
                 name="approve_appointment"
                 value={formData.approve_appointment}
                 onChange={(e) => handleSelectChange("approve_appointment", e.target.value === 'true')}
+                className="w-full outline-none p-2.5 border rounded-lg appearance-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value={true}>Yes</option>
+                <option value={false}>No</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+
+        {/* Require Staff Select */}
+        <div className='flex gap-4 items-center'>
+          <div className="space-y-2 flex-1">
+            <label className="block text-sm font-medium text-gray-700">Require Staff Selection</label>
+            <div className="relative w-full">
+              <select
+                name="require_staff_select"
+                value={formData.require_staff_select}
+                onChange={(e) => handleSelectChange("require_staff_select", e.target.value === 'true')}
                 className="w-full outline-none p-2.5 border rounded-lg appearance-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value={true}>Yes</option>

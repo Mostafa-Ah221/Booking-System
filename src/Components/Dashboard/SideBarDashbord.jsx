@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Calendar, Layout, FileText, User, ChevronUp, ChevronDown, Trash2, ChartBar, Clock5, Users } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaCheck } from "react-icons/fa6";
@@ -12,7 +12,6 @@ import DeleteWorkspaceModal from "./DeleteWorkspaceModal";
 import { usePermission } from "../hooks/usePermission";
 import toast from "react-hot-toast";
 import logo from '../../assets/image/logo.png';
-import logo_icon from '../../assets/image/logo_icon.png';
 
 export default function SideBarDashbord() {
   const location = useLocation();

@@ -39,7 +39,7 @@ function RecruitersContent({ data, filters, onFiltersChange }) {
   const stats = [
     {
       id: "last_7_days",
-      title: "Users Last 7 Days",
+      title: "Recruiter Last 7 Days",
       value: recruitersData.staff_last_7_days || 0,
       icon: Users,
       color: "blue",
@@ -47,7 +47,7 @@ function RecruitersContent({ data, filters, onFiltersChange }) {
     },
     {
       id: "last_month",
-      title: "Users Last Month",
+      title: "Recruiter Last Month",
       value: recruitersData.staff_last_month || 0,
       icon: Users,
       color: "green",
@@ -55,7 +55,7 @@ function RecruitersContent({ data, filters, onFiltersChange }) {
     },
     {
       id: "last_year",
-      title: "Users Last Year",
+      title: "Recruiter Last Year",
       value: recruitersData.staff_last_year || 0,
       icon: Users,
       color: "purple",
@@ -100,7 +100,7 @@ function RecruitersContent({ data, filters, onFiltersChange }) {
       {/* Filter Section */}
       <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium text-gray-900">Users Filters</h3>
+          <h3 className="text-lg font-medium text-gray-900">Recruiter Filters</h3>
           <div className="flex items-center space-x-2">
             {hasActiveFilters && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -189,7 +189,7 @@ function RecruitersContent({ data, filters, onFiltersChange }) {
       </div>
 
       {/* Pie Chart Distribution */}
-      <PieChartComponent data={pieData} title="User Distribution" />
+      <PieChartComponent data={pieData} title="Recruiter Distribution" />
 
       {/* Active Filters */}
       {hasActiveFilters && (

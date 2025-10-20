@@ -60,7 +60,7 @@ const Customers = () => {
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [clientData, setClientData] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const customersPerPage = 9;
+  const customersPerPage = 4;
 
   const { customers, loading, error } = useSelector(state => state.customers);
    const { allInterviews } = useSelector(state => state.interview);
@@ -82,7 +82,7 @@ const Customers = () => {
   const handleConfirmDelete = () => {
     if (customerToDelete) {
       dispatch(deleteCustomer(customerToDelete.id));
-      setCurrentPage(1); // Reset to first page after deletion
+      setCurrentPage(1); 
       setShowDeleteModal(false);
       setCustomerToDelete(null);
     }
@@ -207,7 +207,9 @@ const Customers = () => {
   }
 
   return (
-    <div className="w-full min-h-screen bg-gray-50">
+    <div className="w-full bg-gray-50 flex flex-col">
+
+
       <div className="flex items-center justify-between p-6 bg-white border-b">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-gray-900">Clients</h1>
@@ -230,7 +232,7 @@ const Customers = () => {
               onClick={handleOpen}
             >
               <span>+</span>
-              New Customer
+              New Client
             </button>
           )}
         </div>
@@ -270,7 +272,7 @@ const Customers = () => {
               onClick={handleOpen}
             >
               <span>+</span>
-              New Customer
+              New Client
             </button>
           )}
         </div>

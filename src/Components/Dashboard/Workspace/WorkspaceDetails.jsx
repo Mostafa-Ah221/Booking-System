@@ -31,7 +31,7 @@ export default function WorkspaceDetails() {
     setIsShareModalOpen(true);
   };
 
-  console.log(workspace?.share_link);
+  
 
   return (
     <div className="w-full mt-7">
@@ -70,7 +70,7 @@ export default function WorkspaceDetails() {
         </button>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 mx-5">
         {activeTab === 'availability' && (
           <div className="text-gray-700">
             <WorkspaceAvailability />
@@ -89,7 +89,7 @@ export default function WorkspaceDetails() {
        <ShareBookingModal
               isOpen={isShareModalOpen} 
               onClose={() => setIsShareModalOpen(false)} 
-              shareLink={`Space/${workspace?.share_link}`}
+              shareLink={`w/${workspace?.share_link}`}
               profile={workspace}
               onUpdateLink={handleUpdateShareLink}
             />

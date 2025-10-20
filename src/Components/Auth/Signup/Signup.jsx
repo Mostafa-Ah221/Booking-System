@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Eye, EyeOff, Phone, Mail, Lock, User, Camera, ArrowRight, UserPlus } from 'lucide-react';
 import * as Yup from 'yup';
 import { useFormik } from 'formik';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ImageUploadCrop from '../../Dashboard/InterviewsPages/InterViewPage/ImageUploadCrop';
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -18,8 +18,15 @@ const Signup = () => {
   const [tempImage, setTempImage] = useState(null);
   const [phoneValue, setPhoneValue] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [registerData, setRegisterData] = useState(null);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState(null);
   
   let navigate = useNavigate();
+  const { token } = useParams();
+  
+  // Check if this is staff registration
+  const isStaffRegistration = !!token;
 
   const validationSchema = Yup.object().shape({
     name: Yup.string()
@@ -27,7 +34,7 @@ const Signup = () => {
       .max(50, "Name must be at most 50 characters"),
     email: Yup.string()
       .email("Invalid email address")
-      .required("Email is required"),
+      .nullable(),
     phone_code: Yup.string()
       .nullable(),
     phone: Yup.string()
@@ -40,7 +47,7 @@ const Signup = () => {
     photo: Yup.mixed()
       .nullable()
       .test("fileType", "File must be an image", (value) => {
-        if (!value) return true; // Allow null
+        if (!value) return true;
         return value instanceof File && ['image/jpeg', 'image/png', 'image/gif'].includes(value.type);
       })
   });
@@ -51,7 +58,6 @@ const Signup = () => {
     formik.setFieldValue('phone', value.replace(`+${country.dialCode}`, ""));
     formik.setFieldValue('phone_code', `+${country.dialCode}`);
 
-    // Validate phone number
     if (!value || value.length <= country.dialCode.length + 1) {
       setPhoneError("Please enter a valid phone number");
       return;
@@ -66,63 +72,128 @@ const Signup = () => {
     }
   };
 
+  const getRegisterData = async (token) => {
+    try {
+      const response = await fetch(
+        `https://backend-booking.appointroll.com/api/staff/register/${token}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching registration data:', error);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!isStaffRegistration) return;
+      setDataLoading(true);
+      setDataError(null);
+      try {
+        const data = await getRegisterData(token);
+        setRegisterData(data);
+        
+        // Set the form values with the fetched data
+        if (data?.data) {
+          formik.setFieldValue('email', data.data.email || '');
+          formik.setFieldValue('phone_code', data.data.phone_code || '');
+          formik.setFieldValue('phone', data.data.phone || '');
+          
+          // Set phone value for PhoneInput component
+          if (data.data.phone_code && data.data.phone) {
+            const fullPhone = `${data.data.phone_code}${data.data.phone}`;
+            setPhoneValue(fullPhone);
+          }
+        }
+      } catch (error) {
+        console.error('error', error);
+        setDataError(error.message);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [token, isStaffRegistration]);
+
   const handleRegister = async (values) => {
     setIsLoading(true);
     setApiError(null);
-
     try {
       const formData = new FormData();
       formData.append("name", values.name);
-      formData.append("email", values.email);
       formData.append("password", values.password);
       formData.append("password_confirmation", values.password_confirmation);
       
-      // Add phone fields if provided
+      // Add email only for normal registration
+      if (!isStaffRegistration) {
+        formData.append("email", values.email);
+      }
       if (values.phone_code) {
         formData.append("phone_code", values.phone_code);
       }
-      
       if (values.phone) {
         formData.append("phone", values.phone);
       }
 
-      // استخدام tempImage إذا كانت موجودة
       const photoToSend = tempImage || values.photo;
       if (photoToSend) {
         formData.append("photo", photoToSend);
       }
 
-      const response = await axios.post(
-        "https://backend-booking.appointroll.com/api/register",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      // Use different API endpoint based on registration type
+      const apiUrl = isStaffRegistration
+        ? `https://backend-booking.appointroll.com/api/staff/register/${token}`
+        : "https://backend-booking.appointroll.com/api/register";
+
+      const response = await axios.post(apiUrl, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       console.log("Full API Response:", response.data);
-
-      // Extract data from response
-      const userData = response?.data?.data;
-      
-      // Check for access token in different possible paths
-      const accessToken = userData?.user?.original?.access_token || userData?.access_token;
-      const otpVerify = userData?.otp_verify;
-      
-      if (accessToken) {
-        navigate("/verify", {
+      const accessToken = response?.data?.data?.user?.original?.access_token;
+      if (isStaffRegistration) {
+        localStorage.setItem("access_token", accessToken);
+        localStorage.setItem("userType", 'staff');
+        navigate("/staff_dashboard_layout", {
           state: {
-            type: "signup",
-            access_token: accessToken,
-            otp_verify: otpVerify,
-            email: values.email
-          },
+            message: "Registration successful! Please login with your credentials.",
+            type: "success"
+          }
         });
       } else {
-        console.error("No access token found in expected path:", response.data);
-        setApiError("Unable to retrieve access token. Please try again.");
+        const userData = response?.data?.data;
+        const accessToken = userData?.user?.original?.access_token || userData?.access_token;
+        const otpVerify = userData?.otp_verify;
+        
+        if (accessToken) {
+          localStorage.setItem('resendCodeTimer', Date.now().toString());
+          navigate("/verify", {
+            state: {
+              type: "signup",
+              access_token: accessToken,
+              otp_verify: otpVerify,
+              email: values.email
+            },
+          });
+        } else {
+          console.error("No access token found in expected path:", response.data);
+          setApiError("Unable to retrieve access token. Please try again.");
+        }
       }
 
     } catch (error) {
@@ -131,36 +202,29 @@ const Signup = () => {
       let errorMessage = "Registration failed. Please try again.";
 
       if (error.response) {
-        // More detailed error handling
         if (error.response.data.errors) {
-          // Handle validation errors
           const firstError = Object.values(error.response.data.errors)[0]?.[0];
           errorMessage = firstError || errorMessage;
         } else {
           errorMessage = error.response.data.message || errorMessage;
         }
       }
-
       setApiError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  
   const handleImageUpdate = (imageFile) => {
     setTempImage(imageFile);
     formik.setFieldValue('photo', imageFile);
     setIsImageUploadOpen(false);
-    console.log("تم تحديث الصورة من ImageUploadCrop:", imageFile);
   };
 
-  
   const handleCameraClick = () => {
     setIsImageUploadOpen(true);
   };
 
-  // عرض الصورة المختارة
   const getDisplayImage = () => {
     if (tempImage) {
       return URL.createObjectURL(tempImage);
@@ -184,18 +248,55 @@ const Signup = () => {
 
   const displayImage = getDisplayImage();
 
+  // Show loading state while fetching staff data
+  if (isStaffRegistration && dataLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <svg className="animate-spin h-12 w-12 text-purple-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p className="text-gray-600 text-lg">Loading registration data...</p>
+        </div>
+      </div>
+    );
+  }
+  // Show error state if data fetch failed
+  if (isStaffRegistration && dataError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Data</h2>
+            <p className="text-gray-600 mb-6">{dataError}</p>
+            <button
+              onClick={() => navigate("/login")}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200"
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex">
       {/* Left Side - Fixed Image Section */}
       <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-purple-600 via-pink-600 to-indigo-700 p-12 items-center justify-center overflow-hidden fixed h-full">
-        {/* Background decorative elements */}
         <div className="absolute top-0 left-0 w-40 h-40 bg-white opacity-10 rounded-full -translate-x-20 -translate-y-20"></div>
         <div className="absolute bottom-0 right-0 w-60 h-60 bg-white opacity-5 rounded-full translate-x-20 translate-y-20"></div>
         <div className="absolute top-1/2 left-1/4 w-20 h-20 bg-yellow-300 opacity-20 rounded-full"></div>
         <div className="absolute top-1/4 right-1/3 w-16 h-16 bg-blue-300 opacity-15 rounded-full"></div>
         
         <div className="text-center text-white z-10">
-          {/* Logo/Icon */}
           <div className="mb-8">
             <div className="w-20 h-20 mx-auto bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-sm">
               <UserPlus className="w-10 h-10 text-white" />
@@ -203,19 +304,29 @@ const Signup = () => {
           </div>
           
           <h1 className="text-4xl font-bold mb-4 leading-tight">
-            Join the Future of<br />
-            <span className="text-yellow-300">Booking Management</span>
+            {isStaffRegistration ? (
+              <>
+                Join Our Team as<br />
+                <span className="text-yellow-300">Staff Member</span>
+              </>
+            ) : (
+              <>
+                Join the Future of<br />
+                <span className="text-yellow-300">Appoint Roll</span>
+              </>
+            )}
           </h1>
           
           <p className="text-xl text-purple-100 mb-8 leading-relaxed">
-            Create your account and start managing bookings like a pro. 
-            Join thousands of satisfied users today.
+            {isStaffRegistration 
+              ? "Complete your registration and start working with the team today."
+              : "Create your account and start managing bookings like a pro. Join thousands of satisfied users today."
+            }
           </p>
           
-          {/* Features list */}
           <div className="space-y-4 text-left max-w-sm mx-auto">
             {[
-              "Free Account Setup",
+              isStaffRegistration ? "Quick Registration" : "Free Account Setup",
               "Instant Access to Dashboard", 
               "Professional Tools",
               "Secure Data Protection"
@@ -248,8 +359,15 @@ const Signup = () => {
 
             {/* Header */}
             <div className="text-center lg:text-left mb-8">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Create Account</h2>
-              <p className="text-gray-600">Join us and start managing your bookings efficiently</p>
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                {isStaffRegistration ? "Staff Registration" : "Create Account"}
+              </h2>
+              <p className="text-gray-600">
+                {isStaffRegistration 
+                  ? "Complete your profile to join the team"
+                  : "Join us and start managing your bookings efficiently"
+                }
+              </p>
             </div>
 
             {/* API error display */}
@@ -275,7 +393,7 @@ const Signup = () => {
               <div className="space-y-2">
                 <label htmlFor="name" className="block text-sm font-semibold text-gray-700">
                   Full Name
-                    <span className="text-red-500 ml-1">*</span>
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -307,11 +425,11 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Email Input */}
+              {/* Email Input - Always shown but disabled for staff */}
               <div className="space-y-2">
                 <label htmlFor="email" className="block text-sm font-semibold text-gray-700">
                   Email Address
-                    <span className="text-red-500 ml-1">*</span>
+                  {!isStaffRegistration && <span className="text-red-500 ml-1">*</span>}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -325,15 +443,18 @@ const Signup = () => {
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                     placeholder="Enter your email"
+                    disabled={isStaffRegistration}
                     className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 ${
-                      formik.touched.email && formik.errors.email 
-                        ? 'border-red-300 bg-red-50' 
-                        : 'border-gray-200 hover:border-gray-300'
+                      isStaffRegistration 
+                        ? 'bg-gray-100 cursor-not-allowed text-gray-600' 
+                        : formik.touched.email && formik.errors.email 
+                          ? 'border-red-300 bg-red-50' 
+                          : 'border-gray-200 hover:border-gray-300'
                     }`}
                     dir="ltr"
                   />
                 </div>
-                {formik.touched.email && formik.errors.email && (
+                {formik.touched.email && formik.errors.email && !isStaffRegistration && (
                   <p className="text-red-500 text-sm mt-1 flex items-center">
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -343,10 +464,10 @@ const Signup = () => {
                 )}
               </div>
 
-              {/* Phone Input - Updated with react-phone-input-2 */}
+              {/* Phone Input - Disabled for staff */}
               <div className="space-y-2">
                 <label htmlFor="phone" className="block text-sm font-semibold text-gray-700">
-                  Phone Number (Optional)
+                  Phone Number {!isStaffRegistration && "(Optional)"}
                 </label>
                 <PhoneInput
                   country="eg"
@@ -356,15 +477,15 @@ const Signup = () => {
                   searchPlaceholder="Search country"
                   inputProps={{
                     name: "phone",
-                    className: "!pl-16 w-full py-3 px-4 border border-gray-200 rounded-xl outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 hover:border-gray-300",
+                    className: `!pl-16 w-full py-3 px-4 border rounded-xl outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 border-gray-200 hover:border-gray-300`,
                     placeholder: "Enter your mobile number"
                   }}
                   containerClass="w-full"
-                  buttonClass="!border-r !bg-white !px-3 !py-3 !rounded-l-xl !border-gray-200 hover:!border-gray-300"
+                  buttonClass="!border-r !px-3 !py-3 !rounded-l-xl !bg-white !border-gray-200 hover:!border-gray-300"
                   dropdownClass="!bg-white !border !shadow-lg !rounded-lg !mt-1"
                   searchClass="!p-3 !border-b !border-gray-200"
                 />
-                {phoneError && (
+                {phoneError && !isStaffRegistration && (
                   <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -378,7 +499,7 @@ const Signup = () => {
               <div className="space-y-2">
                 <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
                   Password
-                    <span className="text-red-500 ml-1">*</span>
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -421,7 +542,7 @@ const Signup = () => {
               <div className="space-y-2">
                 <label htmlFor="password_confirmation" className="block text-sm font-semibold text-gray-700">
                   Confirm Password
-                    <span className="text-red-500 ml-1">*</span>
+                  <span className="text-red-500 ml-1">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -491,7 +612,7 @@ const Signup = () => {
                         type="button"
                         onClick={handleCameraClick}
                         className="text-purple-600 hover:text-purple-800 text-sm font-medium"
-                      >
+                        >
                         Change Photo
                       </button>
                     )}
@@ -540,7 +661,7 @@ const Signup = () => {
                   className="w-full bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-md flex items-center justify-center space-x-2"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013 3v1" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                   </svg>
                   <span>Sign In Instead</span>
                 </button>
@@ -548,7 +669,7 @@ const Signup = () => {
             </form>
 
             {/* Footer */}
-             <div className="text-center mt-8">
+            <div className="text-center mt-8">
               <p className="text-gray-600 text-sm leading-relaxed">
                 <span className="font-medium text-gray-800">© 2025 Appointroll</span>
                 <span className="mx-2">•</span>

@@ -8,24 +8,24 @@ function ClientsContent({ data, filters, onFiltersChange }) {
 
     const clientsData = data?.data?.date_periods || {};
 
-    // إحصائيات
+    
     const stats = [
         {
-            title: 'Customers Last 7 Days',
+            title: 'Clients Last 7 Days',
             value: clientsData.clients_last_7_days || 0,
             icon: Users,
             color: 'blue',
             period: '7 days'
         },
         {
-            title: 'Customers Last Month',
+            title: 'Clients Last Month',
             value: clientsData.clients_last_month || 0,
             icon: Users,
             color: 'green',
             period: '30 days'
         },
         {
-            title: 'Customers Last Year',
+            title: 'Clients Last Year',
             value: clientsData.clients_last_year || 0,
             icon: Users,
             color: 'purple',
@@ -75,7 +75,7 @@ function ClientsContent({ data, filters, onFiltersChange }) {
             {/* Filter Section */}
             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-gray-900">Customers Filters</h3>
+                    <h3 className="text-lg font-medium text-gray-900">Clients Filters</h3>
                     <div className="flex items-center space-x-2">
                         {hasActiveFilters && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
@@ -159,7 +159,7 @@ function ClientsContent({ data, filters, onFiltersChange }) {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Bar Chart */}
                     <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">customer Activity (Bars)</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Clients Activity (Bars)</h3>
                         <div className="flex items-end space-x-4 h-56">
                             {stats.map((stat, i) => {
                                 const maxValue = Math.max(...stats.map(s => s.value));
@@ -181,7 +181,7 @@ function ClientsContent({ data, filters, onFiltersChange }) {
 
                     {/* Pie Chart */}
                     <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Customers Distribution</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Clients Distribution</h3>
                         <div className="h-[350px]">
                             <ResponsivePie
                                 data={pieData}
@@ -216,7 +216,7 @@ function ClientsContent({ data, filters, onFiltersChange }) {
                                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: datum.color }} />
                                             <span className="font-medium">{datum.label}</span>
                                         </div>
-                                        <div className="text-sm text-gray-600 mt-1">{datum.value} Customers</div>
+                                        <div className="text-sm text-gray-600 mt-1">{datum.value} Clients</div>
                                     </div>
                                 )}
                             />
@@ -232,7 +232,7 @@ function ClientsContent({ data, filters, onFiltersChange }) {
                         <Building className="w-8 h-8 text-gray-400" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No customer Data Available</h3>
-                    <p className="text-sm text-gray-500">There are currently no customers registered in the system.</p>
+                    <p className="text-sm text-gray-500">There are currently no clients registered in the system.</p>
                 </div>
             )}
 
@@ -242,7 +242,7 @@ function ClientsContent({ data, filters, onFiltersChange }) {
                         <Building className="w-8 h-8 text-gray-400" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No Results Found</h3>
-                    <p className="text-sm text-gray-500 mb-4">No customers found matching your filter criteria.</p>
+                    <p className="text-sm text-gray-500 mb-4">No clients found matching your filter criteria.</p>
                     <button
                         onClick={clearFilters}
                         className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700"

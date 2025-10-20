@@ -299,45 +299,37 @@ export function Chart2({ data, timeFilter }) {
 
     // Process data for pie chart
     const pieData = useMemo(() => {
-        // Get appointments_by_status object directly
         const appointmentsByStatus = appointmentData?.appointments_by_status || {};
 
-        // Since we have aggregated data by status, we don't need time filtering
-        // The data is already summarized by status
         
-        // Convert object to pie chart format
+
         const statusData = [
             { 
                 id: 'upcoming', 
                 label: 'Upcoming', 
-                value: appointmentsByStatus.upcoming || 0, 
-                color: '#4f46e5',
-                percentage: 0
+                value: appointmentsByStatus.upcoming?.count || appointmentsByStatus.upcoming || 0, 
+                color: '#4f46e5'
             },
             { 
                 id: 'completed', 
                 label: 'Completed', 
-                value: appointmentsByStatus.completed || 0, 
-                color: '#10b981',
-                percentage: 0
+                value: appointmentsByStatus.completed?.count || appointmentsByStatus.completed || 0, 
+                color: '#10b981'
             },
             { 
                 id: 'passed', 
                 label: 'Passed', 
-                value: appointmentsByStatus.passed || 0, 
-                color: '#f59e0b',
-                percentage: 0
+                value: appointmentsByStatus.passed?.count || appointmentsByStatus.passed || 0, 
+                color: '#f59e0b'
             },
             { 
                 id: 'cancelled', 
                 label: 'Cancelled', 
-                value: appointmentsByStatus.cancelled || 0, 
-                color: '#ef4444',
-                percentage: 0
+                value: appointmentsByStatus.cancelled?.count || appointmentsByStatus.cancelled || 0, 
+                color: '#ef4444'
             }
         ].filter(item => item.value > 0);
 
-        // Calculate percentages
         const total = statusData.reduce((sum, item) => sum + item.value, 0);
         if (total > 0) {
             statusData.forEach(item => {
@@ -345,8 +337,11 @@ export function Chart2({ data, timeFilter }) {
             });
         }
 
+        console.log('pieData:', statusData); // شوف وش النتيجة
+
         return statusData;
-    }, [appointmentData, timeFilter]);
+    }, [appointmentData]);
+console.log(pieData);
 
     return (
         <div className="mb-8">

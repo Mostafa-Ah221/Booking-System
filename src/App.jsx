@@ -75,6 +75,8 @@ import StaffAppointments from './Components/Staff_Dashboard/StaffAppointments';
 import StaffProfile from './Components/Staff_Dashboard/StaffProfile';
 import Staff_Interview from './Components/Staff_Dashboard/Staff_Interview';
 import NotFound from './Components/ProtectedRoute/NotFound';
+import StaffAvailability from './Components/Staff_Dashboard/StaffAvailability/StaffAvailability';
+import Staff_Analytics from './Components/Staff_Dashboard/Staff_Analytics/Staff_Analytics';
 
 const router = createBrowserRouter ([
     { path: "/verifyNotification", element: <VerifyForm /> },
@@ -86,51 +88,28 @@ const router = createBrowserRouter ([
       </VerifyRoute>
     ),
   },
-  { path: "/:id", element: <AppointmentBooking /> },
-  { path: "/Admin/:idAdmin", element: <AppointmentBooking /> },
-  { path: "/Staff/:idCustomer", element: <AppointmentBooking /> },
-  { path: "/Space/:idSpace", element: <AppointmentBooking /> },
+   { path: "/:idAdmin", element: <AppointmentBooking /> },
+  { path: "/:idAdmin/appointmentConfirmation", element: <AppointmentConfirmation /> },
+  { path: "/:idAdmin/appointmentConfirmation/summary", element: <BookingSummary /> },
 
-   { 
-    path: "/:id/appointmentConfirmation", 
-    element: <AppointmentConfirmation /> 
-  },
-  { 
-    path: "/:id/appointmentConfirmation/summary", 
-    element: <BookingSummary /> 
-  },
+  // ========== Workspace (Space) ==========
+  { path: "/:idAdmin_or/w/:idSpace", element: <AppointmentBooking /> },
+  { path: "/:idAdmin_or/w/:idSpace/appointmentConfirmation", element: <AppointmentConfirmation /> },
+  { path: "/:idAdmin_or/w/:idSpace/appointmentConfirmation/summary", element: <BookingSummary /> },
 
-  // Admin routes
-  { 
-    path: "/Admin/:idAdmin/appointmentConfirmation", 
-    element: <AppointmentConfirmation /> 
-  },
-  { 
-    path: "/Admin/:idAdmin/appointmentConfirmation/summary", 
-    element: <BookingSummary /> 
-  },
+  // ========== Staff ==========
+  { path: "/:idAdmin_or/s/:idCustomer", element: <AppointmentBooking /> },
+  { path: "/:idAdmin_or/s/:idCustomer/appointmentConfirmation", element: <AppointmentConfirmation /> },
+  { path: "/:idAdmin_or/s/:idCustomer/appointmentConfirmation/summary", element: <BookingSummary /> },
 
-  // Staff routes
-  { 
-    path: "/Staff/:idCustomer/appointmentConfirmation", 
-    element: <AppointmentConfirmation /> 
-  },
-  { 
-    path: "/Staff/:idCustomer/appointmentConfirmation/summary", 
-    element: <BookingSummary /> 
-  },
-
-  // Space routes
-  { 
-    path: "/Space/:idSpace/appointmentConfirmation", 
-    element: <AppointmentConfirmation /> 
-  },
-  { 
-    path: "/Space/:idSpace/appointmentConfirmation/summary", 
-    element: <BookingSummary /> 
-  },
+  // ========== Service ==========
+  { path: "/:idAdmin_or/service/:id", element: <AppointmentBooking /> },
+  { path: "/:idAdmin_or/service/:id/appointmentConfirmation", element: <AppointmentConfirmation /> },
+  { path: "/:idAdmin_or/service/:id/appointmentConfirmation/summary", element: <BookingSummary /> },
   { path: "setup_1", element: <ProtectedRoute><Setup_1 /></ProtectedRoute> },
   { path: "signup", element: <Signup /> },
+  { path: "recruiter/register/:token", element: <Signup /> },
+  
   { path: "login", element: <Login /> },
   { path: "/forget-password", element: <ForgetPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
@@ -204,6 +183,8 @@ const router = createBrowserRouter ([
         children: [
             {index: true, element:(<StaffProfile />)  },
             { path: "Staff_Profilepage", element: <StaffProfile /> }, 
+            { path: "Staff_Analytics", element: <Staff_Analytics /> }, 
+            { path: "Staff_Availability", element: <StaffAvailability /> }, 
             { path: "Staff_Appointment", element:(<StaffAppointments />)  },
             { path: "Staff_Interviews", element:( <Staff_Interview />)  },
                         

@@ -143,38 +143,38 @@ useEffect(() => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [openDropdown]);
-const handleDeleteAppointment = async (appointment) => {
-  const confirmMessage = `Are you sure you want to delete the appointment for ${appointment.name}`;
-  showConfirmationToast(
-    confirmMessage,
-    async () => {
-      try {
-        setCancelingAppointment(true);
-        const result = await dispatch(staff_DeleteAppointment(appointment.id));
-        if (!result || !result.success) {
-          throw new Error(result?.message || 'Failed to delete appointment');
-        }
-        if (hasActiveFilters(currentFilters)) {
-          const queryParams = buildQueryParams(currentFilters);
-          await dispatch(satff_FetchAppointments(queryParams));
-        } else {
-          await dispatch(satff_FetchAppointments());
+// const handleDeleteAppointment = async (appointment) => {
+//   const confirmMessage = `Are you sure you want to delete the appointment for ${appointment.name}`;
+//   showConfirmationToast(
+//     confirmMessage,
+//     async () => {
+//       try {
+//         setCancelingAppointment(true);
+//         const result = await dispatch(staff_DeleteAppointment(appointment.id));
+//         if (!result || !result.success) {
+//           throw new Error(result?.message || 'Failed to delete appointment');
+//         }
+//         if (hasActiveFilters(currentFilters)) {
+//           const queryParams = buildQueryParams(currentFilters);
+//           await dispatch(satff_FetchAppointments(queryParams));
+//         } else {
+//           await dispatch(satff_FetchAppointments());
 
-        }
-        if (selectedAppointment && selectedAppointment.id === appointment.id) {
-          setIsDetailsOpen(false);
-          setSelectedAppointment(null);
-        }
-        setOpenDropdown(null);
-      } catch (error) {
-        const errorMessage = error.message || 'An error occurred while deleting the appointment. Please try again.';
-        toast.error(errorMessage);
-      } finally {
-        setCancelingAppointment(false);
-      }
-    }
-  );
-};
+//         }
+//         if (selectedAppointment && selectedAppointment.id === appointment.id) {
+//           setIsDetailsOpen(false);
+//           setSelectedAppointment(null);
+//         }
+//         setOpenDropdown(null);
+//       } catch (error) {
+//         const errorMessage = error.message || 'An error occurred while deleting the appointment. Please try again.';
+//         toast.error(errorMessage);
+//       } finally {
+//         setCancelingAppointment(false);
+//       }
+//     }
+//   );
+// };
   const handleRescheduleFromSidebar = (appointment) => {
     setAppointmentToReschedule(appointment);
     setIsRescheduleOpen(true);
@@ -586,16 +586,16 @@ const handleDeleteAppointment = async (appointment) => {
                                     <span className="text-xs">Cancel</span>
                                     <div className="w-2 h-2 bg-red-600 rounded-full"></div>
                                   </button>
-                                  <button
-  className="w-full text-right px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center justify-end gap-2"
-  onClick={(e) => {
-    e.stopPropagation();
-    handleDeleteAppointment(item);
-  }}
->
-  <span className="text-xs">Delete</span>
-  <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-</button>
+                                  {/* <button
+                                    className="w-full text-right px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center justify-end gap-2"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteAppointment(item);
+                                    }}
+                                  >
+                                    <span className="text-xs">Delete</span>
+                                    <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                                  </button> */}
                               </div>
                             </div>
                           )}

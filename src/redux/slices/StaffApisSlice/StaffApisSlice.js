@@ -3,41 +3,42 @@ import { createSlice } from "@reduxjs/toolkit";
 const staffApisSlice = createSlice({
   name: "staffApis",
   initialState: {
+    staffData: null,  
     staff_appointments: [],
     staff_appointment: null,
     staff_interviews: [],
     staff_workspaces: [],
+    share_link: null,
     loading: false,
     error: null,
   },
   reducers: {
+    setStaff(state, action) { 
+      state.staffData = action.payload;
+    },
     setStaff_appointments(state, action) {
-  const incomingData = action.payload;
-  
-  if (!incomingData) {
-    state.staff_appointments = [];
-    return;
-  }
+      const incomingData = action.payload;
+      
+      if (!incomingData) {
+        state.staff_appointments = [];
+        return;
+      }
 
-  // Check different possible structures
-  if (Array.isArray(incomingData)) {
-    // Direct array
-    state.staff_appointments = incomingData;
-  } else if (incomingData.appointments && Array.isArray(incomingData.appointments)) {
-    // Object with appointments property (your API response)
-    state.staff_appointments = incomingData.appointments;
-  } else if (incomingData.data && Array.isArray(incomingData.data)) {
-    // Object with data property
-    state.staff_appointments = incomingData.data;
-  } else {
-    console.warn('Unexpected appointments data structure:', incomingData);
-    state.staff_appointments = [];
-  }
-},
+      if (Array.isArray(incomingData)) {
+        state.staff_appointments = incomingData;
+      } else if (incomingData.appointments && Array.isArray(incomingData.appointments)) {
+        state.staff_appointments = incomingData.appointments;
+      } else if (incomingData.data && Array.isArray(incomingData.data)) {
+        state.staff_appointments = incomingData.data;
+      } else {
+        console.warn('Unexpected appointments data structure:', incomingData);
+        state.staff_appointments = [];
+      }
+    },
     setStaff_appointment(state, action) {
       state.staff_appointment = action.payload;
     },
-      setStaff_interviews(state, action) {
+    setStaff_interviews(state, action) {
       console.log('🔵 Reducer received:', action.payload);
       
       if (Array.isArray(action.payload)) {
@@ -50,7 +51,7 @@ const staffApisSlice = createSlice({
       
       console.log('🟢 Reducer set interviews to:', state.staff_interviews);
     },
-  setStaff_workspaces(state, action) {
+    setStaff_workspaces(state, action) {
       console.log('🔵 Workspaces Reducer received:', action.payload);
       
       if (Array.isArray(action.payload)) {
@@ -66,19 +67,22 @@ const staffApisSlice = createSlice({
       
       console.log('🟢 Workspaces set to:', state.staff_workspaces.length, 'items');
     },
-updateAppointmentInList(state, action) {
-    const updatedAppointment = action.payload;
-    const index = state.staff_appointments.findIndex(
-      app => app.id === updatedAppointment.id
-    );
-    
-    if (index !== -1) {
-      state.staff_appointments[index] = {
-        ...state.staff_appointments[index],
-        ...updatedAppointment
-      };
-    }
-  },
+    updateStaffShareLink(state, action) {
+      state.share_link = action.payload;
+    },
+    updateAppointmentInList(state, action) {
+      const updatedAppointment = action.payload;
+      const index = state.staff_appointments.findIndex(
+        app => app.id === updatedAppointment.id
+      );
+      
+      if (index !== -1) {
+        state.staff_appointments[index] = {
+          ...state.staff_appointments[index],
+          ...updatedAppointment
+        };
+      }
+    },
     removeAppointment(state, action) {
       if (Array.isArray(state.staff_appointments)) {
         state.staff_appointments = state.staff_appointments.filter((a) => a.id !== action.payload);
@@ -87,7 +91,7 @@ updateAppointmentInList(state, action) {
         state.staff_appointments = [];
       }
     },
-     setLoading(state, action) {
+    setLoading(state, action) {
       state.loading = action.payload;
     },
     setError(state, action) {

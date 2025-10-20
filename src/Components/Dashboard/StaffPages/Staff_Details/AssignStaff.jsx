@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Search, MoreVertical, Share2, Trash2, Plus } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchInterviews } from '../../../../redux/apiCalls/interviewCallApi';
-import { getWorkspace } from '../../../../redux/apiCalls/workspaceCallApi';
+import { fetchInterviews, updateShareLinkIntreview } from '../../../../redux/apiCalls/interviewCallApi';
+import { getAllWorkspaces, getWorkspace, updateShareLinkWorkspace } from '../../../../redux/apiCalls/workspaceCallApi';
 import AssignModal from './AssignModal';
 import { useParams } from 'react-router-dom';
 import Staff_ShareBookingModal from '../../../Staff_Dashboard/Staff_ShareBookingModal';
+import ShareBookingModal from '../../Profile_Page/ShareModalPrpfile';
 
 const AssignStaff = ({ staff }) => {
   const [openMenu, setOpenMenu] = useState(null);
@@ -84,7 +85,25 @@ const AssignStaff = ({ staff }) => {
     setIsShareModalOpen(false);
     setSelectedItem(null);
   };
-
+const handleUpdateShareLink = async (newShareLink, id) => {
+    try {
+      await dispatch(updateShareLinkWorkspace(newShareLink, id));
+      await dispatch(getAllWorkspaces({ force: true }));
+      setIsShareModalOpen(false);  
+      setSelectedItem(null);
+    } catch (error) {
+      console.error('Error updating share link:', error);
+    }
+  };
+  const handleUpdateShareLink_int = async (newShareLink,id) => {
+      try {
+        await dispatch(updateShareLinkIntreview(newShareLink,id));
+        setIsShareModalOpen(false);  
+        setSelectedItem(null);
+      } catch (error) {
+        console.error('Error updating share link:', error);
+      }
+    };
   const handleRemoveClick = (item, e) => {
     e.stopPropagation();
     console.log("Remove:", item);
@@ -314,11 +333,13 @@ const AssignStaff = ({ staff }) => {
       />
 
       {/* Share Modal */}
-      <Staff_ShareBookingModal
-        isOpen={isShareModalOpen}
-        onClose={handleCloseShareModal}
-                shareLink={activeTab === 'workspace' ? `Space/${selectedItem?.share_link}` : selectedItem?.share_link}
+      
+      <ShareBookingModal
+        isOpen={isShareModalOpen} 
+        onClose={handleCloseShareModal} 
+        shareLink={activeTab === 'workspace' ? `w/${selectedItem?.share_link}` :`service/${selectedItem?.share_link}`}
         profile={selectedItem}
+        onUpdateLink={activeTab === 'workspace' ? handleUpdateShareLink : handleUpdateShareLink_int}
       />
     </>
   );

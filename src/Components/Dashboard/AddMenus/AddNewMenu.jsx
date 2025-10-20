@@ -86,6 +86,7 @@ const AddNewMenu = () => {
     { 
       icon: Users, 
       text: 'Recruiter', 
+      disc: '(Staff, Doctors, or Team Members)',
       color: 'bg-red-50 text-red-500', 
       form: "add_staff_modal",
       requiredPermission: "create staff"
@@ -131,7 +132,12 @@ const AddNewMenu = () => {
                     <div className={`p-2 rounded-lg ${item.color}`}>
                       <item.icon className="w-5 h-5" />
                     </div>
-                    <span className="ml-3 text-gray-700">{item.text}</span>
+                    <div className='flex flex-col'>
+                    <span className="ml-3 text-gray-700 ">{item.text}</span>
+                     {item.disc && (
+                        <span className="text-gray-500 text-xs ml-1">{item.disc}</span>
+                      )}
+                    </div>
                   </Link>
                 ) : (
                   <div
@@ -141,7 +147,12 @@ const AddNewMenu = () => {
                     <div className={`p-2 rounded-lg ${item.color}`}>
                       <item.icon className="w-5 h-5" />
                     </div>
-                    <span className="ml-3 text-gray-700">{item.text}</span>
+                     <div className='flex flex-col'>
+                    <span className="ml-3 text-gray-700 ">{item.text}</span>
+                     {item.disc && (
+                        <span className="text-gray-500 text-xs ml-3">{item.disc}</span>
+                      )}
+                     </div>
                   </div>
                 )}
                 {index === 2 && <hr />}

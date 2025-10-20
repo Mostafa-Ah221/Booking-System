@@ -9,7 +9,7 @@ const ResetPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const location = useLocation();
-  const { email } = location.state || {};
+  const { email,from } = location.state || {};
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: email,
@@ -83,8 +83,8 @@ const ResetPassword = () => {
         password: formData.password,
         password_confirmation: formData.password_confirmation
       };
-
-      const response = await fetch("https://backend-booking.appointroll.com/api/reset-password", {
+      const endPoint=from?.userType === 'customer' ? "https://backend-booking.appointroll.com/api/reset-password" : "https://backend-booking.appointroll.com/api/staff/reset-password";
+      const response = await fetch(endPoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
