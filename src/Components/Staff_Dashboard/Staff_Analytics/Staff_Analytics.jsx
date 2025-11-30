@@ -3,13 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Calendar, FileText, ChevronDown, Filter, X } from 'lucide-react';
 import Loader from '../../Loader';
 import Staff_StatisticsCards from "./Staff_StatisticsCards";
-// import ChartsSection, { Chart2 } from "./ChartsSection";
-// import CalendarAnalytics from "./CalendarAnalytics";
 import Staff_AppointmentTable from "./Staff_AppointmentTable";
 import ChartsSection, { Chart2 } from '../../Dashboard/Analytics/ChartsSection';
 import CalendarAnalytics from '../../Dashboard/Analytics/CalendarAnalytics';
 import InterviewsContent from '../../Dashboard/Analytics/InterviewsContent';
-// import InterviewsContent from './InterviewsContent';
+import axiosInstance from '../../pages/axiosInstance';
 
 export default function Staff_Analytics() {
     const [activeTab, setActiveTab] = useState('appointments');
@@ -17,6 +15,9 @@ export default function Staff_Analytics() {
     const [showAppointmentFilters, setShowAppointmentFilters] = useState(false);
     const [showInterviewFilters, setShowInterviewFilters] = useState(false);
     const dropdownRef = useRef(null);
+
+    // ✅ إضافة state للـ date error
+    const [dateError, setDateError] = useState('');
 
     const [filters, setFilters] = useState({
         appointments: {
@@ -29,7 +30,6 @@ export default function Staff_Analytics() {
         }
     });
 
-    // Local filters
     const [localAppointmentFilters, setLocalAppointmentFilters] = useState(filters.appointments);
     const [localInterviewFilters, setLocalInterviewFilters] = useState(filters.interviews);
 
@@ -58,41 +58,15 @@ export default function Staff_Analytics() {
     };
 
     const fetchStaffAppointmentAnalytics = async () => {
-        const token = localStorage.getItem("access_token");
         const queryString = buildQueryString(filters.appointments);
-      
-        const response = await fetch(`https://backend-booking.appointroll.com/api/staff/analytics/dashboard/appointments${queryString}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        });
-      
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-      
-        const data = await response.json();
-        return data;
+        const response = await axiosInstance.get(`/staff/analytics/dashboard/appointments${queryString}`);
+        return response.data;
     };
 
     const fetchStaffInterviewAnalytics = async () => {
-        const token = localStorage.getItem("access_token");
         const queryString = buildQueryString(filters.interviews);
-      
-        const response = await fetch(`https://backend-booking.appointroll.com/api/staff/analytics/dashboard/interviews${queryString}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        });
-      
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-      
-        const data = await response.json();
-        return data;
+        const response = await axiosInstance.get(`/staff/analytics/dashboard/interviews${queryString}`);
+        return response.data;
     };
 
     const {
@@ -144,20 +118,36 @@ export default function Staff_Analytics() {
         return filters[activeTab] || {};
     };
 
-    // Appointment filters handlers
+    // ✅ إضافة مسح الخطأ عند التعديل
     const handleAppointmentFilterChange = (key, value) => {
+        setDateError(''); // مسح الخطأ عند التعديل
         setLocalAppointmentFilters(prev => ({
             ...prev,
             [key]: value
         }));
     };
 
+    // ✅ إضافة الـ validation زي Analytics component
     const applyAppointmentFilters = () => {
+        setDateError('');
+        
+        if (localAppointmentFilters.start_date && localAppointmentFilters.end_date) {
+            const startDate = new Date(localAppointmentFilters.start_date);
+            const endDate = new Date(localAppointmentFilters.end_date);
+            
+            if (endDate < startDate) {
+                setDateError('Start date cannot be after end date');
+                return; 
+            }
+        }
+        
         updateFilters('appointments', localAppointmentFilters);
         setShowAppointmentFilters(false);
     };
 
+    // ✅ إضافة مسح الخطأ عند Clear
     const clearAppointmentFilters = () => {
+        setDateError(''); 
         const clearedFilters = {
             start_date: '',
             end_date: ''
@@ -168,7 +158,6 @@ export default function Staff_Analytics() {
 
     const hasActiveAppointmentFilters = filters.appointments.start_date || filters.appointments.end_date;
 
-    // Interview filters handlers
     const handleInterviewFilterChange = (key, value) => {
         setLocalInterviewFilters(prev => ({
             ...prev,
@@ -247,6 +236,18 @@ export default function Staff_Analytics() {
 
                         {showAppointmentFilters && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
+                                {/* ✅ عرض رسالة الخطأ */}
+                                {dateError && (
+                                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                        <div className="flex items-center">
+                                            <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                            </svg>
+                                            <span className="text-sm text-red-700 font-medium">{dateError}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -305,80 +306,11 @@ export default function Staff_Analytics() {
             );
         } else if (activeTab === 'interviews') {
             return (
-                <>
-                    {/* Interview Filters
-                    <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 mb-6 text-sm">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-medium text-gray-900">Interview Filters</h3>
-                            <div className="flex items-center space-x-2">
-                                {hasActiveInterviewFilters && (
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        Filtered
-                                    </span>
-                                )}
-                                <button
-                                    onClick={() => setShowInterviewFilters(!showInterviewFilters)}
-                                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                >
-                                    <Filter className="h-4 w-4 mr-2" />
-                                    Filters
-                                </button>
-                            </div>
-                        </div>
-
-                        {showInterviewFilters && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Start Price
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={localInterviewFilters.start_price_interval || ''}
-                                            onChange={(e) => handleInterviewFilterChange('start_price_interval', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Min price"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            End Price
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={localInterviewFilters.end_price_interval || ''}
-                                            onChange={(e) => handleInterviewFilterChange('end_price_interval', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Max price"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex justify-end space-x-3 mt-4">
-                                    <button
-                                        onClick={clearInterviewFilters}
-                                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                    >
-                                        <X className="h-4 w-4 mr-2" />
-                                        Clear
-                                    </button>
-                                    <button
-                                        onClick={applyInterviewFilters}
-                                        className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        Apply Filters
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div> */}
-
-                    <InterviewsContent
-                        data={activeData} 
-                        filters={activeFilters}
-                        onFiltersChange={(newFilters) => updateFilters('interviews', newFilters)}
-                    />
-                </>
+                <InterviewsContent
+                    data={activeData} 
+                    filters={activeFilters}
+                    onFiltersChange={(newFilters) => updateFilters('interviews', newFilters)}
+                />
             );
         }
 

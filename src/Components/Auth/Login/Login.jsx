@@ -38,7 +38,6 @@ const Login = () => {
       if(access_token) {
         formData.append("token", access_token);
       }
-
       const apiEndpoint = userType === 'customer' 
         ? "https://backend-booking.appointroll.com/api/login"
         : "https://backend-booking.appointroll.com/api/staff/login";
@@ -60,29 +59,24 @@ const Login = () => {
         localStorage.setItem("access_token", accessToken);
         dispatch(authActions.setToken(accessToken));
         
-        // Only get permissions for customer
         if(userType === 'customer') {
           await dispatch(getPermissions());
         }
       }
-
-      
 
       if(userType === 'customer') {
         navigate("/layoutDashboard");
       } else {
         navigate("/staff_dashboard_layout");
       }
+      
     } catch (error) {
       console.error("Login Error:", error);
-
       let errorMessage = "Login failed. Please try again.";
-
       if (error.response) {
         const status = error.response.status;
         const message = error.response.data.message;
-        
-        // Check if account is not verified
+      
         if (message === "not verified" && status === 401) {
           navigate("/verify", {
             state: {
@@ -150,10 +144,8 @@ const Login = () => {
             {/* Features list */}
             <div className="space-y-4 text-left max-w-sm mx-auto">
               {[
-                "Smart Scheduling System",
-                "Real-time Notifications", 
-                "Advanced Analytics",
-                "24/7 Customer Support"
+                "Smart Scheduling System", 
+                "Advanced Analytics"
               ].map((feature, index) => (
                 <div key={index} className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-green-400 rounded-full flex items-center justify-center flex-shrink-0">
@@ -204,7 +196,7 @@ const Login = () => {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    <span>Customer</span>
+                    <span>Admin</span>
                   </div>
                 </button>
                 
@@ -221,7 +213,7 @@ const Login = () => {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    <span>Staff</span>
+                    <span>Recruiter</span>
                   </div>
                 </button>
               </div>
@@ -230,7 +222,7 @@ const Login = () => {
             {/* Header */}
             <div className="text-center lg:text-left mb-8">
               <h2 className="text-3xl font-bold text-gray-800 mb-2">
-                Sign In as {userType === 'customer' ? 'Customer' : 'Staff'}
+                Sign In as {userType === 'customer' ? 'Admin' : 'Recruiter'}
               </h2>
               <p className="text-gray-600">Access your dashboard and manage your bookings</p>
             </div>

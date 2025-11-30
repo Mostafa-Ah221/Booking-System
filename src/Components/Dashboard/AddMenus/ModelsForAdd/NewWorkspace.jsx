@@ -48,8 +48,8 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
       }
 
       if (response?.success) {
-        onClose();
         dispatch(getWorkspace());
+        onClose();
         setWorkspace({ name: "", id: null });
       }
     } catch (error) {

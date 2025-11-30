@@ -25,6 +25,7 @@ import {
   Plug,
   AppWindow
 } from 'lucide-react';
+import { IoTvOutline } from "react-icons/io5";
 import { Link } from 'react-router-dom';
 import { setCurrentPath, setExpandedSection } from '../../redux/slices/navigationSlice';
 import { usePermission } from "../hooks/usePermission";
@@ -47,7 +48,7 @@ const SettingSidebar = ({ iconOnly = false }) => {
         { title: 'Basic Information', icon: Layout, path: "basic-info" },
         // { title: 'Business Hours', icon: Clock, path: "business-hours" },
         // { title: 'Custom Domain', icon: Globe, path: "custom-domain" },
-        { title: 'User', icon: Globe, path: "users", permission: "view staff" }
+        { title: 'Recruiter', icon: Globe, path: "recruiterPage", permission: "view staff" }
       ]
     },
     {
@@ -55,9 +56,9 @@ const SettingSidebar = ({ iconOnly = false }) => {
       icon: Layout,
       items: [
         { title: 'Workspaces', icon: Layout, path: "workspaces" },
-        // { title: 'In-person Locations', icon: MapPin, path: "person-location" },
+        { title: 'Resources', icon: IoTvOutline , path: "resources-section" },
         { title: 'Clients', icon: User, path: "clients", permission: "view clients" },
-        { title: 'Reports', icon: BarChart, path: "reports" }
+        // { title: 'Reports', icon: BarChart, path: "reports" }
       ]
     },
     {
@@ -75,7 +76,7 @@ const SettingSidebar = ({ iconOnly = false }) => {
       title: 'Product Customizations',
       icon: Settings,
       items: [
-        // { title: 'In-product Notifications', icon: Bell, path: "notification-settings" },
+        { title: 'In-product Notifications', icon: Bell, path: "notification-settings" },
         // { title: 'Custom Labels', icon: Tag, path: "custom-labels" },
         { title: 'Roles and Permissions', icon: Users, path: "roles-permissions", permission: "view roles" }
       ]

@@ -34,8 +34,12 @@ const Signup = () => {
       .max(50, "Name must be at most 50 characters"),
     email: Yup.string()
       .email("Invalid email address")
-      .nullable(),
-    phone_code: Yup.string()
+      .when('$isStaffRegistration', {
+        is: false,
+        then: schema => schema.required("Email is required"),
+        otherwise: schema => schema.nullable()
+      }),
+    code_phone: Yup.string()
       .nullable(),
     phone: Yup.string()
       .nullable(),
@@ -56,7 +60,7 @@ const Signup = () => {
     setPhoneValue(value);
 
     formik.setFieldValue('phone', value.replace(`+${country.dialCode}`, ""));
-    formik.setFieldValue('phone_code', `+${country.dialCode}`);
+    formik.setFieldValue('code_phone', `+${country.dialCode}`);
 
     if (!value || value.length <= country.dialCode.length + 1) {
       setPhoneError("Please enter a valid phone number");
@@ -108,12 +112,12 @@ const Signup = () => {
         // Set the form values with the fetched data
         if (data?.data) {
           formik.setFieldValue('email', data.data.email || '');
-          formik.setFieldValue('phone_code', data.data.phone_code || '');
+          formik.setFieldValue('code_phone', data.data.code_phone || '');
           formik.setFieldValue('phone', data.data.phone || '');
           
           // Set phone value for PhoneInput component
-          if (data.data.phone_code && data.data.phone) {
-            const fullPhone = `${data.data.phone_code}${data.data.phone}`;
+          if (data.data.code_phone && data.data.phone) {
+            const fullPhone = `${data.data.code_phone}${data.data.phone}`;
             setPhoneValue(fullPhone);
           }
         }
@@ -141,8 +145,8 @@ const Signup = () => {
       if (!isStaffRegistration) {
         formData.append("email", values.email);
       }
-      if (values.phone_code) {
-        formData.append("phone_code", values.phone_code);
+      if (values.code_phone) {
+        formData.append("code_phone", values.code_phone);
       }
       if (values.phone) {
         formData.append("phone", values.phone);
@@ -236,7 +240,7 @@ const Signup = () => {
     initialValues: {
       name: "",
       email: "",
-      phone_code: "",
+      code_phone: "",
       phone: "",
       password: "",
       password_confirmation: "",
@@ -392,8 +396,7 @@ const Signup = () => {
               {/* Name Input */}
               <div className="space-y-2">
                 <label htmlFor="name" className="block text-sm font-semibold text-gray-700">
-                  Full Name
-                  <span className="text-red-500 ml-1">*</span>
+                  Orginization Name
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

@@ -5,6 +5,8 @@ import { ResponsivePie } from '@nivo/pie';
 function ClientsContent({ data, filters, onFiltersChange }) {
     const [showFilters, setShowFilters] = useState(false);
     const [localFilters, setLocalFilters] = useState(filters || {});
+    // ✅ إضافة state لرسالة الخطأ
+    const [dateError, setDateError] = useState('');
 
     const clientsData = data?.data?.date_periods || {};
 
@@ -40,20 +42,38 @@ function ClientsContent({ data, filters, onFiltersChange }) {
         }
     ];
 
-    // فلترة
+    // ✅ إصلاح: إضافة مسح الخطأ عند التعديل
     const handleFilterChange = (key, value) => {
+        setDateError(''); // مسح الخطأ عند التعديل
         setLocalFilters(prev => ({
             ...prev,
             [key]: value
         }));
     };
 
+    // ✅ إصلاح: إضافة validation للتواريخ
     const applyFilters = () => {
+        // مسح أي خطأ سابق
+        setDateError('');
+        
+        // التحقق من التواريخ
+        if (localFilters.start_date && localFilters.end_date) {
+            const startDate = new Date(localFilters.start_date);
+            const endDate = new Date(localFilters.end_date);
+            
+            if (endDate < startDate) {
+                setDateError('Start date cannot be after end date');
+                return; // إيقاف التطبيق
+            }
+        }
+        
         onFiltersChange(localFilters);
         setShowFilters(false);
     };
 
+    // ✅ إصلاح: إضافة مسح الخطأ عند المسح
     const clearFilters = () => {
+        setDateError(''); // مسح الخطأ
         const clearedFilters = { start_date: '', end_date: '' };
         setLocalFilters(clearedFilters);
         onFiltersChange(clearedFilters);
@@ -94,6 +114,18 @@ function ClientsContent({ data, filters, onFiltersChange }) {
 
                 {showFilters && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
+                        {/* ✅ عرض رسالة الخطأ */}
+                        {dateError && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                <div className="flex items-center">
+                                    <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-sm text-red-700 font-medium">{dateError}</span>
+                                </div>
+                            </div>
+                        )}
+                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>

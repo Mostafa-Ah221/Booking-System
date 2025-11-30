@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { fetchAllInterviews,editInterviewById, updateAvailability, updateUnAvailability } from '../../../../../redux/apiCalls/interviewCallApi';
+import { useOutletContext, useNavigate } from 'react-router-dom';
+import { fetchAllInterviews, editInterviewById, updateAvailability, updateUnAvailability } from '../../../../../redux/apiCalls/interviewCallApi';
 import { useDispatch, useSelector } from 'react-redux';
 import toast from "react-hot-toast";
 import ReadOnlyView from './ReadOnlyView';
-import { editWorkspaceById} from '../../../../../redux/apiCalls/workspaceCallApi';
+import { editWorkspaceById } from '../../../../../redux/apiCalls/workspaceCallApi';
+import { workspaceAction } from '../../../../../redux/slices/workspaceSlice';
 
 const InterviewAvailability = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -21,23 +22,23 @@ const InterviewAvailability = () => {
   const [selectedTimeDropdown, setSelectedTimeDropdown] = useState(null);
   const { id } = useOutletContext();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   
   const { interview } = useSelector(state => state.interview);
   const { workspace } = useSelector(state => state.workspace);
   
   const [weekDays, setWeekDays] = useState([]);
-console.log(interview?.workspace_id);
-// console.log(workspace);
+console.log(interview);
 
-useEffect(() => {
-  dispatch(fetchAllInterviews());
-}, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchAllInterviews());
+  }, [dispatch]);
 
-useEffect(() => {
-  if (interview?.workspace_id) {
-    dispatch(editWorkspaceById(interview?.workspace_id));
-  }
-}, [dispatch, interview?.workspace_id]);
+  useEffect(() => {
+    if (interview?.workspace_id) {
+      dispatch(editWorkspaceById(interview?.workspace_id));
+    }
+  }, [dispatch, interview?.workspace_id]);
 
   const formatDate = useCallback((date) => date.toISOString().split('T')[0], []);
 
@@ -83,6 +84,18 @@ useEffect(() => {
       setSelectedUnAvailableDates(dates);
     }
   }, [availabilityMode]);
+  
+  const navigateToWorkspaceAvailability = useCallback((workspaceData) => {
+    console.log(workspaceData);
+    if (workspaceData && workspaceData.id) {
+      dispatch(workspaceAction.setWorkspace(workspaceData));
+      navigate('/layoutDashboard/WorkspaceAvailability');
+      
+      toast.error('Please set available times for the workspace first', {
+        duration: 4000,
+      });
+    }
+  }, [dispatch, navigate]);
 
   const handleSaveAvailableTimes = useCallback(async (formData) => {
     try {
@@ -92,10 +105,13 @@ useEffect(() => {
         throw new Error('No available times provided');
       }
       
-      const payload = { available_times: availableTimesData };
+      const payload = { 
+        available_times: availableTimesData,
+        available_dates: interview?.available_dates || []
+      };
       const result = await dispatch(updateAvailability(id, payload));
       
-      if ( result?.message === "Updated Successfully" ) {
+      if (result?.message === "Updated Successfully") {
         toast.success('Available times saved successfully!');
         setIsTimeSectionDisabled(true);
         setIsEditing(false);
@@ -103,54 +119,91 @@ useEffect(() => {
         return { success: true };
       } else {
         console.log(result?.message);
-        throw new Error(result?.message.error);
-        
+        throw new Error(result?.message.error);  
       }
-   } catch (error) {
-    console.error('Full error object:', error);
-    console.error('Error response:', error.response?.data.message.error[0]);
-    
-    toast.error(error.message);
-    return { success: false, error: error.message };
-  }
-  }, [dispatch, id]);
+    } catch (error) {
+       toast.error(
+    error?.response?.data?.message ||
+    error.message 
+  );
+      console.error('Full error object:', error);
+      console.error('Error response:', error);
+      
+      const errorMessage = error.message || error.response?.data?.message?.error?.[0] || 'An error occurred';
+      
+      if (errorMessage.includes('No available times found for the workspace') || 
+          errorMessage.includes('workspace')) {
+        
+        const workspaceData = interview?.workspace_id 
+          ? { id: interview.workspace_id, name: workspace?.name || 'Workspace' }
+          : null;
+        
+        if (workspaceData) {
+          navigateToWorkspaceAvailability(workspaceData);
+        } else {
+          toast.error(errorMessage);
+        }
+      } else {
+        toast.error(errorMessage);
+      }
+      
+      return { success: false, error: errorMessage };
+    }
+  }, [dispatch, id, interview, workspace, navigateToWorkspaceAvailability]);
 
-const handleSaveUnAvailableTimes = useCallback(async (formData) => {
-  try {
-    const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
-    
-    const payload = {};
-    if (unAvailableTimes.length > 0) {
-      payload.un_available_times = unAvailableTimes;
+  const handleSaveUnAvailableTimes = useCallback(async (formData) => {
+    try {
+      const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
+      console.log( interview?.un_available_dates);
+      
+      const payload = {};
+      if (unAvailableTimes.length > 0) {
+        payload.un_available_times = unAvailableTimes;
+        payload.un_available_dates = interview?.un_available_dates || [];
+      }
+      
+      const result = await dispatch(updateUnAvailability(id, payload));
+      
+      if (result?.message === "Updated Successfully") {
+        toast.success(unAvailableTimes.length > 0 
+          ? 'Unavailable times saved successfully!' 
+          : 'Unavailable times cleared successfully!');
+        setIsTimeSectionDisabled(true);
+        setIsEditing(false);
+        await dispatch(editInterviewById(id));
+        return { success: true };
+      } else {
+        console.log(result?.message); 
+        throw new Error(result?.message.error);
+      }
+    } catch (error) {
+      console.error('Full error object:', error); 
+      console.error('Error response:', error.response?.data.message.error[0]); 
+      
+      const errorMessage = error.message || error.response?.data?.message?.error?.[0] || 'An error occurred';
+      
+      if (errorMessage.includes('No available times found for the workspace') || 
+          errorMessage.includes('workspace')) {
+        
+        const workspaceData = interview?.workspace_id 
+          ? { id: interview.workspace_id, name: workspace?.name || 'Workspace' }
+          : null;
+        
+        if (workspaceData) {
+          navigateToWorkspaceAvailability(workspaceData);
+        } else {
+          toast.error(errorMessage);
+        }
+      } else {
+        toast.error(errorMessage);
+      }
+      
+      return { success: false, error: errorMessage };
     }
-    
-    const result = await dispatch(updateUnAvailability(id, payload));
-    
-    if (result?.message === "Updated Successfully") {
-      toast.success(unAvailableTimes.length > 0 
-        ? 'Unavailable times saved successfully!' 
-        : 'Unavailable times cleared successfully!');
-      setIsTimeSectionDisabled(true);
-      setIsEditing(false);
-      await dispatch(editInterviewById(id));
-      return { success: true };
-    } else {
-      console.log(result?.message); 
-      throw new Error(result?.message.error);
-    }
-  } catch (error) {
-    console.error('Full error object:', error); 
-    console.error('Error response:', error.response?.data.message.error[0]); 
-    
-    toast.error(error.message); 
-    return { success: false, error: error.message };
-  }
-}, [dispatch, id]);
+  }, [dispatch, id, interview, workspace, navigateToWorkspaceAvailability]);
 
   const handleSaveAvailableDates = useCallback(async (formData) => {
     try {
-    
-      
       const payload = { available_dates: formData.available_dates };
       const result = await dispatch(updateAvailability(id, payload));
       
@@ -169,11 +222,9 @@ const handleSaveUnAvailableTimes = useCallback(async (formData) => {
         setIsEditing(false);
         return { success: true };
       } else {
-        
         throw new Error(result?.message || "Save failed");
       }
     } catch (error) {
-      
       toast.error(`Error saving available dates: ${error.message}`);
       return { success: false };
     }
@@ -183,16 +234,14 @@ const handleSaveUnAvailableTimes = useCallback(async (formData) => {
     try {
       const unAvailableDates = formData.un_available_dates || formData.available_dates || [];
       
-      
-      
       const validDates = unAvailableDates.every(dateRange => dateRange.from && dateRange.to);
       if (!validDates) {
         throw new Error("Invalid date range format");
       }
     
       const payload = { 
-      un_available_dates: unAvailableDates.length > 0 ? unAvailableDates : {} 
-    };
+        un_available_dates: unAvailableDates.length > 0 ? unAvailableDates : {} 
+      };
      
       const result = await dispatch(updateUnAvailability(id, payload));
       
@@ -223,12 +272,6 @@ const handleSaveUnAvailableTimes = useCallback(async (formData) => {
 
   const handleSaveTimes = useCallback((formData) => {
     const currentMode = activeTab.includes('unavailable') ? 'unavailable' : 'available';
-    
-    // const timesData = formData.available_times || formData.un_available_times;
-    // if (!timesData || timesData.length === 0) {
-    //   toast.error('Please select at least one day and time slot');
-    //   return Promise.resolve({ success: false, error: 'No times data' });
-    // }
     
     if (currentMode === 'available') {
       return handleSaveAvailableTimes(formData);
@@ -269,16 +312,6 @@ const handleSaveUnAvailableTimes = useCallback(async (formData) => {
   useEffect(() => {
     // Effect to handle availability mode changes
   }, [availabilityMode, activeTab]);
-
-  const getCurrentAvailabilityMode = useCallback(() => {
-    if (activeTab.includes('unavailable')) {
-      return 'unavailable';
-    }
-    if (activeTab.includes('available')) {
-      return 'available';
-    }
-    return availabilityMode;
-  }, [activeTab, availabilityMode]);
 
   const handleMonthChange = useCallback((direction) => {
     setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + (direction === 'prev' ? -1 : 1), 1));

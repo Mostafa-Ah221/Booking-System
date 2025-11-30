@@ -235,7 +235,7 @@ const FilterSidebar = ({
                               <div className="w-6 h-6 bg-purple-500 rounded text-white text-xs flex items-center justify-center font-medium mr-2">
                                 {interview.initial}
                               </div>
-                              <label htmlFor={`interview-${interview.id}`} className="text-sm text-gray-700 cursor-pointer">
+                              <label htmlFor={`interview-${interview.id}`} className="text-sm text-gray-700 cursor-pointer truncate max-w-[150px]">
                                 {interview.name}
                               </label>
                             </div>
@@ -305,7 +305,7 @@ const FilterSidebar = ({
                               <div className="w-6 h-6 bg-blue-500 rounded text-white text-xs flex items-center justify-center font-medium mr-2">
                                 {workspace.initial}
                               </div>
-                              <label htmlFor={`workspace-${workspace.id}`} className="text-sm text-gray-700 cursor-pointer">
+                              <label htmlFor={`workspace-${workspace.id}`} className="text-sm text-gray-700 cursor-pointer truncate max-w-[150px]">
                                 {workspace.name}
                               </label>
                             </div>
@@ -376,7 +376,7 @@ const FilterSidebar = ({
                                 <div className="w-6 h-6 bg-green-500 rounded text-white text-xs flex items-center justify-center font-medium mr-2">
                                   {client.initial}
                                 </div>
-                                <label htmlFor={`client-${client.id}`} className="text-sm text-gray-700 cursor-pointer">
+                                <label htmlFor={`client-${client.id}`} className="text-sm text-gray-700 cursor-pointer truncate max-w-[150px]">
                                   {client.name}
                                 </label>
                               </div>

@@ -3,22 +3,21 @@ import { X } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { useOutletContext } from "react-router-dom";
 import { getStaffByFilter } from "../../../../redux/apiCalls/StaffCallApi";
-import { assignInterViewToStaff, getAvailableStaffForInterview } from "../../../../redux/apiCalls/interviewCallApi";
+import { assignInterViewToStaff } from "../../../../redux/apiCalls/interviewCallApi";
+import { getAvailableStaffForWorkspace } from "../../../../redux/apiCalls/workspaceCallApi";
 
-export default function AssignInterviewModal({ isOpen, onClose }) {
+export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, interview }) {
   const dispatch = useDispatch();
   const { id } = useOutletContext();
-  const [selectedStaffId, setSelectedStaffId] = useState(null);
+  const [selectedStaffIds, setSelectedStaffIds] = useState([]); // Changed to array
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const { availableStForIntV, loading, error } = useSelector(state => state.interview);
-  const { filteredStaffs } = useSelector(state => state.staff);
+  const { availableStForWorkS, loading } = useSelector(state => state.workspace);
 
   useEffect(() => {
     if (isOpen && id) {
-      dispatch(getAvailableStaffForInterview(id));
-      dispatch(getStaffByFilter({ interview_id: id }));
+      dispatch(getAvailableStaffForWorkspace(interview?.workspace_id));
     }
   }, [dispatch, isOpen, id]);
 
@@ -28,8 +27,8 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
     : [];
 
   // Filter out already assigned staff
-  const availableStaff = Array.isArray(availableStForIntV)
-    ? availableStForIntV.filter(staff => !assignedStaffIds.includes(staff.id))
+  const availableStaff = Array.isArray(availableStForWorkS)
+    ? availableStForWorkS.filter(staff => !assignedStaffIds.includes(staff.id))
     : [];
 
   const filteredStaff = availableStaff.filter(staff => {
@@ -39,24 +38,25 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
   });
 
   const handleSelectStaff = (staffId) => {
-    // إذا ضغط على نفس الموظف، يلغي الاختيار
-    if (selectedStaffId === staffId) {
-      setSelectedStaffId(null);
-    } else {
-      // وإلا يختار الموظف الجديد
-      setSelectedStaffId(staffId);
-    }
+    setSelectedStaffIds(prev => {
+      // إذا كان الموظف محدد، نشيله من القائمة
+      if (prev.includes(staffId)) {
+        return prev.filter(id => id !== staffId);
+      }
+      // إذا لم يكن محدد، نضيفه للقائمة
+      return [...prev, staffId];
+    });
   };
 
   const handleAssign = async () => {
-    if (!selectedStaffId || !id) {
+    if (selectedStaffIds.length === 0 || !id) {
       return;
     }
 
     setIsLoading(true);
 
     const formData = {
-      staff_id: selectedStaffId
+      staff_ids: selectedStaffIds
     };
 
     const result = await dispatch(assignInterViewToStaff(id, formData));
@@ -65,7 +65,7 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
 
     if (result.success) {
       await dispatch(getStaffByFilter({ interview_id: id }));
-      setSelectedStaffId(null);
+      setSelectedStaffIds([]);
       setSearchQuery("");
       onClose();
     }
@@ -73,7 +73,7 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (!isOpen) {
-      setSelectedStaffId(null);
+      setSelectedStaffIds([]);
       setSearchQuery("");
     }
   }, [isOpen]);
@@ -92,7 +92,7 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
       <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-xl z-50 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">Assign Staff to Interview</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Assign Recruiters to Interview</h2>
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -106,12 +106,12 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
           {/* Search */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Staff Member
+              Select Recruiter Members ({selectedStaffIds.length} selected)
             </label>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search staff..."
+                placeholder="Search Recruiter..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -136,13 +136,13 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
             ) : filteredStaff.length === 0 ? (
               <div className="py-8 text-center text-sm text-gray-500">
                 {availableStaff.length === 0 
-                  ? "No staff found"
-                  : "No staff found"}
+                  ? "No recruiter found"
+                  : "No recruiter found"}
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
                 {filteredStaff.map((staff) => {
-                  const isSelected = selectedStaffId === staff.id;
+                  const isSelected = selectedStaffIds.includes(staff.id);
                   
                   return (
                     <label
@@ -171,8 +171,8 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
                       )}
                       
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-800">{staff.name}</p>
-                        <p className="text-xs text-gray-500">{staff.email}</p>
+                        <p className="text-sm font-medium text-gray-800 truncate block max-w-[150px]">{staff.name}</p>
+                        <p className="text-xs text-gray-500 truncate block max-w-[150px]">{staff.email}</p>
                       </div>
                     </label>
                   );
@@ -182,12 +182,28 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
           </div>
 
           {/* Selected Staff Info */}
-          {selectedStaffId && (
+          {selectedStaffIds.length > 0 && (
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-              <p className="text-sm text-purple-700">
-                <span className="font-medium">Selected:</span>{' '}
-                {filteredStaff.find(s => s.id === selectedStaffId)?.name}
+              <p className="text-sm text-purple-700 font-medium mb-2">
+                Selected Recruiters ({selectedStaffIds.length}):
               </p>
+              <div className="space-y-1">
+                {selectedStaffIds.map(staffId => {
+                  const staff = filteredStaff.find(s => s.id === staffId) || 
+                                availableStaff.find(s => s.id === staffId);
+                  return (
+                    <div key={staffId} className="flex items-center justify-between text-xs text-purple-600">
+                      <span className="truncate block max-w-[150px]">• {staff?.name}</span>
+                      <button
+                        onClick={() => handleSelectStaff(staffId)}
+                        className="text-purple-400 hover:text-purple-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -203,10 +219,10 @@ export default function AssignInterviewModal({ isOpen, onClose }) {
           </button>
           <button 
             onClick={handleAssign}
-            disabled={!selectedStaffId || isLoading}
+            disabled={selectedStaffIds.length === 0 || isLoading}
             className="px-4 py-2 text-sm text-white bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            {isLoading ? "Assigning..." : "Assign Staff"}
+            {isLoading ? "Assigning..." : `Assign ${selectedStaffIds.length} Recruiter${selectedStaffIds.length > 1 ? 's' : ''}`}
           </button>
         </div>
       </div>

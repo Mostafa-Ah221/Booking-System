@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from "../../Components/pages/axiosInstance";
 import { recruiterAction } from "../slices/recruitersSlice";
 import toast from "react-hot-toast";
 
@@ -6,16 +6,8 @@ export function getRecruiters() {
     return async (dispatch) => {
         try {
             dispatch(recruiterAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            const response = await axios.get(
-                `https://backend-booking.appointroll.com/api/recruiter/index`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-                }
-            );
+            const response = await axiosInstance.get('/recruiter/index');
+            
             dispatch(recruiterAction.setRecruiters(response?.data?.data));
             dispatch(recruiterAction.setLoading(false));
         } catch (error) {
@@ -33,30 +25,23 @@ export function addrecruiter(recruiterData) {
     return async (dispatch) => {
         try {
             dispatch(recruiterAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
 
-            const response = await axios.post(
-                `https://backend-booking.appointroll.com/api/recruiter/store`,
+            const response = await axiosInstance.post(
+                '/recruiter/store',
                 {
                     name: recruiterData.name,
                     email: recruiterData.email,
                     password: recruiterData.password,
                     password_confirmation: recruiterData.password_confirmation,
-                    phone_code: recruiterData.phone_code,
+                    code_phone: recruiterData.code_phone,
                     phone: recruiterData.phone,
-                    role_id:recruiterData.role_id,
-                    permissions: recruiterData.permissions || [] ,
+                    role_id: recruiterData.role_id,
+                    permissions: recruiterData.permissions || [],
                     status: recruiterData.status,
-                },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
                 }
             );
+
             if (response?.data?.status) {
-                
                 const newRecruiter = response.data.data;
                 
                 dispatch(recruiterAction.addRecruiterToList(newRecruiter));
@@ -93,16 +78,8 @@ export function getRecruiterById(recruiterId) {
     return async (dispatch) => {
         try {
             dispatch(recruiterAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            const response = await axios.get(
-                `https://backend-booking.appointroll.com/api/recruiter/edit/${recruiterId}`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-                }
-            );
+            const response = await axiosInstance.get(`/recruiter/edit/${recruiterId}`);
+            
             dispatch(recruiterAction.setRecruiter(response?.data?.data));
             dispatch(recruiterAction.setLoading(false));
         } catch (error) {
@@ -117,126 +94,132 @@ export function updateRecruiter(recruiterId, recruiterData) {
     return async (dispatch) => {
         try {
             dispatch(recruiterAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            
+
             const dataToSend = {
                 name: recruiterData.name,
                 email: recruiterData.email,
-                phone_code: recruiterData.phone_code || '', 
-                phone: recruiterData.phone || '', 
+                code_phone: recruiterData.code_phone || '',
+                phone: recruiterData.phone || '',
                 status: Number(recruiterData.status),
-                role_id: recruiterData.role_id || [], 
-                permissions: recruiterData.permissions || [] 
+                role_id: recruiterData.role_id || [],
+                permissions: recruiterData.permissions || []
             };
 
+            // ✅ لو دخل كلمة المرور الحالية فقط
+            if (recruiterData.password && !recruiterData.new_password) {
+                dataToSend.password = recruiterData.password;
+            }
+
+            // ✅ لو دخل كلمة المرور الحالية + الجديدة
             if (recruiterData.password && recruiterData.new_password) {
                 dataToSend.password = recruiterData.password;
                 dataToSend.new_password = recruiterData.new_password;
                 dataToSend.new_password_confirmation = recruiterData.new_password_confirmation;
             }
-            
-            const response = await axios.put(
-                `https://backend-booking.appointroll.com/api/recruiter/update/${recruiterId}`,
-                dataToSend,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-                }
+
+            // ✅ لو دخل new_password أو new_password_confirmation بدون password الحالية
+            // نبعتهم فاضيين عشان الـ backend يرجع validation error
+            if (!recruiterData.password && (recruiterData.new_password || recruiterData.new_password_confirmation)) {
+                dataToSend.password = "";
+                dataToSend.new_password = recruiterData.new_password || "";
+                dataToSend.new_password_confirmation = recruiterData.new_password_confirmation || "";
+            }
+
+            console.log('Final payload:', dataToSend);
+
+            const response = await axiosInstance.put(
+                `/recruiter/update/${recruiterId}`,
+                dataToSend
             );
-            
-            console.log('API Response:', response.data);
-            
+
+            console.log("API Response:", response.data);
+
             if (response.data.status) {
-                // استخدم البيانات المرجعة من الـ API بدلاً من البيانات المرسلة
                 const updatedData = response.data.data || {
                     id: recruiterId,
                     ...recruiterData
                 };
-                
+
                 dispatch(recruiterAction.updateRecruiterInList(updatedData));
-                
+
                 toast.success(response?.data?.message, {
-                    position: 'top-center',         
+                    position: 'top-center',
                     duration: 5000,
                     icon: '✅',
-                    style: {
-                        borderRadius: '8px',
-                        background: '#333',
-                        color: '#fff',
-                        padding: '12px 16px',
-                        fontWeight: '500',
-                    },
                 });
-                
+
                 dispatch(recruiterAction.setLoading(false));
                 return {
                     success: true,
                     message: response?.data.message
                 };
             } else {
+                toast.error(response?.data?.message || "Unknown error", {
+                    position: "top-center",
+                    duration: 4000,
+                });
+
                 dispatch(recruiterAction.setLoading(false));
                 return {
                     success: false,
-                    message: response?.data?.message || 'Unknown error'
+                    message: response?.data?.message || "Unknown error"
                 };
             }
+
         } catch (error) {
             console.error("Full error object:", error);
             console.error("Error response:", error.response);
-            
-            if (error.response && error.response.data && error.response.data.errors) {
+
+            const apiMessage = error.response?.data?.message || "Something went wrong";
+
+            // ✅ في حالة الـ validation errors من backend
+            if (error.response?.data?.errors) {
                 const errors = error.response.data.errors;
 
-                const formattedErrors = Object.keys(errors).reduce((acc, field) => {
-                    acc[field] = Array.isArray(errors[field]) 
-                        ? errors[field].join(", ") 
+                Object.keys(errors).forEach(field => {
+                    const message = Array.isArray(errors[field])
+                        ? errors[field].join(", ")
                         : errors[field];
-                    return acc;
-                }, {});
 
-                dispatch(recruiterAction.setError(formattedErrors));
-
-                Object.keys(formattedErrors).forEach(field => {
-                    console.error(`❌ خطأ في الحقل: ${field} => ${formattedErrors[field]}`);
+                    toast.error(message, {
+                        position: "top-center",
+                        duration: 4000,
+                    });
                 });
-                
+
+                dispatch(recruiterAction.setError(errors));
                 dispatch(recruiterAction.setLoading(false));
+                
                 return {
                     success: false,
-                    message: error.response?.data?.message || 'Validation failed',
-                    errors: formattedErrors
-                };
-            } else {
-                console.error("Error updating recruiter:", error);
-                const errorMessage = error.response?.data?.message || error.message || "Something went wrong";
-                dispatch(recruiterAction.setError({ general: errorMessage }));
-                
-                dispatch(recruiterAction.setLoading(false));
-                return {
-                    success: false,
-                    message: errorMessage
+                    message: apiMessage,
+                    errors,
                 };
             }
+
+            // ✅ في حالة وجود message فقط من backend بدون errors
+            toast.error(apiMessage, {
+                position: "top-center",
+                duration: 4000,
+            });
+
+            dispatch(recruiterAction.setError({ general: apiMessage }));
+            dispatch(recruiterAction.setLoading(false));
+
+            return {
+                success: false,
+                message: apiMessage
+            };
         }
     };
 }
+
 
 export function deleteRecruiter(recruiterId) {
     return async (dispatch) => {
         try {
             dispatch(recruiterAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            const response = await axios.delete(
-                `https://backend-booking.appointroll.com/api/recruiter/delete/${recruiterId}`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-                }
-            );
+            const response = await axiosInstance.delete(`/recruiter/delete/${recruiterId}`);
             
             if (response.data.status) {
                 dispatch(recruiterAction.removeRecruiterFromList(recruiterId));
@@ -264,6 +247,11 @@ export function deleteRecruiter(recruiterId) {
             console.error("Error delete recruiter:", error);
             dispatch(recruiterAction.setLoading(false));
             dispatch(recruiterAction.setError(error.response?.data?.message));
+            
+            return {
+                success: false,
+                message: error.response?.data?.message
+            };
         }
     }
 }

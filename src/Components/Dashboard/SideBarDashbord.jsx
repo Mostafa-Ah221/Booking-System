@@ -11,7 +11,7 @@ import WorkspaceModal from "./AddMenus/ModelsForAdd/NewWorkspace";
 import DeleteWorkspaceModal from "./DeleteWorkspaceModal";
 import { usePermission } from "../hooks/usePermission";
 import toast from "react-hot-toast";
-import logo from '../../assets/image/logo.png';
+import logo from '../../assets/image/Appoint Roll logo-svg.svg';
 
 export default function SideBarDashbord() {
   const location = useLocation();
@@ -22,20 +22,22 @@ export default function SideBarDashbord() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isNewWorkspaceModalOpen, setIsNewWorkspaceModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
- 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [workspaceToDelete, setWorkspaceToDelete] = useState(null);
   const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
   
   const mySpaceRef = useRef(null);
-
-  const dispatch = useDispatch()
-  const { workspaces, workspace } = useSelector(state => state.workspace)
-  const navigate = useNavigate();
   const menuRef = useRef(null);
- 
+
+  const dispatch = useDispatch();
+  
+  // ✅ استخدم selector بشكل مباشر بدون ref
+  const { workspaces, workspace } = useSelector(state => state.workspace);
+  
+  const navigate = useNavigate();
+
   useEffect(() => {
-    dispatch(getWorkspace());
+    dispatch(getWorkspace({ force: true }));
 
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -50,33 +52,39 @@ export default function SideBarDashbord() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [dispatch]);
+
+  // ✅ Re-fetch when modals close to ensure fresh data
+  useEffect(() => {
+    if (!isEditModalOpen && !isNewWorkspaceModalOpen && !isDeleteModalOpen) {
+      dispatch(getWorkspace({ force: true }));
+    }
+  }, [isEditModalOpen, isNewWorkspaceModalOpen, isDeleteModalOpen, dispatch]);
 
   useEffect(() => {
     const currentPath = location.pathname.includes("interviews")
       ? "interviews"
       : location.pathname.includes("booking-pages") || location.pathname.includes("bookPage")
       ? "bookPage"
+      : location.pathname.includes("analytics")
+      ? "analytics"
       : location.pathname.includes("my-profile") || location.pathname.includes("profilepage")
       ? "profilepage"
       : location.pathname.includes("userDashboard")
       ? "userDashboard"
       : location.pathname.includes("WorkspaceAvailability")
       ? "WorkspaceAvailability"
-       : location.pathname.includes("recruiter")
-    ? "recruiterPage"
-    : "";
+      : location.pathname.includes("recruiter")
+      ? "recruiterPage"
+      : "";
     
-  
     setActive(currentPath);
   }, [location.pathname]);
   
   const canViewAppointments = usePermission("view appointment");
-  const canViewInterview   = usePermission("view interview");
-  const canViewClients     = usePermission("view clients");
-  const canViewStaff       = usePermission("view staff");
-  
-console.log(canViewAppointments);
+  const canViewInterview = usePermission("view interview");
+  const canViewClients = usePermission("view clients");
+  const canViewStaff = usePermission("view staff");
 
   const canViewAnalytics = 
     canViewAppointments || canViewInterview || canViewClients || canViewStaff;
@@ -86,86 +94,79 @@ console.log(canViewAppointments);
     { name: "Analytics", icon: <ChartBar size={18} />, path: "analytics", canShow: canViewAnalytics },
     { name: "Appointments", icon: <Calendar size={18} />, path: "userDashboard", canShow: canViewAppointments },
     { name: "Interviews", icon: <FileText size={18} />, path: "interviews", canShow: canViewInterview },
-    { name: "Recruiter", icon: <Users size={18} />, path: "recruiterPage", canShow: canViewStaff },
+    { name: "Users", icon: <Users size={18} />, path: "users", canShow: canViewStaff },
     { name: "Booking Pages", icon: <Layout size={18} />, path: "bookPage", canShow: true },
-  { 
-    name: "Availability Workspace", 
-    icon: <Clock5 size={18} />, 
-    path: "WorkspaceAvailability", 
-    canShow: workspace && workspace.id !== 0 
-  }, ];
+    { 
+      name: "Availability Workspace", 
+      icon: <Clock5 size={18} />, 
+      path: "WorkspaceAvailability", 
+      canShow: workspace && workspace.id !== 0 
+    },
+  ];
 
   useEffect(() => {
-  const visibleItems = menuItems.filter(item => item.canShow);
+    const visibleItems = menuItems.filter(item => item.canShow);
 
-  if (visibleItems.length > 0) {
-    setActive(prev => {
-      const stillVisible = visibleItems.some(item => item.path === prev);
-      const newPath = stillVisible ? prev : visibleItems[0].path;
-      return newPath;
-    });
-  }
-}, [canViewAnalytics, canViewAppointments, canViewInterview, canViewClients, canViewStaff]);
+    if (visibleItems.length > 0) {
+      setActive(prev => {
+        const stillVisible = visibleItems.some(item => item.path === prev);
+        const newPath = stillVisible ? prev : visibleItems[0].path;
+        return newPath;
+      });
+    }
+  }, [canViewAnalytics, canViewAppointments, canViewInterview, canViewClients, canViewStaff]);
 
-useEffect(() => {
-  if (active) {
-    navigate(active, { replace: true });
-  }
-}, [active, navigate]);
+  useEffect(() => {
+    if (active) {
+      navigate(active, { replace: true });
+    }
+  }, [active, navigate]);
 
-  const workspaceDataRef = useRef(workspaces);
-
-useEffect(() => {
-  if (workspaces && workspaces.length > 0) {
-    workspaceDataRef.current = workspaces;
-  }
-}, [workspaces]);
-
-const filteredWorkspaces = useMemo(() => {
-  const dataToUse = (workspaces && workspaces.length > 0) ? workspaces : workspaceDataRef.current;
-  
-  if (!dataToUse || !Array.isArray(dataToUse)) {
-    return [];
-  }
-  
-  if (!searchQuery.trim()) return dataToUse;
-  
-  const query = searchQuery.toLowerCase();
-  return dataToUse.filter(workspaceItem => 
-    workspaceItem && workspaceItem.name && 
-    workspaceItem.name.toLowerCase().includes(query)
-  );
-}, [workspaces, searchQuery]);
+  const filteredWorkspaces = useMemo(() => {
+    if (!workspaces || !Array.isArray(workspaces)) {
+      return [];
+    }
+    
+    if (!searchQuery.trim()) return workspaces;
+    
+    const query = searchQuery.toLowerCase();
+    return workspaces.filter(workspaceItem => 
+      workspaceItem?.name?.toLowerCase().includes(query)
+    );
+  }, [workspaces, searchQuery]);
 
   const toggleWorkspaceDropdown = () => {
     setIsWorkspaceOpen(prev => !prev);
-    // Clear search when closing
     if (isWorkspaceOpen) {
       setSearchQuery('');
     }
   };
 
   const handleSelectWorkspace = (selectedWorkspace) => {
-    dispatch(workspaceAction.setWorkspace(selectedWorkspace)); 
+    dispatch(workspaceAction.setWorkspace(selectedWorkspace));
+    if (selectedWorkspace.id !== 0) {
+      setActive("WorkspaceAvailability");
+      navigate("WorkspaceAvailability");
+    } 
     setIsWorkspaceOpen(false);
-    setSearchQuery(''); // Clear search on selection
+    setSearchQuery('');
   };
 
- const handleSelectMySpace = () => {
-  const mySpace = {
-    id: 0,
-    name: "My Space"
-  }; 
-  dispatch(workspaceAction.setWorkspace(mySpace));
-  
-  if (location.pathname.includes("WorkspaceAvailability")) {
-    navigate("profilepage");
-    setActive("profilepage");
-  }
-  
-  setIsWorkspaceOpen(false);
-  setSearchQuery('');
-};
+  const handleSelectMySpace = () => {
+    const mySpace = {
+      id: 0,
+      name: "My Space"
+    }; 
+    dispatch(workspaceAction.setWorkspace(mySpace));
+    
+    if (location.pathname.includes("WorkspaceAvailability")) {
+      navigate("profilepage");
+      setActive("profilepage");
+    }
+    
+    setIsWorkspaceOpen(false);
+    setSearchQuery('');
+  };
 
   const toggleMenu = (workspaceId, e) => {
     e.stopPropagation(); 
@@ -175,7 +176,7 @@ const filteredWorkspaces = useMemo(() => {
   const handleNewWorkspaceClick = () => {
     setIsNewWorkspaceModalOpen(true);
     setIsWorkspaceOpen(false);
-    setSearchQuery(''); // Clear search
+    setSearchQuery('');
   };
 
   const handleCloseNewWorkspaceModal = () => {
@@ -207,6 +208,7 @@ const filteredWorkspaces = useMemo(() => {
     setWorkspaceToDelete(null);
   };
 
+  // ✅ تحسين الـ delete handler
   const handleConfirmDelete = async () => {
     if (!workspaceToDelete) return;
     
@@ -215,24 +217,27 @@ const filteredWorkspaces = useMemo(() => {
     try {
       const response = await dispatch(deleteWorkspace(workspaceToDelete.id));
       
-      if (response?.success || response?.payload?.success) {
-        
+      if (response?.success) {
         if (workspace && workspace.id === workspaceToDelete.id) {
           const mySpace = {
             id: 0,
             name: "My Space"
           };
           dispatch(workspaceAction.setWorkspace(mySpace));
+          
+          if (location.pathname.includes("WorkspaceAvailability")) {
+            navigate("profilepage");
+            setActive("profilepage");
+          }
         }
         
-        // تحديث قائمة الـ workspaces
-        dispatch(getWorkspace());
+        // ✅ لا داعي لـ dispatch(getWorkspace()) لأن removeWorkspaceFromList بيحدث الـ state
       } else {
-        toast.error("حدث خطأ أثناء حذف الـ workspace");
+        toast.error(response?.message || "Failed to delete workspace");
       }
     } catch (error) {
       console.error("Error deleting workspace:", error);
-      toast.error("حدث خطأ أثناء حذف الـ workspace");
+      toast.error("An error occurred while deleting the workspace");
     } finally {
       setIsDeletingWorkspace(false);
       setIsDeleteModalOpen(false);
@@ -242,17 +247,15 @@ const filteredWorkspaces = useMemo(() => {
   
   return (
     <>
-      <aside className="w-full h-[100vh] bg-white border-r border-gray-200 flex flex-col ">
-        <div className="p-4 pb-[0.5rem] pt-1  border-b border-gray-200">
-                  <Link to="Profilepage" className="flex align-center justify-left text-blue-600">
-                   
-                    <img 
-                      src={logo} 
-                      alt="Logo" 
-                      className="flex-1 h-[2.9rem] w-[45%] object-cover relative right-4 " 
-                    />
-                  
-                  </Link>
+      <aside className="w-full h-[100vh] bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-4 pb-[0.5rem] pt-1 border-b border-gray-200">
+          <Link to="Profilepage" className="flex align-center justify-left text-blue-600">
+            <img 
+              src={logo} 
+              alt="Logo" 
+              className="flex-1 h-[2.9rem] w-[45%] object-cover relative right-4" 
+            />
+          </Link>
         </div>
 
         <nav className="flex-1 p-2">
@@ -261,7 +264,7 @@ const filteredWorkspaces = useMemo(() => {
               onClick={toggleWorkspaceDropdown}
               className="bg-purple-100 w-full p-2 text-left rounded hover:bg-gray-100 flex items-center gap-2 justify-between"
             >
-              <span className="text-purple-600 text-sm font-semibold">
+              <span className="text-purple-600 text-sm font-semibold truncate max-w-[150px]">
                 {workspace ? workspace.name : "My Space"}
               </span>
               {isWorkspaceOpen ? <ChevronUp className="text-purple-600" /> : <ChevronDown className="text-purple-600" />}
@@ -270,7 +273,8 @@ const filteredWorkspaces = useMemo(() => {
             {isWorkspaceOpen && (
               <div
                 ref={mySpaceRef}
-                className="flex flex-col justify-between mt-2 bg-white border border-gray-200 rounded-lg shadow-sm fixed left-0 h-80 w-full p-1 z-50">
+                className="flex flex-col justify-between mt-2 bg-white border border-gray-200 rounded-lg shadow-sm fixed left-0 h-80 w-full p-1 z-50"
+              >
                 <div className='h-[85%] overflow-auto'>
                   <div 
                     className="p-2 border-b border-gray-100 flex items-center justify-between mb-2 cursor-pointer hover:bg-purple-50 rounded-md"
@@ -280,7 +284,7 @@ const filteredWorkspaces = useMemo(() => {
                       <div className="w-8 h-8 text-sm bg-pink-200 rounded-full flex items-center justify-center text-pink-600 font-bold">
                         MS
                       </div>
-                      <span className=" font-semibold text-gray-800">My Space</span>
+                      <span className="font-semibold text-gray-800">My Space</span>
                     </div>
                     <div className="flex justify-center items-center w-4 h-4 rounded-full bg-purple-500">
                       {(!workspace || workspace.id === 0) && (
@@ -289,7 +293,6 @@ const filteredWorkspaces = useMemo(() => {
                     </div>
                   </div>
 
-                  {/* Search */}
                   <div className="relative mb-2">
                     <input
                       className="w-full px-2 py-1 rounded-md focus:outline-none border border-purple-800"
@@ -308,7 +311,6 @@ const filteredWorkspaces = useMemo(() => {
                     )}
                   </div>
 
-                  {/* Search results info */}
                   {searchQuery && (
                     <div className="mb-2 px-2">
                       <p className="text-xs text-gray-500">
@@ -317,10 +319,9 @@ const filteredWorkspaces = useMemo(() => {
                     </div>
                   )}
 
-                  {/* Workspaces list */}
                   <div className="">
                     {filteredWorkspaces.length > 0 ? (
-                      filteredWorkspaces.map((workspaceItem,index) => (
+                      filteredWorkspaces.map((workspaceItem) => (
                         <div 
                           key={workspaceItem.id} 
                           className={`cursor-pointer p-2 my-1 rounded-md border-b border-gray-100 flex items-center justify-between ${workspace && workspace.id === workspaceItem.id ? "bg-purple-100":"bg-transparent"} hover:bg-purple-50`}
@@ -331,7 +332,9 @@ const filteredWorkspaces = useMemo(() => {
                               <div className="w-6 h-6 bg-pink-200 rounded-full flex items-center justify-center text-pink-600 font-bold">
                                 {workspaceItem.name?.slice(0, 1).toUpperCase()}
                               </div>
-                              <span className="text-sm text-gray-800">
+                              <div className="truncate max-w-[120px]">
+
+                              <span className="text-sm text-gray-800 ">
                                 {searchQuery ? (
                                   <span dangerouslySetInnerHTML={{
                                     __html: workspaceItem.name.replace(
@@ -343,6 +346,7 @@ const filteredWorkspaces = useMemo(() => {
                                   workspaceItem.name
                                 )}
                               </span>
+                              </div>
                             </div>
                           </div>
                           <div className="flex gap-2 items-center relative">
@@ -350,10 +354,10 @@ const filteredWorkspaces = useMemo(() => {
                               onClick={(e) => toggleMenu(workspaceItem.id, e)}
                               className={`w-5 h-5 rounded-full flex justify-center items-center border border-transparent hover:border-purple-500 duration-300`}
                             >
-                              <BsThreeDots className="text-[13px] cursor-pointers text-purple-500"/>
+                              <BsThreeDots className="text-[13px] cursor-pointer text-purple-500"/>
                             </div>
                             {activeMenuId === workspaceItem.id && (
-                              <div ref={menuRef} className={`absolute bottom-6 right-2 bg-white shadow-lg rounded-lg z-10 py-2 w-40 `}>
+                              <div ref={menuRef} className={`absolute bottom-6 right-2 bg-white shadow-lg rounded-lg z-10 py-2 w-40`}>
                                 <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -376,7 +380,7 @@ const filteredWorkspaces = useMemo(() => {
                                 </button>
                               </div>
                             )}
-                            <div className={`flex justify-center items-center w-5 h-5 rounded-full  ${workspace && workspace.id === workspaceItem.id ? "bg-purple-500":"bg-transparent"}`}>
+                            <div className={`flex justify-center items-center w-5 h-5 rounded-full ${workspace && workspace.id === workspaceItem.id ? "bg-purple-500":"bg-transparent"}`}>
                               {workspace && workspace.id === workspaceItem.id && (
                                 <FaCheck className="text-white text-sm" />
                               )}
@@ -423,27 +427,24 @@ const filteredWorkspaces = useMemo(() => {
                   <span className={`${active === item.path ? "text-white" : "text-gray-500"}`}>
                     {item.icon}
                   </span>
-                  <span className="text-sm">{item.name}</span>
+                  <span className="text-sm truncate max-w-[150px]">{item.name}</span>
                 </Link>
               ))}
           </div>
         </nav>
       </aside>
       
-      {/* Modal for creating new workspace */}
       <WorkspaceModal 
         isOpen={isNewWorkspaceModalOpen} 
         onClose={handleCloseNewWorkspaceModal}
       />
 
-      {/* Modal for editing workspace */}
       <WorkspaceModal 
         isOpen={isEditModalOpen} 
         onClose={handleCloseEditModal}
         editWorkspace={workspaceToEdit}
       />
 
-      {/* Modal for deleting workspace */}
       <DeleteWorkspaceModal
         isOpen={isDeleteModalOpen}
         onClose={handleCloseDeleteModal}

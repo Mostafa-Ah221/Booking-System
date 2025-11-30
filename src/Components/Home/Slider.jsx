@@ -55,7 +55,6 @@ export default function Slider() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // الانتقال للشريحة التالية
   const nextSlide = () => {
     setCurrentIndex((prevIndex) =>
       prevIndex === sliderData.slides.length - 1 ? 0 : prevIndex + 1
@@ -79,7 +78,6 @@ export default function Slider() {
         Scheduling solutions to scale your business
       </h2>
       
-      {/* أزرار الأسهم */}
       <button
         onClick={prevSlide}
         className="absolute right-0 md:right-0 top-16 md:top-24 transform -translate-y-1/2 text-white p-2 rounded-full z-10"
@@ -87,7 +85,6 @@ export default function Slider() {
       >
         <GoChevronRight className="bg-black text-white text-2xl hover:bg-green-500 duration-200 "/>
       </button>
-
       <button
         onClick={nextSlide}
         className="absolute right-10 md:right-10 top-16 md:top-24 transform -translate-y-1/2 text-white p-2 rounded-full z-10"

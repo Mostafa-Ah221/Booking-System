@@ -3,7 +3,6 @@ import { analyticsActions } from "../slices/analyticsSlice";
 
 const BASE_URL = "https://backend-booking.appointroll.com/api/analytics/dashboard";
 
-// 1️⃣ جلب الـ appointments
 export function fetchAppointments() {
   return async (dispatch) => {
     dispatch(analyticsActions.setLoading(true));

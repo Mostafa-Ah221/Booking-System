@@ -198,10 +198,10 @@ const ReadOnlyView = ({
           </div>
 
           <div
-            style={{ 
-              height: activeSection === section.id ? `${contentHeight}px` : '0px',
-              willChange: activeSection === section.id ? 'height' : 'auto'
-            }}
+            // style={{ 
+            //   height: activeSection === section.id ? `${contentHeight}px` : '0px',
+            //   willChange: activeSection === section.id ? 'height' : 'auto'
+            // }}
             className="transition-all duration-300 ease-in-out overflow-hidden"
           >
             {activeSection === section.id && (

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X } from 'lucide-react';
 import {  createAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
-import DateTimeSelector from './DateTimeSelector';
+import DateTimeSelector from './DataTimeSections/DateTimeSelector';
 import Select from 'react-select';
 import moment from 'moment-timezone';
 import toast from "react-hot-toast";
@@ -23,18 +23,13 @@ const RescheduleSidebar = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
+  const [endTime, setEndTime] = useState(null); 
   const [selectedInterview, setSelectedInterview] = useState(null);
   const [selectedTimeZone, setSelectedTimeZone] = useState(null);
   const [showInterviewDropdown, setShowInterviewDropdown] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [isInterviewsLoading, setIsInterviewsLoading] = useState(false);
-// console.log();
-
-
-
-
-
 
   const dispatch = useDispatch();
 
@@ -104,6 +99,7 @@ const RescheduleSidebar = ({
   const handleTimeZoneSelect = (selectedOption) => {
     setSelectedTimeZone(selectedOption ? selectedOption.value : null);
   };
+console.log(appointment);
 
   const handleSubmit = async () => {
     if (!selectedDate || !selectedTime || !selectedInterview || !selectedTimeZone) {
@@ -124,6 +120,7 @@ const RescheduleSidebar = ({
         const rescheduleData = {
           date: formattedDate,
           time: formattedTime,
+          end_time: selectedInterview?.type === "resource" ? endTime : null,
           time_zone: selectedTimeZone,
         };
         console.log(rescheduleData);
@@ -133,6 +130,7 @@ const RescheduleSidebar = ({
         const scheduleData = {
           date: formattedDate,
           time: formattedTime,
+          end_time: selectedInterview?.type === "resource" ? endTime : null,
           interview_id: selectedInterview.id,
           time_zone: selectedTimeZone,
         };
@@ -236,7 +234,7 @@ const RescheduleSidebar = ({
                           </span>
                         </div>
                         <div className="text-left">
-                          <div className="font-medium">{selectedInterview.name}</div>
+                          <div className="font-medium truncate block max-w-[150px]">{selectedInterview.name}</div>
                           <div className="text-sm text-gray-500">
                             {selectedInterview.duration ? `${selectedInterview.duration} mins` : ''}
                           </div>
@@ -262,7 +260,7 @@ const RescheduleSidebar = ({
                           </span>
                         </div>
                         <div className="text-left">
-                          <div className="font-medium">{interview.name}</div>
+                          <div className="font-medium truncate  max-w-[150px]">{interview.name}</div>
                           <div className="text-sm text-gray-500">
                             {interview.duration ? `${interview.duration} mins` : ''}
                           </div>
@@ -293,8 +291,10 @@ const RescheduleSidebar = ({
                 selectedInterview={selectedInterview}
                 selectedDate={selectedDate}
                 selectedTime={selectedTime}
+                selectedEndTime={endTime} 
                 onDateSelect={setSelectedDate}
                 onTimeSelect={setSelectedTime}
+                onEndTimeSelect={setEndTime} 
                 appointment={appointment}
                 mode={mode}
               />
@@ -310,7 +310,7 @@ const RescheduleSidebar = ({
                     </span>
                   </div>
                   <div>
-                    <div className="font-medium">{currentClient.name}</div>
+                    <div className="font-medium truncate  max-w-[150px]">{currentClient.name}</div>
                     <div className="text-sm text-gray-500">{currentClient.email}</div>
                   </div>
                 </div>

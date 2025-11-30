@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchWhatsAppIntegrations, getWhatsAppSettingsByIntegrationId } from '../../../../redux/apiCalls/whatsAppCallApi';
 import IntegrationCategory from './integrationCategory';
 
-const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigger }) => {
+const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigger,active }) => {
   const dispatch = useDispatch();
   const { integrationsWhatsApp, loading } = useSelector(state => state.whatsApp);
   const [integrationsWithSettings, setIntegrationsWithSettings] = useState([]);
@@ -11,51 +11,91 @@ const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshT
   
   const lastRefreshTrigger = useRef(0);
   const isInitialized = useRef(false);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
-    if (!isInitialized.current) {
+    if (!active || isInitialized.current) return;
       dispatch(fetchWhatsAppIntegrations());
       isInitialized.current = true;
-    }
-  }, [dispatch]);
-
+    
+  }, [dispatch, active]);
 
   const checkIntegrationsSettings = useCallback(async () => {
-    if (!isCheckingSettings && integrationsWhatsApp.length > 0) {
-      setIsCheckingSettings(true);
-      try {
-        const results = await Promise.all(
-          integrationsWhatsApp.map(integration =>
-            dispatch(getWhatsAppSettingsByIntegrationId(integration.id))
-              .then(result => {
-                const isConnected = result?.status && result?.data?.data && parseInt(result.data.status) === 1;
-                return { ...integration, connected: isConnected };
-              })
-              .catch(error => {
-                console.error(`Error checking settings for ${integration.name}:`, error);
-                return { ...integration, connected: false };
-              })
-          )
+    if (isCheckingSettings || integrationsWhatsApp.length === 0) return;
+    
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = { abort: () => {} };
+    
+    setIsCheckingSettings(true);
+    
+    try {
+      // ✅ Batch size: 3 requests في نفس الوقت
+      const BATCH_SIZE = 3;
+      const results = [];
+      
+      for (let i = 0; i < integrationsWhatsApp.length; i += BATCH_SIZE) {
+        const batch = integrationsWhatsApp.slice(i, i + BATCH_SIZE);
+        
+        // ✅ اعمل fetch للـ batch دي في نفس الوقت
+        const batchResults = await Promise.all(
+          batch.map(async (integration) => {
+            try {
+              const result = await dispatch(
+                getWhatsAppSettingsByIntegrationId(integration.id)
+              );
+              
+              const isConnected = result?.status && 
+                                 result?.data?.data && 
+                                 parseInt(result.data.status) === 1;
+              
+              return { ...integration, connected: isConnected };
+              
+            } catch (error) {
+              console.error(`Error checking settings for ${integration.name}:`, error);
+              return { ...integration, connected: false };
+            }
+          })
         );
-        setIntegrationsWithSettings(results);
-      } catch (error) {
-        console.error("Error in checkIntegrationsSettings:", error);
-      } finally {
-        setIsCheckingSettings(false);
+        
+        results.push(...batchResults);
+        
+        // ✅ انتظر 200ms بين الـ batches (أسرع من 500ms)
+        if (i + BATCH_SIZE < integrationsWhatsApp.length) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
       }
+      
+      setIntegrationsWithSettings(results);
+      
+    } catch (error) {
+      console.error("Error in checkIntegrationsSettings:", error);
+    } finally {
+      setIsCheckingSettings(false);
     }
   }, [integrationsWhatsApp, dispatch, isCheckingSettings]);
   
   useEffect(() => {
     if (integrationsWhatsApp.length > 0 && integrationsWithSettings.length === 0) {
-      checkIntegrationsSettings();
+      // ✅ تأخير أقل: 200ms بدل 500ms
+      const timer = setTimeout(() => {
+        checkIntegrationsSettings();
+      }, 200);
+      
+      return () => clearTimeout(timer);
     }
   }, [integrationsWhatsApp, integrationsWithSettings.length, checkIntegrationsSettings]);
 
   useEffect(() => {
     if (refreshTrigger > 0 && refreshTrigger !== lastRefreshTrigger.current) {
       lastRefreshTrigger.current = refreshTrigger;
-      checkIntegrationsSettings();
+      
+      const timer = setTimeout(() => {
+        checkIntegrationsSettings();
+      }, 200);
+      
+      return () => clearTimeout(timer);
     }
   }, [refreshTrigger, checkIntegrationsSettings]);
 
@@ -102,15 +142,16 @@ const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshT
   return (
     <div>
       {isCheckingSettings && (
-        <div className="text-sm text-gray-500 mb-2">
-          جاري فحص إعدادات WhatsApp...
+        <div className="text-sm text-gray-500 mb-2 flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+          <span>Checking WhatsApp settings...</span>
         </div>
       )}
       <IntegrationCategory
-    category={filteredCategory}
-    onConnectClick={(serviceName, integrationId) => onConnectClick(serviceName, integrationId, 'whatsapp')}
-    onDeleteClick={onDeleteClick}
-  />
+        category={filteredCategory}
+        onConnectClick={(serviceName, integrationId) => onConnectClick(serviceName, integrationId, 'whatsapp')}
+        onDeleteClick={onDeleteClick}
+      />
     </div>
   );
 };

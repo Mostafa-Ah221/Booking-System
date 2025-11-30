@@ -1,6 +1,6 @@
 import { workspaceAction } from "../slices/workspaceSlice";
 import toast from 'react-hot-toast';
-import axios from "axios";
+import axiosInstance from "../../Components/pages/axiosInstance";
 
 export function getWorkspace({ staff_id = null, force = false } = {}) {
   return async (dispatch, getState) => {
@@ -18,20 +18,9 @@ export function getWorkspace({ staff_id = null, force = false } = {}) {
     try {
       dispatch(workspaceAction.setLoading(true));
 
-      const Token = localStorage.getItem("access_token");
+      const url = staff_id ? `/workspace/index?staff_id=${staff_id}` : '/workspace/index';
 
-      let url = "https://backend-booking.appointroll.com/api/workspace/index";
-
-      if (staff_id) {
-        url += `?staff_id=${staff_id}`;
-      }
-
-      const response = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: Token,
-        },
-      });
+      const response = await axiosInstance.get(url);
 
       dispatch(
         workspaceAction.setWorkspaces({
@@ -65,15 +54,7 @@ export function getAllWorkspaces({ force = false } = {}) {
     try {
       dispatch(workspaceAction.setLoading(true));
 
-      const Token = localStorage.getItem("access_token");
-      const url = "https://backend-booking.appointroll.com/api/workspace/index";
-
-      const response = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: Token,
-        },
-      });
+      const response = await axiosInstance.get('/workspace/index');
 
       dispatch(
         workspaceAction.setAllWorkspaces(response?.data?.data?.workspaces || [])
@@ -94,26 +75,17 @@ export function getAllWorkspaces({ force = false } = {}) {
 export function createWorkSpace(namespace) {
   return async (dispatch) => {
     try {
-      const Token = localStorage.getItem("access_token");
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/workspace/store`,
-        { name: namespace },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        '/workspace/store',
+        { name: namespace }
       );
       
       if (response?.data?.status) {
-        // ✅ استخرج الـ workspace الصحيح من الـ response
         const newWorkspace = response.data.data?.workspace || response.data.data;
         
         if (newWorkspace && newWorkspace.id) {
           dispatch(workspaceAction.addWorkspaceToList(newWorkspace));
         } else {
-          // لو الـ API مش راجع data كامل، اعمل fetch
           await dispatch(getWorkspace({ force: true }));
         }
         
@@ -132,29 +104,34 @@ export function createWorkSpace(namespace) {
        
         return { success: true };
       } 
-    } catch (error) {
-      console.error("Error creating workspace:", error);
-      toast.error(error.response?.data?.message || "Failed to create workspace");
-      return { success: false };
-    }
+   } catch (error) {
+  console.error("Error creating workspace:", error);
+
+  const apiErrors = error.response?.data?.errors;
+
+  if (apiErrors) {
+    Object.values(apiErrors).forEach((errArray) => {
+      errArray.forEach((errMsg) => {
+        toast.error(errMsg);
+      });
+    });
+  } else {
+    toast.error(error.response?.data?.message || "Something went wrong");
+  }
+
+  return { success: false };
+}
+
   };
 }
 
-  // Fetch the updated ًWork-space data
+// Fetch the updated ًWork-space data
 export function updataWorkspace(id, name) {
   return async (dispatch) => {
     try {
-      const Token = localStorage.getItem("access_token");
-      
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/workspace/update/${id}`,
-        { name: name },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/workspace/update/${id}`,
+        { name: name }
       );
       
       if (response.data.status) {
@@ -171,11 +148,9 @@ export function updataWorkspace(id, name) {
           },
         });
         
-     
         if (response.data.data) {
           dispatch(workspaceAction.updateWorkspaceInList(response.data.data));
         } else {
-         
           dispatch(getWorkspace({ force: true }));
         }
         
@@ -198,22 +173,10 @@ export function updataWorkspace(id, name) {
 export function editWorkspaceById(id) {
   return async (dispatch) => {
     try {
-      const Token = localStorage.getItem("access_token");
-
-      const response = await axios.get(
-        `https://backend-booking.appointroll.com/api/workspace/edit/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: Token,
-          },
-        }
-      );
-    //   console.log(response?.data.data.interview);
+      const response = await axiosInstance.get(`/workspace/edit/${id}`);
       
       if (response.data.status) {
         dispatch(workspaceAction.setWorkspace(response?.data.data.workspace)); 
-        
       }
     } catch (err) {
       console.error("Failed to fetch Workspaces:", err);
@@ -226,32 +189,21 @@ export function updateAvailabilWorkspace(id, formData) {
     dispatch(workspaceAction.setLoading(true));
     
     try {
-      const Token = localStorage.getItem("access_token");
-      
-      // Validate formData structure
       if (!formData || (!formData.available_times && !formData.available_dates)) {
         throw new Error("Invalid availability data format");
       }
 
-      // Prepare the request body according to API template
       const requestBody = {
         available_times: formData.available_times || [],
         available_dates: formData.available_dates || []
       };
 
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/workspace/availability/update/${id}`,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/workspace/availability/update/${id}`,
+        requestBody
       );
       
       if (response.data.status) {
-        // Fetch the updated interview data
         await dispatch(editWorkspaceById(id));
         dispatch(workspaceAction.setError(null));
         
@@ -262,7 +214,6 @@ export function updateAvailabilWorkspace(id, formData) {
         };
       } else {
         throw new Error(response.data.message || "Failed to update availability");
-        
       }
     } catch (error) {
       console.error("Error updating availability:", error);
@@ -290,37 +241,27 @@ export function updateAvailabilWorkspace(id, formData) {
     }
   };
 }
+
 export function updateUnAvailabilWorkspace(id, formData) {
   return async (dispatch) => {
     dispatch(workspaceAction.setLoading(true));
     
     try {
-      const Token = localStorage.getItem("access_token");
-      
-      // Validate formData structure
       if (!formData || (!formData.un_available_times && !formData.un_available_dates)) {
         throw new Error("Invalid availability data format");
       }
 
-      // Prepare the request body according to API template
       const requestBody = {
         un_available_times: formData.un_available_times || [],
         un_available_dates: formData.un_available_dates || []
       };
 
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/workspace/unavailability/update/${id}`,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/workspace/unavailability/update/${id}`,
+        requestBody
       );
       
       if (response.data.status) {
-        // Fetch the updated interview data
         await dispatch(editWorkspaceById(id));
         dispatch(workspaceAction.setError(null));
         
@@ -359,59 +300,42 @@ export function updateUnAvailabilWorkspace(id, formData) {
   };
 }
 
- export function assignWorkSpToStaff(id, formData) {
-    return async (dispatch) => {
-      try {
-        const token = localStorage.getItem("access_token");
-  
-        const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/workspace/assign-workspace/${id}`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        );
-  
-        if (response.data.status) {
-          toast.success(response?.data?.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
+export function assignWorkSpToStaff(id, formData) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.post(
+        `/workspace/assign-workspace/${id}`,
+        formData
+      );
+
+      if (response.data.status) {
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
             borderRadius: '8px',
             background: '#333',
             color: '#fff',
             padding: '12px 16px',
             fontWeight: '500',
-            },
-          });
-          return { success: true, message: response.data.message };
-        } else {
-          throw new Error(response.data.message );
-        }
-      } catch (error) {
-        console.error("Error updating staff:", error);
-        return { success: false, message: error.message };
+          },
+        });
+        return { success: true, message: response.data.message };
+      } else {
+        throw new Error(response.data.message);
       }
-    };
-  }
+    } catch (error) {
+      console.error("Error updating staff:", error);
+      return { success: false, message: error.message };
+    }
+  };
+}
 
- export function deleteWorkspace(id) {
+export function deleteWorkspace(id) {
   return async (dispatch) => {
     try {
-      const Token = localStorage.getItem("access_token");
-      const response = await axios.delete(
-        `https://backend-booking.appointroll.com/api/workspace/delete/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: Token,
-          },
-        }
-      );
+      const response = await axiosInstance.delete(`/workspace/delete/${id}`);
       
       if (response.data.status) {
         toast.success(response?.data?.message, {
@@ -427,7 +351,6 @@ export function updateUnAvailabilWorkspace(id, formData) {
           },
         });
         
-        // ✅ امسح من القائمة مباشرة
         dispatch(workspaceAction.removeWorkspaceFromList(id));
         
         return {
@@ -437,6 +360,11 @@ export function updateUnAvailabilWorkspace(id, formData) {
       }
     } catch (error) {
       console.error("Error deleting workspace:", error);
+      
+      return {
+        success: false,
+        message: error.response?.data?.message
+      };
     }
   };
 }
@@ -445,27 +373,15 @@ export const updateShareLinkWorkspace = (newShareLink, id) => {
   return async (dispatch, getState) => {
     dispatch(workspaceAction.setLoading(true)); 
     try {
-      const token = localStorage.getItem("access_token");
-      const url = `https://backend-booking.appointroll.com/api/workspace/regenerate-share-link/${id}`;
-
-      // لو newShareLink هو null أو undefined، متبعتش share_link في الـ body
       const requestBody = newShareLink ? { share_link: newShareLink } : {};
 
-      const response = await axios.post(
-        url,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/workspace/regenerate-share-link/${id}`,
+        requestBody
       );
 
       if (response.data) {
-        // ✅ حدث workspace المفرد
         dispatch(workspaceAction.setWorkspace(response.data.data));
-        // ✅ حدث في القائمة
         dispatch(workspaceAction.updateWorkspaceInList(response.data.data));
 
         toast.success("Share link updated successfully");
@@ -480,3 +396,54 @@ export const updateShareLinkWorkspace = (newShareLink, id) => {
     }
   };
 };
+
+export function getAvailableStaffForWorkspace(id) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.get(`/workspace/available_staff/${id}`);
+
+      if (response.data.status) {
+        dispatch(workspaceAction.setAvailableStForWorkS(response?.data.data.available_staff)); 
+      }
+    } catch (err) {
+      console.error("Failed to fetch interviews:", err);
+    }
+  };
+}
+export function getAvailableRecourseForWorkspace(id) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.get(`/workspace/available_resources/${id}`);
+
+      if (response.data.status) {
+        dispatch(workspaceAction.setAvailableResourcesForWorkS(response?.data.data.resources)); 
+      }
+    } catch (err) {
+      console.error("Failed to fetch interviews:", err);
+    }
+  };
+}
+export function getAvailableInterviewsForWorkspace(workspaceIds) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.get(
+        `/workspace/interviews`,
+        {
+          params: {
+            workspace_ids: workspaceIds, // 👈 array
+          },
+        }
+      );
+
+      if (response.data.status) {
+        dispatch(
+          workspaceAction.setAvailableInterviewsForWorkS(
+            response.data.data.interviews
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to fetch interviews:", err);
+    }
+  };
+}

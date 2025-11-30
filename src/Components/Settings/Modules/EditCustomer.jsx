@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, Calendar, Trash2, Edit2, User, Briefcase, Clock, Phone } from "lucide-react";
 import { useDispatch, useSelector } from 'react-redux';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getCustomerById, updateCustomer, deleteCustomer } from "../../../redux/apiCalls/CustomerCallApi";
 import { customerAction } from "../../../redux/slices/customersSlice";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import {fetchAppointments} from '../../../redux/apiCalls/AppointmentCallApi';
+import { fetchAppointments } from '../../../redux/apiCalls/AppointmentCallApi';
 import RescheduleSidebar from "../../Dashboard/Appointments/RescheduleSidebar";
 import { usePermission } from "../../hooks/usePermission";
 import { fetchAllInterviews } from '../../../redux/apiCalls/interviewCallApi';
@@ -55,7 +56,9 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, customerName }) =
   );
 };
 
-const EditCustomer = ({ customerId, onBack }) => {
+const EditCustomer = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("customer");
   const [editData, setEditData] = useState({
@@ -75,17 +78,13 @@ const EditCustomer = ({ customerId, onBack }) => {
   const { appointments } = useSelector((state) => state.appointments);
   const { allInterviews } = useSelector(state => state.interview);
 
-  useEffect(() => {
-    if (customerId) {
-      dispatch(fetchAppointments({ client_id: customerId }));
-    }
-  }, [customerId, dispatch]);
 
   useEffect(() => {
-    if (customerId) {
-      dispatch(getCustomerById(customerId));
+    if (id) {
+      dispatch(fetchAppointments({ client_id: id }));
+      dispatch(getCustomerById(id));
     }
-  }, [customerId, dispatch]);
+  }, [id, dispatch]);
 
   useEffect(() => {
     console.log('Customer data from Redux:', customer);
@@ -106,7 +105,7 @@ const EditCustomer = ({ customerId, onBack }) => {
   }, [customer]);
 
   const handleSave = () => {
-    dispatch(updateCustomer(customerId, editData));
+    dispatch(updateCustomer(id, editData));
     setIsEditing(false);
   };
 
@@ -174,7 +173,7 @@ const EditCustomer = ({ customerId, onBack }) => {
     console.log('Schedule clicked for:', customerData);
     
     const clientInfo = {
-      id: customerData?.client?.id || customerData?.id,
+      id: customerData?.client?.id || customerData?.id || id,
       name: customerData?.client?.name || customerData?.name || editData.name,
       email: customerData?.client?.email || customerData?.email || editData.email,
       phone: customerData?.client?.phone || customerData?.phone || editData.phone
@@ -193,11 +192,9 @@ const EditCustomer = ({ customerId, onBack }) => {
   };
 
   const handleConfirmDelete = () => {
-    dispatch(deleteCustomer(customerId));
+    dispatch(deleteCustomer(id));
     setShowDeleteModal(false);
-    if (onBack) {
-      onBack();
-    }
+    navigate('/layoutDashboard/setting/clients');
   };
 
   const handleCancelDelete = () => {
@@ -205,9 +202,7 @@ const EditCustomer = ({ customerId, onBack }) => {
   };
 
   const handleBack = () => {
-    if (onBack) {
-      onBack();
-    }
+    navigate('/layoutDashboard/setting/clients');
   };
 
   const canEditClient = usePermission("edit clients");
@@ -394,7 +389,7 @@ const EditCustomer = ({ customerId, onBack }) => {
                       Contact Number
                     </label>
                     <p className="text-gray-900 text-base">
-                      {editData.code_phone && editData.phone ? `${editData.code_phone} ${editData.phone}` : 'N/A'}
+                      {editData.code_phone && editData.phone ? ` ${editData.phone}` : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -523,7 +518,7 @@ const EditCustomer = ({ customerId, onBack }) => {
                             {index + 1}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 truncate  max-w-[150px]">
                           {appt.name}
                         </td>
                         <td className="px-6 py-4 text-sm">
@@ -532,7 +527,7 @@ const EditCustomer = ({ customerId, onBack }) => {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm">
-                          <div className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-medium inline-block">
+                          <div className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-medium inline-block truncate  max-w-[150px]">
                             {appt.interview_name}
                           </div>
                         </td>

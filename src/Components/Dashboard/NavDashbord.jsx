@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, Settings, Plus, Menu } from 'lucide-react';
 import { CgProfile } from 'react-icons/cg';
 import { Link } from 'react-router-dom';
@@ -7,14 +7,15 @@ import Notifictions from './Notifictions';
 import ProfilePanel from './ProfilePanel';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProfileData } from '../../redux/apiCalls/ProfileCallApi';
+import { getUnreadCount,getNotifications } from '../../redux/apiCalls/NotificationsCallApi';
 
 export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
-
   const { profile, loading = false } = useSelector(state => state.profileData);
+  const { unreadCount, error } = useSelector((state) => state.notifications);
 
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
@@ -22,14 +23,16 @@ export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
   const bellButtonRef = useRef(null);
   const dispatch = useDispatch();
 
-  // تحسين useEffect لتجنب infinite loop
   useEffect(() => {
-    // استدعاء البيانات فقط إذا لم يتم تحميلها من قبل
     if (!profile && !loading && !profileLoaded) {
       dispatch(fetchProfileData());
       setProfileLoaded(true);
     }
   }, [dispatch, profile, loading, profileLoaded]);
+
+  useEffect(() => {
+    dispatch(getUnreadCount());
+  }, [dispatch]);
 
   const toggleMenu = () => {
     setIsMenuOpen((prev) => !prev);
@@ -81,14 +84,12 @@ export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
         </button>
       </div>
 
-      <header className="w-full bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+      <header className="w-full bg-white border-b border-gray-200 px-6 pt-3 pb-[10px] flex items-center justify-between">
         <div className="text-sm text-gray-500">
          
         </div>
-        
         <div className="flex items-center gap-4">
           {/* Add Button */}
-          
           <button 
             ref={buttonRef} 
             onClick={toggleMenu} 
@@ -101,9 +102,13 @@ export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
           <button 
             ref={bellButtonRef} 
             onClick={toggleNotifications} 
-            className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors relative"
           >
-            <Bell size={18} />
+            <Bell size={20} />
+            {unreadCount?.unread_count > 0 && (
+              <span className="absolute top-0 right-0 w-4 h-4 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs">{unreadCount?.unread_count}</span>
+            )}
+            
           </button>
 
           {/* Settings Button */}

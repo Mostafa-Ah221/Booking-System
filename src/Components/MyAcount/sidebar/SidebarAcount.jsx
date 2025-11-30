@@ -73,7 +73,7 @@ const SidebarAcount = () => {
             onClick={() => handleItemClick(item.name)}
           >
             <span className="mr-2">{item.icon}</span>
-            <span>{item.name}</span>
+            <span className='truncate  max-w-[150px]'>{item.name}</span>
           </div>
           
           {expandedItems[item.name] && item.subItems.length > 0 && (

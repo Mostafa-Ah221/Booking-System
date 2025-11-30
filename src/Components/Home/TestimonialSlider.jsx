@@ -34,7 +34,7 @@ const TestimonialSlider = () => {
   };
 
   return (
-    <div className="relative w-full max-w-6xl mx-auto bg-purple-50 p-4 sm:p-6 lg:p-8 rounded-lg shadow-lg my-8 sm:my-16 lg:my-32">
+    <div className="relative w-full max-w-4xl mx-auto  bg-purple-50 p-4 sm:p-6 lg:p-8 rounded-lg shadow-lg my-8 sm:my-16 lg:my-32">
       {/* Title */}
       <h2 className='w-full lg:w-3/4 xl:w-1/2 mx-auto text-xl sm:text-2xl lg:text-3xl font-semibold text-center mb-6 sm:mb-8 lg:mb-12 leading-tight px-2'>
         Scheduling stories from businesses like yours
@@ -45,14 +45,14 @@ const TestimonialSlider = () => {
         <div className="hidden md:block">
           <button 
             onClick={prevSlide} 
-            className="absolute -right-16 lg:-right-20 -top-8 lg:-top-12 z-10 bg-white/50 hover:bg-white/75 rounded-full p-2 transition-all"
+            className="absolute -right-16 md:right-4 md:-top-32 lg:-right-0 -top-8 lg:-top-52 z-10 bg-white/50 hover:bg-white/75 rounded-full p-2 transition-all"
           >
             <ChevronLeft className="w-6 h-6 bg-black text-white rounded hover:bg-green-500 duration-200" />
           </button>
           
           <button 
             onClick={nextSlide} 
-            className="absolute -right-6 lg:-right-10 -top-8 lg:-top-12 z-10 bg-white/50 hover:bg-white/75 rounded-full p-2 transition-all"
+            className="absolute -right-6 lg:-right-10 md:-top-32 -top-8 lg:-top-52 z-10 bg-white/50 hover:bg-white/75 rounded-full p-2 transition-all"
           >
             <ChevronRight className="w-6 h-6 bg-black text-white rounded hover:bg-green-500 duration-200" />
           </button>

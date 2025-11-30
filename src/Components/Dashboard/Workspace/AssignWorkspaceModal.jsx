@@ -69,9 +69,9 @@ console.log(staffs);
   };
 
   const handleAssign = async () => {
-    if (selectedStaff.length === 0) {
-      return;
-    }
+    // if (selectedStaff.length === 0) {
+    //   return;
+    // }
 
     setIsLoading(true);
     
@@ -117,7 +117,7 @@ console.log(staffs);
       <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-xl z-50 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">Assign Staff</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Assign Recruiter</h2>
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -131,7 +131,7 @@ console.log(staffs);
           <div className="relative">
             <input
               type="text"
-              placeholder="Search Staff..."
+              placeholder="Search Recruiter..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -155,7 +155,7 @@ console.log(staffs);
         {/* Select All */}
         <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200">
           <p className="text-sm text-gray-600">
-            {filteredStaff.length} staff available
+            {filteredStaff.length} recruiter available
           </p>
           <label className="flex items-center gap-2 cursor-pointer">
             <span className="text-sm text-gray-600">Select All</span>
@@ -182,7 +182,7 @@ console.log(staffs);
           ) : filteredStaff.length === 0 ? (
             <div className="flex items-center justify-center py-10">
               <p className="text-gray-500 text-sm">
-                {searchQuery ? "No staff found matching your search" : "No staff available"}
+                {searchQuery ? "No recruiter found matching your search" : "No recruiter available"}
               </p>
             </div>
           ) : (
@@ -197,7 +197,7 @@ console.log(staffs);
                     <img
                       src={staff.photo}
                       className="w-7 h-7 rounded-full bg-blue-200 object-cover"
-                      alt={staff.name || "Staff"}
+                      alt={staff.name || "Recruiter"}
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.style.display = 'none';
@@ -205,9 +205,7 @@ console.log(staffs);
                       }}
                     />
                   ) :  (
-                          <div className="w-7 h-7 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-semibold uppercase">
-                            {staff?.name ? staff.name.charAt(0) : "?"}
-                          </div>
+                    ""
                         )}
                   <div 
                     className={`w-7 h-7 rounded-full bg-blue-200 items-center justify-center text-blue-700 ${
@@ -217,10 +215,10 @@ console.log(staffs);
                     <User className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {staff.name || "Unknown Staff"}
+                    <p className="text-sm font-medium text-gray-800 truncate block max-w-[150px]">
+                      {staff.name || "Unknown Recruiter"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 truncate block max-w-[150px]">
                       {staff.email || "No email"}
                     </p>
                   </div>
@@ -252,10 +250,10 @@ console.log(staffs);
             </button>
             <button 
               onClick={handleAssign}
-              disabled={selectedStaff.length === 0 || isLoading}
+              // disabled={selectedStaff.length === 0 || isLoading}
               className="px-4 py-2 text-sm text-white bg-purple-500 hover:bg-purple-600 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Assigning..." : "Assign Staff"}
+              {isLoading ? "Assigning..." : "Assign Recruiter"}
             </button>
           </div>
         </div>

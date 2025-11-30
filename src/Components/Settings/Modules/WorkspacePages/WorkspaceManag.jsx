@@ -42,7 +42,6 @@ const WorkspaceManag = () => {
     dispatch(getAllWorkspaces({ force: true }));
   }, [dispatch]);
 
-  // ✅ إضافة: Refresh workspaces عند إغلاق الـ modals
   useEffect(() => {
     if (!isNewWorkspaceModalOpen && !isEditModalOpen) {
       // Re-fetch after modal closes to ensure data is fresh
@@ -104,7 +103,6 @@ const WorkspaceManag = () => {
           dispatch(workspaceAction.setWorkspace(mySpace));
         }
         
-        // ✅ إعادة تحميل القائمة بعد الحذف
         dispatch(getAllWorkspaces({ force: true }));
       } else {
         toast.error('Error deleting workspace');
@@ -130,16 +128,13 @@ const WorkspaceManag = () => {
     setIsNewWorkspaceModalOpen(true);
   };
 
-  // ✅ تعديل: إغلاق المودال + إعادة تحميل البيانات
   const handleCloseNewWorkspaceModal = () => {
     setIsNewWorkspaceModalOpen(false);
-    // سيتم reload تلقائي من useEffect
   };
 
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
     setWorkspaceToEdit(null);
-    // سيتم reload تلقائي من useEffect
   };
 
   const toggleSearch = () => {
@@ -243,7 +238,10 @@ const WorkspaceManag = () => {
                     <div className="w-10 h-10 bg-red-200 rounded-lg flex items-center justify-center font-medium">
                       {getInitials(workspaceItem.name)}
                     </div>
-                    <span className="font-medium text-sm">{workspaceItem.name}</span>
+                    <span className="font-medium text-sm truncate block max-w-[150px]">
+                      {workspaceItem.name}
+                    </span>
+
                   </div>
                   <div className="relative dropdown-container">
                     <button

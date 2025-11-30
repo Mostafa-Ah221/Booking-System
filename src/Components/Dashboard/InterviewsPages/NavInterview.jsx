@@ -95,17 +95,23 @@ export default function NavInterview() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center">
-                <span className="text-green-800 font-medium">
-                  {interview?.name?.substring(0, 2).toUpperCase() || "RS"}
-                </span>
-              </div>
+               <div className="w-10 h-10 bg-purple-500 text-white rounded-full flex items-center justify-center text-lg font-semibold mr-3">
+                      {interview?.photo ? (
+                        <img
+                          src={interview?.photo}
+                          alt="photo profile"
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                      ) : (
+                        <span>{interview?.name?.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
               <div>
-                <h1 className="text-[11px] md:text-lg font-semibold">
+                <h1 className="text-[11px] md:text-lg font-semibold truncate block max-w-[150px]">
                   {interview?.name || "Recruitment Strategy Meeting"}
                 </h1>
-                <p className="text-sm text-gray-500">
-                  {interview?.mode || "One-on-One"}
+                <p className="text-sm text-gray-500 ">
+                  {interview?.type}
                 </p>
               </div>
             </div>
@@ -143,13 +149,7 @@ export default function NavInterview() {
             <ExternalLink size={15} className="mr-2 text-gray-700" />
             <span className='text-sm text-gray-700'>Booking Page</span>
           </button>
-          <button 
-            onClick={handleCopyClick}
-            className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center"
-          >
-            <Copy size={15} className="mr-2 text-gray-700" />
-            <span className='text-sm text-gray-700'>Make a copy</span>
-          </button>
+        
           <button 
             onClick={handleDeleteClick}
             className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center text-red-500"
@@ -184,7 +184,7 @@ export default function NavInterview() {
             </div>
             
             <p className="text-gray-700 mb-6">
-              Are you sure you want to delete "<span className="font-semibold">{interview?.name}</span>"? 
+              Are you sure you want to delete "<span className="font-semibold truncate  max-w-[150px]">{interview?.name}</span>"? 
               This will permanently remove the interview and all its data.
             </p>
             

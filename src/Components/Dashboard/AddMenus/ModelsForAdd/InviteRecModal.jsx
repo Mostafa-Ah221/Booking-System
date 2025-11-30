@@ -13,7 +13,7 @@ const InviteRecModal = ({ isOpen, onClose }) => {
     email: "",
     password: "",
     password_confirmation: "",
-    phone_code: "",
+    code_phone: "",
     phone: "",
     role_id: [],
     permissions: [],
@@ -78,7 +78,7 @@ const InviteRecModal = ({ isOpen, onClose }) => {
       email: "",
       password: "",
       password_confirmation: "",
-      phone_code: "",
+      code_phone: "",
       phone: "",
       role_id: [],
       permissions: [],
@@ -116,7 +116,7 @@ const InviteRecModal = ({ isOpen, onClose }) => {
     setFormData((prev) => ({
       ...prev,
       phone: value.replace(`+${country.dialCode}`, ""),
-      phone_code: `+${country.dialCode}`,
+      code_phone: `+${country.dialCode}`,
     }));
 
     if (!value || value.length <= country.dialCode.length + 1) {
@@ -246,7 +246,7 @@ const InviteRecModal = ({ isOpen, onClose }) => {
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <User className="w-4 h-4 mr-1 text-gray-500" />
-                  Full Name <span className="text-red-500 ml-1">*</span>
+                  Full Name 
                 </label>
                 <input
                   type="text"

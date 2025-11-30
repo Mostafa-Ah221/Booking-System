@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet } from "react-router-dom";
 import SettingSidebar from './SettingSidebar';
-import NavDashbord from '../Dashboard/NavDashbord';
 import { Menu, X } from 'lucide-react';
 
 export default function SettingsLayout() {
@@ -11,7 +10,6 @@ export default function SettingsLayout() {
     isTablet: false
   });
 
-  // Check viewport size on mount and window resize
   useEffect(() => {
     const checkViewportSize = () => {
       const width = window.innerWidth;
@@ -20,7 +18,6 @@ export default function SettingsLayout() {
         isTablet: width >= 640 && width < 1024
       });
       
-      // Auto-close sidebar on small screens, auto-open on large screens
       if (width >= 1024) {
         setSidebarOpen(true);
       } else if (!sidebarOpen) {
@@ -28,17 +25,12 @@ export default function SettingsLayout() {
       }
     };
     
-    // Initial check
     checkViewportSize();
-    
-    // Add event listener
     window.addEventListener('resize', checkViewportSize);
     
-    // Cleanup
     return () => window.removeEventListener('resize', checkViewportSize);
   }, []);
 
-  // Close sidebar when clicking outside on mobile or tablet
   useEffect(() => {
     const handleClickOutside = (event) => {
       const sidebar = document.getElementById('settings-sidebar');
@@ -58,17 +50,14 @@ export default function SettingsLayout() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [viewportSize, sidebarOpen]);
 
-  // Handle toggle sidebar
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  // Determine if we're on a compact display (mobile or tablet)
   const isCompactDisplay = viewportSize.isMobile || viewportSize.isTablet;
 
   return (
-    <div className="flex h-screen bg-gray-50 relative">
-      {/* Mobile/Tablet menu button */}
+    <div className="flex h-full bg-gray-50">
       {isCompactDisplay && (
         <button 
           id="mobile-menu-button"
@@ -80,7 +69,6 @@ export default function SettingsLayout() {
         </button>
       )}
 
-      {/* Overlay when sidebar is open on mobile/tablet */}
       {isCompactDisplay && sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-20"
@@ -89,11 +77,10 @@ export default function SettingsLayout() {
         />
       )}
 
-      {/* Sidebar */}
       <div 
         id="settings-sidebar"
         className={`
-          ${isCompactDisplay ? 'fixed z-30 h-full' : 'relative w-64'} 
+          ${isCompactDisplay ? 'fixed z-30 h-full top-0' : 'relative w-64'} 
           ${isCompactDisplay && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'} 
           transition-transform duration-300 ease-in-out shadow-md
         `}
@@ -104,17 +91,9 @@ export default function SettingsLayout() {
         />
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* <div>
-          <NavDashbord 
-            toggleSidebar={toggleSidebar} 
-            isMobile={isCompactDisplay} 
-            sidebarOpen={sidebarOpen}
-          />
-        </div> */}
-
-        <div className=" p-3 sm:p-4 lg:p-8 flex-1 bg-white rounded-lg shadow-md m-2 sm:mx-4 lg:mx-6 sm:my-3 lg:my-4">
+      {/* Main content - NO overflow here! */}
+      <div className="flex-1 p-3 sm:p-4">
+        <div className="bg-white rounded-lg shadow-md h-full p-4">
           <Outlet />
         </div>
       </div>

@@ -48,7 +48,7 @@ const AdminCenter = () => {
         {title:'Basic Information',path:"basic-info"}, 
         // {title:'Business Hours',path:'business-hours'}, 
         // {title:'Custom Domain',path:"custom-domain"}, 
-        ...(hasViewStaff ? [{title:'Users',path:"users"}] : [])
+        ...(hasViewStaff ? [{title:'Recruiter',path:"recruiterPage"}] : [])
       ]
     },
     {
@@ -56,9 +56,9 @@ const AdminCenter = () => {
       icon: <Grid className="w-5 h-5 text-indigo-600" />,
       items: [
         {title:'Workspaces', path:"workspaces"},  
-        // {title:'In-person Locations', path:"person-location"}, 
+        {title:'Resources', path:"resources-section"}, 
         ...(hasViewClients ? [{title:'Clients',path:"clients"}] : []),
-        {title: 'Reports',path:"reports"}
+        // {title: 'Reports',path:"reports"}
       ]
     },
     {
@@ -76,7 +76,7 @@ const AdminCenter = () => {
       title: 'Product Customizations',
       icon: <Package className="w-5 h-5 text-indigo-600" />,
       items: [
-        // {title:'In-product Notifications',path:"notification-settings"}, 
+        {title:'In-product Notifications',path:"notification-settings"}, 
         // {title:'Custom Labels',path:"custom-labels"}, 
         ...(hasViewRoles ? [{title:'Roles and Permissions',path:"roles-permissions"}] : [])
       ]

@@ -16,7 +16,10 @@ const BookingSummarySidebar = ({
   onFormChange,
   onScheduleAppointment,
   isBooking,
-   shareId 
+   shareId ,
+   selectedType,
+   totalPrice,
+   numberOfSlots,
 }) => {
   const [phoneValue, setPhoneValue] = useState(
     formData.code_phone && formData.phone 
@@ -120,7 +123,7 @@ console.log(bookingData);
         placeholder="Name"
         value={formData.name}
         onChange={(e) => onFormChange('name', e.target.value)}
-        className="w-full p-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
+        className="w-full p-3 border border-gray-300 rounded-sm focus focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
       />
     </div>
     
@@ -133,7 +136,7 @@ console.log(bookingData);
         placeholder="Email"
         value={formData.email}
         onChange={(e) => onFormChange('email', e.target.value)}
-        className="w-full p-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
+        className="w-full p-3 border border-gray-300 rounded-sm focus focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
       />
     </div>
     
@@ -150,7 +153,7 @@ console.log(bookingData);
           searchPlaceholder="Search country"
           inputProps={{
             name: "phone",
-            className: "!pl-16 w-full py-3 px-4 border border-gray-300 rounded-sm outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200",
+            className: "!pl-16 w-full py-3 px-4 border border-gray-300 rounded-sm outline-none focus focus:ring-pink-500 focus:border-pink-500 transition-all duration-200",
             placeholder: "Enter your mobile number"
           }}
           containerClass="w-full"
@@ -168,24 +171,42 @@ console.log(bookingData);
     </div>
 
     {/* إضافة حقل العنوان */}
-    {bookingData?.offline_mode === 'homedelivery' && ( <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Address {bookingData?.offline_mode === 'homedelivery' && <span className="text-red-500">*</span>}
-
-          </label>
-        <input
-          type="text"
-          placeholder="Enter your address"
-          value={formData.address}
-          onChange={(e) => onFormChange('address', e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-sm focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
-        />
-    </div>)}
+    {(bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Address <span className="text-red-500">*</span>
+    </label>
+    <input
+      type="text"
+      placeholder="Enter your address"
+      value={formData.address}
+      onChange={(e) => onFormChange('address', e.target.value)}
+      className="w-full p-3 border border-gray-300 rounded-sm focus focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors"
+    />
+  </div>
+)}
    
-    {bookingData?.price && bookingData?.price > 0 ?<div>
-        <div className="block text-sm font-medium text-gray-700 mb-2 border p-3">
-        Payment Amount  | {bookingData.price} {bookingData.currency}
-        </div></div> : ""}
+    {bookingData?.price && bookingData?.price > 0 && (
+  <div>
+    <div className="block text-sm font-medium text-gray-700 mb-2 border border-gray-300 rounded-lg p-4 bg-gray-50">
+      <div className="flex justify-between items-center">
+        <span className="text-gray-700">Payment Amount</span>
+        <span className="font-bold  text-pink-600">
+          {bookingData?.require_end_time && totalPrice > 0 
+            ? `${totalPrice} ${bookingData.currency}` 
+            : `${bookingData.price} ${bookingData.currency}`
+          }
+        </span>
+      </div>
+      
+      {bookingData?.require_end_time && totalPrice > 0 && (
+        <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-200">
+          {numberOfSlots} slot{numberOfSlots > 1 ? 's' : ''} × {bookingData.price} {bookingData.currency} per slot
+        </div>
+      )}
+    </div>
+  </div>
+)}
       
       
     
@@ -201,9 +222,10 @@ disabled={
   !formData.email || 
  
   phoneError || 
-  (bookingData?.offline_mode === 'homedelivery' && !formData.address) || 
-  isBooking
-}  >
+    ((bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && !formData.address) || 
+    isBooking
+  }
+>
     {isBooking ? (
       <div className="flex items-center justify-center">
         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>

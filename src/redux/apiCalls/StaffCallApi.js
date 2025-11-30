@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosInstance from "../../Components/pages/axiosInstance";
 import { staffAction } from "../slices/staffSlice";
 import toast from "react-hot-toast";
 
@@ -6,17 +6,8 @@ export function getStaff() {
   return async (dispatch) => {
         try {
             dispatch(staffAction.setStaffsLoading(true));
-            const Token = localStorage.getItem("access_token");
             
-            const response = await axios.get(
-                `https://backend-booking.appointroll.com/api/staff/index`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-                }
-            );
+            const response = await axiosInstance.get('/staff/index');
             
             dispatch(staffAction.setStaffs(response?.data?.data || []));
             dispatch(staffAction.setStaffsLoading(false));
@@ -39,11 +30,11 @@ export function getStaff() {
         }
     }
 }
+
 export function getStaffByFilter(filters = {}) {
-        return async (dispatch) => {
+    return async (dispatch) => {
         try {
             dispatch(staffAction.setFilteredStaffsLoading(true));
-            const Token = localStorage.getItem("access_token");
             
             const params = new URLSearchParams();
             
@@ -56,16 +47,9 @@ export function getStaffByFilter(filters = {}) {
             }
             
             const queryString = params.toString();
-            const url = queryString 
-                ? `https://backend-booking.appointroll.com/api/staff/index?${queryString}`
-                : `https://backend-booking.appointroll.com/api/staff/index`;
+            const url = queryString ? `/staff/index?${queryString}` : '/staff/index';
             
-            const response = await axios.get(url, {
-                headers: {
-                    "Content-Type": "application/json",
-                    authorization: Token,
-                },
-            });
+            const response = await axiosInstance.get(url);
             
             dispatch(staffAction.setFilteredStaffs(response?.data?.data || []));
             dispatch(staffAction.setFilteredStaffsLoading(false));
@@ -93,22 +77,19 @@ export function addStaff(staffData) {
     return async (dispatch) => {
         try {
             dispatch(staffAction.setLoading(true));
-            dispatch(staffAction.clearError()); // مسح الأخطاء السابقة
-            
-            const Token = localStorage.getItem("access_token");
+            dispatch(staffAction.clearError());
 
             console.log("Sending FormData to API:");
             for (let [key, value] of staffData.entries()) {
                 console.log(`${key}: ${value}`);
             }
 
-            const response = await axios.post(
-                `https://backend-booking.appointroll.com/api/staff/store`,
+            const response = await axiosInstance.post(
+                '/staff/store',
                 staffData, 
                 {
                     headers: {
-                        "Content-Type": "multipart/form-data", // للملفات
-                        authorization: Token,
+                        "Content-Type": "multipart/form-data",
                     },
                 }
             );
@@ -116,7 +97,6 @@ export function addStaff(staffData) {
             if (response?.data?.status) {
                 const newStaff = response.data.data;
                 
-                // إضافة الموظف الجديد للقائمة
                 dispatch(staffAction.addStaffToList(newStaff));
                 
                 toast.success(response.data.message, {
@@ -156,20 +136,12 @@ export function inviteStaff(inviteData) {
         try {
             dispatch(staffAction.setLoading(true));
             dispatch(staffAction.clearError());
-            
-            const Token = localStorage.getItem("access_token");
 
             console.log("Sending Invite Data to API:", inviteData);
 
-            const response = await axios.post(
-                `https://backend-booking.appointroll.com/api/staff/send-invite`,
-                inviteData, 
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-                }
+            const response = await axiosInstance.post(
+                '/staff/send-invite',
+                inviteData
             );
             
             if (response?.data?.status) {
@@ -203,50 +175,26 @@ export function inviteStaff(inviteData) {
             }
         } catch (error) {
             const serverErrors = error?.response?.data?.errors || {};
-            console.error("Error sending invitation:", error);
-            console.error("Server errors:", serverErrors);
             
             dispatch(staffAction.setLoading(false));
             dispatch(staffAction.setError(serverErrors));
             
-            // عرض رسالة خطأ
-            const errorMessage = error?.response?.data?.message || "Failed to send invitation";
-            toast.error(errorMessage, {
-                position: "top-center",
-                duration: 5000,
-                icon: "❌",
-                style: {
-                    borderRadius: "8px",
-                    background: "#333",
-                    color: "#fff",
-                    padding: "12px 16px",
-                    fontWeight: "500",
-                },
-            });
+            const errorMessage = error?.response?.data?.errors.email;
             
             return { success: false, error };
         }
     };
 }
+
 export function getStaffById(staffId) {
     return async (dispatch) => {
         try {
             dispatch(staffAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
             
-            const response = await axios.get(
-                `https://backend-booking.appointroll.com/api/staff/edit/${staffId}`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-                }
-            );
+            const response = await axiosInstance.get(`/staff/edit/${staffId}`);
             
-            console.log("getStaffById response:", response.data); // للتتبع
+            console.log("getStaffById response:", response.data);
             
-            // هنا الحل - استخدم setStaff بدلاً من setStaffs
             dispatch(staffAction.setStaff(response?.data?.data));
             dispatch(staffAction.setLoading(false));
             
@@ -273,17 +221,13 @@ export function updateStaff(staffId, staffData) {
     return async (dispatch) => {
         try {
             dispatch(staffAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
             
-           
-            
-            const response = await axios.post(
-                `https://backend-booking.appointroll.com/api/staff/update/${staffId}`,
+            const response = await axiosInstance.post(
+                `/staff/update/${staffId}`,
                 staffData,
                 {
                     headers: {
                         "Content-Type": "multipart/form-data",
-                        authorization: Token,
                     },
                 }
             );
@@ -294,10 +238,7 @@ export function updateStaff(staffId, staffData) {
                     ...staffData
                 };
                 
-                // ✅ تحديث الموظف في القائمة
                 dispatch(staffAction.updateStaffInList(updatedData));
-                
-                // ✅ تحديث staff الحالي إذا كان نفس الموظف
                 dispatch(staffAction.setStaff(updatedData));
                 
                 toast.success(response?.data?.message, {
@@ -326,37 +267,50 @@ export function updateStaff(staffId, staffData) {
                     message: response?.data?.message || 'Unknown error'
                 };
             }
-        } catch (error) {
-            if (error.response && error.response.data && error.response.data.errors) {
-                const errors = error.response.data.errors;
+       } catch (error) {
+    console.error("Full error object:", error);
+    console.error("Error response:", error.response);
 
-                const formattedErrors = Object.keys(errors).reduce((acc, field) => {
-                    acc[field] = Array.isArray(errors[field]) 
-                        ? errors[field].join(", ") 
-                        : errors[field];
-                    return acc;
-                }, {});
+    const apiMessage = error.response?.data?.message || "Something went wrong";
 
-                dispatch(staffAction.setError(formattedErrors));
-                
-                dispatch(staffAction.setLoading(false));
-                return {
-                    success: false,
-                    message: error.response?.data?.message || 'Validation failed',
-                    errors: formattedErrors
-                };
-            } else {
-                console.error("Error updating staff:", error);
-                const errorMessage = error.response?.data?.message || error.message || "Something went wrong";
-                dispatch(staffAction.setError({ general: errorMessage }));
-                
-                dispatch(staffAction.setLoading(false));
-                return {
-                    success: false,
-                    message: errorMessage
-                };
-            }
-        }
+    // ✅ Errors from backend (validation)
+    if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+
+        const formattedErrors = Object.keys(errors).reduce((acc, field) => {
+            acc[field] = Array.isArray(errors[field])
+                ? errors[field].join(", ")
+                : errors[field];
+            return acc;
+        }, {});
+
+        dispatch(staffAction.setError(formattedErrors));
+
+        // ✅ Show every validation error in toast
+        Object.keys(formattedErrors).forEach(field => {
+            toast.error(`${formattedErrors[field]}`, {
+                position: "top-center",
+                duration: 4000,
+            });
+        });
+    } else {
+        // ✅ Show general backend message like "Password does not match"
+        toast.error(apiMessage, {
+            position: "top-center",
+            duration: 4000,
+        });
+
+        dispatch(staffAction.setError({ general: apiMessage }));
+    }
+
+    dispatch(staffAction.setLoading(false));
+
+    return {
+        success: false,
+        message: apiMessage
+    };
+}
+
     };
 }
 
@@ -365,8 +319,6 @@ export function updateAvailabilStaff(id, formData) {
     dispatch(staffAction.setLoading(true));
     
     try {
-      const Token = localStorage.getItem("access_token");
-      
       if (!formData || (!formData.available_times && !formData.available_dates)) {
         throw new Error("Invalid availability data format");
       }
@@ -376,15 +328,9 @@ export function updateAvailabilStaff(id, formData) {
         available_dates: formData.available_dates || []
       };
 
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/staff/availability/update/${id}`,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/staff/availability/update/${id}`,
+        requestBody
       );
       
       if (response.data.status) {
@@ -398,7 +344,6 @@ export function updateAvailabilStaff(id, formData) {
         };
       } else {
         throw new Error(response.data.message || "Failed to update availability");
-        
       }
     } catch (error) {
       console.error("Error updating availability:", error);
@@ -432,14 +377,10 @@ export function updateUnAvailabilStaff(id, formData) {
     dispatch(staffAction.setLoading(true));
     
     try {
-      const Token = localStorage.getItem("access_token");
-      
-      // Validate formData structure
       if (!formData) {
         throw new Error("Invalid availability data format");
       }
 
-      // بناء الـ requestBody بناءً على الداتا الموجودة
       const requestBody = {};
       if (formData.un_available_times) {
         requestBody.un_available_times = formData.un_available_times;
@@ -448,17 +389,11 @@ export function updateUnAvailabilStaff(id, formData) {
         requestBody.un_available_dates = formData.un_available_dates;
       }
 
-      console.log('Request body sent to API:', requestBody); 
+      console.log('Unavailable - Request body sent to API:', requestBody);
 
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/staff/unavailability/update/${id}`,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/staff/unavailability/update/${id}`,
+        requestBody
       );
       
       if (response.data.status) {
@@ -467,16 +402,16 @@ export function updateUnAvailabilStaff(id, formData) {
         
         return {
           status: true,
-          message: response.data.message || "Un Availability updated successfully",
+          message: response.data.message || "Unavailability updated successfully",
           data: response.data.data || null
         };
       } else {
-        throw new Error(response.data.message || "Failed to update Un availability");
+        throw new Error(response.data.message || "Failed to update unavailability");
       }
     } catch (error) {
-      console.error("Error updating Un availability:", error);
+      console.error("Error updating unavailability:", error);
       
-      let errorMessage = "Failed to update Un availability";
+      let errorMessage = "Failed to update unavailability";
       let errorDetails = null;
       
       if (error.response) {
@@ -499,29 +434,19 @@ export function updateUnAvailabilStaff(id, formData) {
     }
   };
 }
+
 export const updateShareLinkStaff = (newShareLink, id) => {
   return async (dispatch, getState) => {
     dispatch(staffAction.setLoading(true)); 
     try {
-      const token = localStorage.getItem("access_token");
-      const url = `https://backend-booking.appointroll.com/api/staff/regenerate-share-link/${id}`;
-
-      // لو newShareLink هو null أو undefined، متبعتش share_link في الـ body
       const requestBody = newShareLink ? { share_link: newShareLink } : {};
 
-      const response = await axios.post(
-        url,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/staff/regenerate-share-link/${id}`,
+        requestBody
       );
 
       if (response.data && response.data.data) {
-        
         dispatch(staffAction.updateStaffShareLink({
           id: id,
           share_link: response.data.data
@@ -540,103 +465,11 @@ export const updateShareLinkStaff = (newShareLink, id) => {
     }
   };
 };
-//  export function assignWorkSpToStaff(id, formData) {
-//     return async (dispatch) => {
-//       try {
-//         const token = localStorage.getItem("access_token");
-  
-//         const response = await axios.post(
-//           `https://backend-booking.appointroll.com/api/staff/assign-workspace/${id}`,
-//           formData,
-//           {
-//             headers: {
-//               "Content-Type": "application/json",
-//               Authorization: token,
-//             },
-//           }
-//         );
-  
-//         if (response.data.status) {
-//           dispatch(getStaffById(id)); 
-//           toast.success(response?.data?.message, {
-//             position: 'top-center',         
-//             duration: 5000,
-//             icon: '✅',
-//             style: {
-//             borderRadius: '8px',
-//             background: '#333',
-//             color: '#fff',
-//             padding: '12px 16px',
-//             fontWeight: '500',
-//             },
-//           });
-//           return { success: true, message: response.data.message };
-//         } else {
-//           throw new Error(response.data.message );
-//         }
-//       } catch (error) {
-//         console.error("Error updating staff:", error);
-//         return { success: false, message: error.message };
-//       }
-//     };
-//   }
-//  export function assignInterViewToStaff(id, formData) {
-//     return async (dispatch) => {
-//       try {
-//         const token = localStorage.getItem("access_token");
-  
-//         const response = await axios.post(
-//           `https://backend-booking.appointroll.com/api/staff/assign-interview/${id}`,
-//           formData,
-//           {
-//             headers: {
-//               "Content-Type": "application/json",
-//               Authorization: token,
-//             },
-//           }
-//         );
-  
-//         if (response.data.status) {
-//           dispatch(getStaffById(id)); 
-//           toast.success(response?.data?.message, {
-//             position: 'top-center',         
-//             duration: 5000,
-//             icon: '✅',
-//             style: {
-//             borderRadius: '8px',
-//             background: '#333',
-//             color: '#fff',
-//             padding: '12px 16px',
-//             fontWeight: '500',
-//             },
-//           });
-//           return { success: true, message: response.data.message };
-//         } else {
-//           throw new Error(response.data.message );
-//         }
-//       } catch (error) {
-//         console.error("Error updating staff:", error);
-//         return { success: false, message: error.message };
-//       }
-//     };
-//   }
-//
 
 export function deleteStaff(staffId) {
     return async (dispatch) => {
         try {
-            // dispatch(staffAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            
-            const response = await axios.delete(
-                `https://backend-booking.appointroll.com/api/staff/delete/${staffId}`,
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-                }
-            );
+            const response = await axiosInstance.delete(`/staff/delete/${staffId}`);
             
             if (response.data.status) {
                 dispatch(staffAction.removeStaffFromList(staffId));
@@ -673,4 +506,40 @@ export function deleteStaff(staffId) {
             };
         }
     }
+}
+
+export function assignInterviewsToStaff(id, formData) {
+  return async (dispatch) => {
+    try {
+      console.log(formData);
+      
+      const response = await axiosInstance.post(
+        `/staff/assign-interviews/${id}`,
+        formData
+      );
+
+      if (response.data.status) {
+        console.log(response);
+        
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
+          },
+        });
+        return { success: true, message: response.data.message };
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (error) {
+      console.error("Error updating staff:", error);
+      return { success: false, message: error.message };
+    }
+  };
 }

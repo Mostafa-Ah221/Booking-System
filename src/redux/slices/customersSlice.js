@@ -6,6 +6,8 @@ const customersSlice = createSlice({
         customers: [],
         customer: null,
         loading: false,
+         deleteLoading: false, 
+         dataFetched: false,
         error: null,
     },
     reducers: {
@@ -18,10 +20,15 @@ const customersSlice = createSlice({
         setLoading(state, action) {
             state.loading = action.payload;
         },
+          setDeleteLoading(state, action) {
+            state.deleteLoading = action.payload;
+        },
         setError(state, action) {
             state.error = action.payload;
         },
-        
+    setDataFetched(state, action) {
+        state.dataFetched = action.payload;
+    },
         // إضافة عميل جديد للقائمة
         addCustomerToList(state, action) {
             console.log("Adding customer to list:", action.payload);

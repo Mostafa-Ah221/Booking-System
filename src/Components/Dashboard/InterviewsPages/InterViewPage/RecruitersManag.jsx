@@ -116,7 +116,7 @@ const RecruitersManag = () => {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-sm font-medium truncate">{recruiter.name}</h3>
+                  <h3 className="text-sm font-medium truncate  max-w-[150px]">{recruiter.name}</h3>
                   <p className="text-xs sm:text-sm text-gray-500 truncate">{recruiter.email}</p>
                 </div>
               </div>

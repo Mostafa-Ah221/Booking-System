@@ -6,8 +6,8 @@ import AssignInterviewModal from "./AssignInterviewModal";
 import { useDispatch, useSelector } from "react-redux";
 import { getStaffByFilter } from "../../../../redux/apiCalls/StaffCallApi";
 import { unAssignStaffFromInterview } from "../../../../redux/apiCalls/interviewCallApi";
+import { getResources } from "../../../../redux/apiCalls/ResourceCallApi";
 
-// ✅ Unassign Confirmation Modal Component
 function UnassignConfirmModal({ isOpen, onClose, onConfirm, staffName, isUnassigning }) {
   if (!isOpen) return null;
 
@@ -20,7 +20,7 @@ function UnassignConfirmModal({ isOpen, onClose, onConfirm, staffName, isUnassig
             <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center">
               <AlertTriangle className="w-5 h-5 text-red-600" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900">Unassign Staff</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Unassign Recruiter</h2>
           </div>
           <button
             onClick={onClose}
@@ -38,7 +38,7 @@ function UnassignConfirmModal({ isOpen, onClose, onConfirm, staffName, isUnassig
           </p>
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-sm text-red-800">
-              <span className="font-semibold">Warning:</span> This staff member will no longer have access to this interview and all related data.
+              <span className="font-semibold">Warning:</span> This recruiter member will no longer have access to this interview and all related data.
             </p>
           </div>
         </div>
@@ -78,21 +78,27 @@ export default function AssignStaffToIntVw() {
   const [searchTerm, setSearchTerm] = useState("");
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-  const [unassignConfirm, setUnassignConfirm] = useState(null); // ✅ للـ modal
-  const [isUnassigning, setIsUnassigning] = useState(false); // ✅ للـ loading state
+  const [unassignConfirm, setUnassignConfirm] = useState(null);
+  const [isUnassigning, setIsUnassigning] = useState(false);
   
   const { id } = useOutletContext();
+    const { interview, loading } = useSelector(state => state.interview);
+  
   const dispatch = useDispatch();
   const { filteredStaffs, filteredStaffsLoading, error } = useSelector(
     (state) => state.staff
   );
-
+  const { resources } = useSelector((state) => state.resources);
+  
   useEffect(() => {
     if (id) {
       dispatch(getStaffByFilter({ interview_id: id }));
     }
   }, [dispatch, id]);
 
+  useEffect(() => {
+    dispatch(getResources());
+  }, [dispatch]);
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest(".portal-dropdown")) {
@@ -117,13 +123,10 @@ export default function AssignStaffToIntVw() {
     setOpenDropdownId(staffId);
   };
 
-  // ✅ فتح الـ modal بدل الـ window.confirm
   const handleUnassignClick = (staff) => {
     setUnassignConfirm(staff);
     setOpenDropdownId(null);
   };
-
-  // ✅ تنفيذ الـ unassign
   const handleConfirmUnassign = async () => {
     if (!unassignConfirm) return;
 
@@ -138,17 +141,11 @@ export default function AssignStaffToIntVw() {
         setUnassignConfirm(null);
       }
     } catch (error) {
-      console.error('Error unassigning staff:', error);
+      console.error('Error unassigning Recruiter:', error);
     } finally {
       setIsUnassigning(false);
     }
   };
-
-  const handleShare = (staff) => {
-    console.log("Share staff:", staff);
-    setOpenDropdownId(null);
-  };
-
   const searchResults = Array.isArray(filteredStaffs)
     ? filteredStaffs.filter(
         (staff) =>
@@ -162,7 +159,7 @@ export default function AssignStaffToIntVw() {
     <div className="p-3 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6 border-b border-gray-200">
         <div className="flex items-center gap-2 mb-3">
-          <h1 className="text-xl font-semibold text-gray-800">Assigned Staff</h1>
+          <h1 className="text-xl font-semibold text-gray-800">Assigned Recruiter</h1>
           <span className="bg-gray-100 text-gray-600 text-sm font-medium px-2.5 py-0.5 rounded-full">
             {searchResults.length}
           </span>
@@ -172,7 +169,7 @@ export default function AssignStaffToIntVw() {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search staff..."
+              placeholder="Search recruiter..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64 text-sm"
@@ -205,7 +202,7 @@ export default function AssignStaffToIntVw() {
             className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
             <Plus className="w-4 h-4" />
-            <span>Assign Staff</span>
+            <span>Assign Recruiter</span>
           </button>
         </div>
       </div>
@@ -223,8 +220,8 @@ export default function AssignStaffToIntVw() {
           <div className="text-center">
             <p className="text-gray-500 mb-2">
               {searchTerm
-                ? "No staff found matching your search"
-                : "No staff assignments found"}
+                ? "No recruiter found matching your search"
+                : "No recruiter assignments found"}
             </p>
             {searchTerm && (
               <button
@@ -246,7 +243,7 @@ export default function AssignStaffToIntVw() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Staff Member
+                    Recruiter Member
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Contact
@@ -284,7 +281,7 @@ export default function AssignStaffToIntVw() {
                           )}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 truncate  max-w-[150px]">
                             {staff.name}
                           </div>
                         </div>
@@ -369,6 +366,8 @@ export default function AssignStaffToIntVw() {
         interviewId={id}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        filteredStaffs={filteredStaffs}
+        interview={interview}
       />
     </div>
   );

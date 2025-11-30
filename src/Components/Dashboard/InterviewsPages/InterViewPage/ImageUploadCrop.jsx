@@ -19,7 +19,7 @@ const ImageUploadCrop = ({ isOpen, onClose, onImageUpdate, currentImage }) => {
   const fileInputRef = useRef(null);
   const cropContainerRef = useRef(null);
   const [showColorPicker, setShowColorPicker] = useState(true);
-
+const modalRef = useRef(null);
   const colors = [
     '#90EE90', '#FFB6C1', '#F0E68C', '#87CEEB', '#98FB98',
     '#DDA0DD', '#F4A460', '#98FB98', '#FFA07A', '#9370DB',
@@ -158,7 +158,10 @@ const ImageUploadCrop = ({ isOpen, onClose, onImageUpdate, currentImage }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-2xl lg:max-w-3xl max-h-[95vh] overflow-y-auto">
+      <div 
+      id="image-upload-crop-modal"
+      ref={modalRef}
+      className="bg-white rounded-lg w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-2xl lg:max-w-3xl max-h-[95vh] overflow-y-auto">
         <div className="p-4 sm:p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-base sm:text-lg font-semibold">

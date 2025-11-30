@@ -16,9 +16,11 @@ import { FiLayout } from "react-icons/fi";
 import ColumnManagerSidebar from './ColumnManagerSidebar';
 import { useConfirmationToast } from './useConfirmationToast'; 
 import { getCustomers} from "../../../redux/apiCalls/CustomerCallApi";
+import { useSearchParams } from 'react-router-dom';
 
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('');
+  
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -32,6 +34,7 @@ const UserDashboard = () => {
   const [isAddAppointmentOpen, setIsAddAppointmentOpen] = useState(false);
   const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
   const appointmentsPerPage = 11;
 console.log(selectedAppointment);
 
@@ -85,7 +88,7 @@ console.log(selectedAppointment);
     ];
   });
 
-  const dropdownRef = useRef(null);
+
   const dispatch = useDispatch();
   const { showConfirmationToast } = useConfirmationToast();
    const { interviews = [] } = useSelector(state => state.interview);
@@ -94,7 +97,6 @@ console.log(selectedAppointment);
   const workspaceId = workspace ? workspace.id : 0;
   
   const { customers = [] } = useSelector(state => state.customers || {});
-console.log(appointments);
 
   useEffect(() => {
     const queryParams = {};
@@ -110,6 +112,23 @@ console.log(appointments);
   useEffect(() => {
     dispatch(fetchInterviews(workspaceId));
   }, [workspaceId]);
+  useEffect(() => {
+  dispatch(fetchInterviews(workspaceId));
+}, [workspaceId]);
+
+// Handle appointmentId from URL
+useEffect(() => {
+  const appointmentIdFromUrl = searchParams.get('appointmentId');
+  if (appointmentIdFromUrl && appointments.length > 0) {
+    const appointment = appointments.find(app => app.id === parseInt(appointmentIdFromUrl));
+    if (appointment) {
+      handleAppointmentClick(appointment);
+      // Remove the parameter from URL after opening
+      searchParams.delete('appointmentId');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }
+}, [searchParams, appointments]);
 
   useEffect(() => {
   const handleClickOutside = (event) => {

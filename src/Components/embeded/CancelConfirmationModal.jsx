@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Trash2, Loader2 } from 'lucide-react';
 import { useDispatch } from 'react-redux';
-import { statusAppointment } from '../../redux/apiCalls/AppointmentCallApi';
+import { getAppointmentByIdPublic, statusAppointment } from '../../redux/apiCalls/AppointmentCallApi';
 
 // Cancel Confirmation Modal Component
 const CancelConfirmationModal = ({ 
@@ -32,8 +32,11 @@ const CancelConfirmationModal = ({
       
 
       if (result?.success) {
+        await dispatch(getAppointmentByIdPublic(appointmentData?.id));
+          setTimeout(() => {
         onCancelSuccess && onCancelSuccess();
         onClose();
+      }, 300);
       } else {
         throw new Error(result?.message || 'Failed to cancel appointment');
       }
@@ -73,7 +76,7 @@ const CancelConfirmationModal = ({
           {/* Content */}
           <div className="p-6">
             <p className="text-gray-600 mb-4">
-              Sure you want to cancel appointment with <strong>{appointmentData?.staff_name || appointmentData?.customer || 'this booking'}</strong>?
+              Sure you want to cancel appointment with <strong className='truncate block max-w-[150px]'>{appointmentData?.staff_name || appointmentData?.customer || 'this booking'}</strong>?
             </p>
             
             {appointmentData && (
@@ -81,7 +84,7 @@ const CancelConfirmationModal = ({
                 <p className="text-sm text-gray-600">
                   <strong>Date:</strong> {appointmentData.date} | {appointmentData.time}
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 truncate block max-w-[150px]">
                   <strong>Interview:</strong> {appointmentData.interview || appointmentData?.interview_name}
                 </p>
               </div>

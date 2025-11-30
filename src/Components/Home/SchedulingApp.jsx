@@ -22,7 +22,7 @@ const SchedulingApp = () => {
  const isTransitioningRef = useRef(false);
 
 const handleMediaEnd = () => {
-  if (isTransitioningRef.current) return; // تجنب استدعاء مكرر
+  if (isTransitioningRef.current) return; 
 
   isTransitioningRef.current = true;
 

@@ -13,269 +13,202 @@ const CalendarModal = ({
   unavailableTimes = [],
   availableTimesFromAPI = [],
   durationCycle = 15,
-  durationPeriod = "minutes"
+  durationPeriod = "minutes",
+  restCycle = 0,
+  selectedTimeZone,      
+  setSelectedTimezone,      
+  workspaceTimezone = 'Africa/Cairo'  
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+console.log(availableTimes);
 
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
 
-  const monthAbbreviations = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-  ];
+  const monthAbbreviations = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  const getAvailableDayNumbers = () => {
-    const timesData = (availableTimesFromAPI && availableTimesFromAPI.length > 0 
-      ? availableTimesFromAPI 
-      : availableTimes || []
-    );
-    
-    if (!timesData || !Array.isArray(timesData)) {
-      return [];
-    }
-    
-    const dayMapping = {
-      1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6
-    };
-    
-    return timesData.map(timeRange => dayMapping[timeRange.day_id]).filter(day => day !== undefined);
-  };
-
-  const isDateInUnavailableRange = (day, month, year) => {
-  if (!unavailableDates || !Array.isArray(unavailableDates) || unavailableDates.length === 0) {
-    return false;
-  }
-
-  const checkDate = new Date(Date.UTC(year, month, day));
-  
-  return unavailableDates.some(dateRange => {
+  // دالة تحويل التاريخ من workspace → user timezone
+  const convertDateTimeWithTimezone = (dateStr, timeStr, fromTimezone, toTimezone) => {
     try {
-      if (!dateRange || !dateRange.from) {
-        return false;
-      }
+      const [day, monthAbbr, year] = dateStr.split(' ');
+      const monthIndex = monthAbbreviations.indexOf(monthAbbr);
+      if (monthIndex === -1) return { date: dateStr, time: timeStr };
 
-      let fromDateStr = dateRange.from.includes(' ') ? dateRange.from.split(' ')[0] : dateRange.from;
-      fromDateStr = fromDateStr.replace(/\//g, '-');
+      const isoDate = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${day.padStart(2, '0')}`;
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const fullDateTime = `${isoDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
 
-      let fromParts = fromDateStr.split('-');
-      if (fromParts.length === 3 && parseInt(fromParts[0], 10) <= 31) {
-        fromDateStr = `${fromParts[2]}-${fromParts[1]}-${fromParts[0]}`;
-      }
+      const dateInTz = new Date(fullDateTime);
 
-      const fromDate = new Date(fromDateStr + 'T00:00:00.000Z');
-      
-      if (isNaN(fromDate.getTime())) {
-        return false;
-      }
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: toTimezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
 
-      if (dateRange.to === null || dateRange.to === undefined) {
-        return checkDate >= fromDate;
-      }
+      const parts = formatter.formatToParts(dateInTz);
+      const y = parts.find(p => p.type === 'year')?.value;
+      const m = parts.find(p => p.type === 'month')?.value;
+      const d = parts.find(p => p.type === 'day')?.value;
+      const h = parts.find(p => p.type === 'hour')?.value || '00';
+      const min = parts.find(p => p.type === 'minute')?.value || '00';
 
-      let toDateStr = dateRange.to.includes(' ') ? dateRange.to.split(' ')[0] : dateRange.to;
-      toDateStr = toDateStr.replace(/\//g, '-');
-
-      let toParts = toDateStr.split('-');
-      if (toParts.length === 3 && parseInt(toParts[0], 10) <= 31) {
-        toDateStr = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
-      }
-
-      const toDate = new Date(toDateStr + 'T00:00:00.000Z');
-
-      if (isNaN(toDate.getTime())) {
-        return false;
-      }
-
-      return checkDate >= fromDate && checkDate <= toDate;
-    } catch (error) {
-      return false;
+      const newDate = `${d} ${monthAbbreviations[parseInt(m) - 1]} ${y}`;
+      return { date: newDate, time: `${h}:${min}` };
+    } catch (err) {
+      return { date: dateStr, time: timeStr };
     }
-  });
-};
+  };
 
   const timeToMinutes = (timeStr) => {
     if (!timeStr || !timeStr.includes(':')) return 0;
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return hours * 60 + minutes;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
   };
 
-  const calculateEffectiveAvailableTimes = (day, month, year) => {
-    const checkDate = new Date(Date.UTC(year, month, day));
-    const dayOfWeek = checkDate.getUTCDay();
-    const dayId = dayOfWeek === 0 ? 1 : dayOfWeek + 1;
-   
-    
-    const dayAvailableTimes = (availableTimesFromAPI && availableTimesFromAPI.length > 0 
-      ? availableTimesFromAPI 
-      : availableTimes || []
-    ).filter(timeRange => String(timeRange.day_id) === String(dayId));
-    
-    const dayUnavailableTimes = unavailableTimes.filter(timeRange => String(timeRange.day_id) === String(dayId));
-    
-    
-    const availableRanges = [];
-    dayAvailableTimes.forEach((availableRange) => {
-      if (!availableRange || !availableRange.from || !availableRange.to) return;
-      
-      const availableFromMinutes = timeToMinutes(availableRange.from);
-      const availableToMinutes = timeToMinutes(availableRange.to);
-      
-      let currentRanges = [{ from: availableFromMinutes, to: availableToMinutes }];
-      
-      if (isDateInUnavailableRange(day, month, year)) {
-        dayUnavailableTimes.forEach((unavailableRange) => {
-          if (!unavailableRange || !unavailableRange.from || !unavailableRange.to) return;
-          
-          const unavailableFromMinutes = timeToMinutes(unavailableRange.from);
-          const unavailableToMinutes = timeToMinutes(unavailableRange.to);
-          
-          const newRanges = [];
-          currentRanges.forEach((range) => {
-            if (unavailableToMinutes <= range.from || unavailableFromMinutes >= range.to) {
-              newRanges.push(range);
-            } else if (unavailableFromMinutes <= range.from && unavailableToMinutes < range.to) {
-              newRanges.push({ from: unavailableToMinutes, to: range.to });
-            } else if (unavailableFromMinutes > range.from && unavailableToMinutes >= range.to) {
-              newRanges.push({ from: range.from, to: unavailableFromMinutes });
-            } else if (unavailableFromMinutes > range.from && unavailableToMinutes < range.to) {
-              newRanges.push({ from: range.from, to: unavailableFromMinutes });
-              newRanges.push({ from: unavailableToMinutes, to: range.to });
-            }
-          });
-          currentRanges = newRanges;
-        });
+ const getAvailableDayNumbers = () => {
+    const times = availableTimesFromAPI.length > 0 ? availableTimesFromAPI : availableTimes || [];
+    const mapping = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 6 };
+    return times.map(t => mapping[t.day_id]).filter(val => val !== undefined);
+  };
+
+  const isDateInUnavailableRange = (day, month, year) => {
+    if (!unavailableDates?.length) return false;
+    const check = new Date(Date.UTC(year, month, day));
+    return unavailableDates.some(range => {
+      try {
+        let from = range.from.split(' ')[0].replace(/\//g, '-');
+        let to = range.to?.split(' ')[0].replace(/\//g, '-');
+        const partsFrom = from.split('-');
+        if (partsFrom.length === 3 && parseInt(partsFrom[0]) <= 31) {
+          from = `${partsFrom[2]}-${partsFrom[1]}-${partsFrom[0]}`;
+        }
+        const fromDate = new Date(from + 'T00:00:00Z');
+        if (isNaN(fromDate)) return false;
+        if (!to) return check >= fromDate;
+        const partsTo = to.split('-');
+        if (partsTo.length === 3 && parseInt(partsTo[0]) <= 31) {
+          to = `${partsTo[2]}-${partsTo[1]}-${partsTo[0]}`;
+        }
+        const toDate = new Date(to + 'T00:00:00Z');
+        return check >= fromDate && check <= toDate;
+      } catch {
+        return false;
       }
-      
-      availableRanges.push(...currentRanges);
     });
+  };
+
+ const calculateEffectiveAvailableTimes = (day, month, year) => {
+  const checkDate = new Date(Date.UTC(year, month, day));
+  const dayOfWeek = checkDate.getUTCDay();
+  const dayId = dayOfWeek === 0 ? 1 : dayOfWeek + 1;
+  const wsTz = workspaceTimezone;
+  const userTz = selectedTimeZone || wsTz;
+
+  const timesSrc = availableTimesFromAPI.length > 0 ? availableTimesFromAPI : availableTimes || [];
+  const dayRanges = timesSrc.filter(t => String(t.day_id) === String(dayId));
+  const unavailableRanges = unavailableTimes.filter(t => String(t.day_id) === String(dayId));
+  let availableRanges = [];
+  dayRanges.forEach(r => {
+    if (!r.from || !r.to) return;
+    let ranges = [{ from: timeToMinutes(r.from), to: timeToMinutes(r.to) }];
     
-    const effectiveTimeSlots = [];
-    const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
-    
-    availableRanges.forEach((range) => {
-      const startMinutes = range.from;
-      const endMinutes = range.to;
-      
-      for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += durationInMinutes) {
-        const hours = Math.floor(currentMinutes / 60);
-        const minutes = currentMinutes % 60;
-        const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        
-        const dateISO = checkDate.toISOString().split('T')[0];
-        const isDisabled = disabledTimes.some(disabledTime => {
-          if (!disabledTime || !disabledTime.date || !disabledTime.time) return false;
-          const disabledDate = disabledTime.date;
-          const disabledTimeFormatted = disabledTime.time.slice(0, 5);
-          return disabledDate === dateISO && disabledTimeFormatted === formattedTime;
+    if (isDateInUnavailableRange(day, month, year)) {
+      unavailableRanges.forEach(u => {
+        if (!u.from || !u.to) return;
+        const uFrom = timeToMinutes(u.from);
+        const uTo = timeToMinutes(u.to);
+        const newRanges = [];
+        ranges.forEach(seg => {
+          if (uTo <= seg.from || uFrom >= seg.to) {
+            newRanges.push(seg);
+          } else if (uFrom <= seg.from && uTo < seg.to) {
+            newRanges.push({ from: uTo, to: seg.to });
+          } else if (uFrom > seg.from && uTo >= seg.to) {
+            newRanges.push({ from: seg.from, to: uFrom });
+          } else if (uFrom > seg.from && uTo < seg.to) {
+            newRanges.push({ from: seg.from, to: uFrom });
+            newRanges.push({ from: uTo, to: seg.to });
+          }
         });
-        
+        ranges = newRanges;
+      });
+    }
+    
+    availableRanges.push(...ranges);
+  });
+
+    const durationMins = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
+    const restMins = parseInt(restCycle) || 0;
+    const totalSlot = durationMins + restMins;
+
+    const slots = [];
+    availableRanges.forEach(range => {
+      for (let m = range.from; m < range.to; m += totalSlot) {
+        const h = Math.floor(m / 60).toString().padStart(2, '0');
+        const min = (m % 60).toString().padStart(2, '0');
+        const timeStr = `${h}:${min}`;
+
+        const iso = checkDate.toISOString().split('T')[0];
+        const disabled = disabledTimes.some(d => d.date === iso && d.time.startsWith(timeStr));
         const now = new Date();
         const isToday = checkDate.toDateString() === now.toDateString();
-        let isPast = false;
-        if (isToday) {
-          const currentTime = now.getHours() * 60 + now.getMinutes();
-          const slotTimeMinutes = hours * 60 + minutes;
-          isPast = slotTimeMinutes < currentTime;
-        }
-        
-        if (!isDisabled && !isPast) {
-          effectiveTimeSlots.push(formattedTime);
-        }
-      }
-    });
-    return [...new Set(effectiveTimeSlots)].sort();
-  };
+        const isPast = isToday && (h * 60 + min) < (now.getHours() * 60 + now.getMinutes());
 
-  const findFirstAvailableMonth = () => {
-    if (!availableDates || availableDates.length === 0) {
-      return { month: new Date().getMonth(), year: new Date().getFullYear() };
-    }
-
-    let earliestDate = null;
-
-    availableDates.forEach(dateRange => {
-      try {
-        const fromDate = new Date(dateRange.from);
-        if (!isNaN(fromDate.getTime())) {
-          if (!earliestDate || fromDate < earliestDate) {
-            earliestDate = fromDate;
-          }
-        }
-      } catch (error) {
-        // Silent error handling
+        if (!disabled && !isPast) slots.push(timeStr);
       }
     });
 
-    if (earliestDate) {
-      const startMonth = earliestDate.getMonth();
-      const startYear = earliestDate.getFullYear();
-      
-      for (let yearOffset = 0; yearOffset < 2; yearOffset++) {
-        for (let monthOffset = 0; monthOffset < 12; monthOffset++) {
-          const checkYear = startYear + yearOffset;
-          const checkMonth = (startMonth + monthOffset) % 12;
-          
-          const daysInMonth = getDaysInMonth(checkMonth, checkYear);
-          for (let day = 1; day <= daysInMonth; day++) {
-            if (isDateAvailable(day, checkMonth, checkYear)) {
-              return { month: checkMonth, year: checkYear };
+    let nextDaySlots = [];
+    if (userTz !== wsTz) {
+      const next = new Date(Date.UTC(year, month, day));
+      next.setUTCDate(next.getUTCDate() + 1);
+      const nextDay = next.getUTCDate();
+      const nextMonth = next.getUTCMonth();
+      const nextYear = next.getUTCFullYear();
+      const nextDayId = next.getUTCDay() === 0 ? 1 : next.getUTCDay() + 1;
+
+      const nextRanges = timesSrc.filter(t => String(t.day_id) === String(nextDayId));
+      if (nextRanges.length > 0) {
+        const nextDateStr = `${String(nextDay).padStart(2, '0')} ${monthAbbreviations[nextMonth]} ${nextYear}`;
+        nextRanges.forEach(r => {
+          const fromM = timeToMinutes(r.from);
+          const toM = timeToMinutes(r.to);
+          for (let m = fromM; m < toM; m += totalSlot) {
+            const h = Math.floor(m / 60).toString().padStart(2, '0');
+            const min = (m % 60).toString().padStart(2, '0');
+            const converted = convertDateTimeWithTimezone(nextDateStr, `${h}:${min}`, wsTz, userTz);
+            const currentDateStr = `${String(day).padStart(2, '0')} ${monthAbbreviations[month]} ${year}`;
+            if (converted.date === currentDateStr) {
+              const iso = checkDate.toISOString().split('T')[0];
+              const disabled = disabledTimes.some(d => d.date === iso && d.time.startsWith(converted.time));
+              if (!disabled) nextDaySlots.push(converted.time);
             }
           }
-        }
+        });
       }
     }
 
-    return { month: new Date().getMonth(), year: new Date().getFullYear() };
+    return [...new Set([...slots, ...nextDaySlots])].sort((a, b) => a.localeCompare(b));
   };
-
-  useEffect(() => {
-    if ( availableDates.length > 0) {
-      const { month, year } = findFirstAvailableMonth();
-      setCurrentMonth(month);
-      setCurrentYear(year);
-
-      // Find the first available date in the current month/year
-      const daysInMonth = getDaysInMonth(month, year);
-      let firstAvailableDate = null;
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        if (isDateAvailable(day, month, year)) {
-          firstAvailableDate = formatDateString(day, month, year);
-          break;
-        }
-      }
-
-      if (firstAvailableDate && !selectedDate) {
-        onDateSelect(firstAvailableDate);
-      }
-    }
-  }, [ availableDates, selectedDate, onDateSelect]);
-
-  const formatDateString = (day, month, year) => {
-    const dayFormatted = day.toString().padStart(2, '0');
-    const monthFormatted = monthAbbreviations[month];
-    return `${dayFormatted} ${monthFormatted} ${year}`;
-  };
-
-const isDateAvailable = (day, month, year) => {
+const checkDateAvailability = (day, month, year) => {
   const checkDate = new Date(Date.UTC(year, month, day));
-  
-  // Check if date is not in the past
-  const today = new Date();
-  const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-  if (checkDate < todayUTC) {
-    return false;
-  }
+  const dayOfWeek = checkDate.getUTCDay();
+  const availableDayNumbers = getAvailableDayNumbers();
+
   
   // Check if date is in available date range
   const isInDateRange = availableDates.some(dateRange => {
     try {
+      if (!dateRange || !dateRange.from) return false;
+
       let fromDateStr = dateRange.from.split(' ')[0];
-      
       fromDateStr = fromDateStr.replace(/\//g, '-');
       let fromParts = fromDateStr.split('-');
       if (fromParts.length === 3 && parseInt(fromParts[0], 10) <= 31) {
@@ -283,7 +216,8 @@ const isDateAvailable = (day, month, year) => {
       }
 
       const fromDate = new Date(fromDateStr + 'T00:00:00.000Z');
-      
+      if (isNaN(fromDate.getTime())) return false;
+
       if (dateRange.to === null || dateRange.to === undefined) {
         return checkDate >= fromDate;
       }
@@ -296,224 +230,192 @@ const isDateAvailable = (day, month, year) => {
       }
 
       const toDate = new Date(toDateStr + 'T00:00:00.000Z');
-      
       return checkDate >= fromDate && checkDate <= toDate;
     } catch (error) {
       return false;
     }
   });
   
-  if (!isInDateRange) {
-    return false;
-  }
+  if (!isInDateRange) return false;
 
-  // Check if this day of the week is available
-  const dayOfWeek = checkDate.getUTCDay();
-  const availableDayNumbers = getAvailableDayNumbers();
   const isAvailableDay = availableDayNumbers.includes(dayOfWeek);
 
-  if (!isAvailableDay) {
-    return false;
-  }
+  if (!isAvailableDay) return false;
 
   // Calculate effective available times
   const effectiveAvailableTimes = calculateEffectiveAvailableTimes(day, month, year);
   
   return effectiveAvailableTimes.length > 0;
 };
+  const isDateAvailable = (day, month, year) => {
+  const checkDate = new Date(Date.UTC(year, month, day));
+  
+  // Check if date is not in the past
+  const today = new Date();
+  const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+  if (checkDate < todayUTC) {
+    return false;
+  }
+  
+  const wsTimezone = workspaceTimezone || 'Africa/Cairo';
+  const selectedTimezone = selectedTimeZone || wsTimezone;
+  
+  if (selectedTimezone === wsTimezone) {
+    return checkDateAvailability(day, month, year);
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════
+  // لو الـ timezone مختلف → نشيك على 3 أيام (السابق، الحالي، التالي)
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentDateStr = `${String(day).padStart(2, '0')} ${monthNames[month]} ${year}`;
+  
+  // 1️⃣ نشيك اليوم الحالي
+  const currentDayAvailable = checkDateAvailability(day, month, year);
+  if (currentDayAvailable) return true;
+  
+  // 2️⃣ نشيك اليوم السابق (للـ timezones اللي قدامنا زي Auckland +13)
+  const prevDate = new Date(Date.UTC(year, month, day));
+  prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+  const prevDay = prevDate.getUTCDate();
+  const prevMonth = prevDate.getUTCMonth();
+  const prevYear = prevDate.getUTCFullYear();
+  
+  const prevDayAvailable = checkDateAvailability(prevDay, prevMonth, prevYear);
+  if (prevDayAvailable) {
+    // نجيب أوقات اليوم السابق ونحولها
+    const prevDateStr = `${String(prevDay).padStart(2, '0')} ${monthNames[prevMonth]} ${prevYear}`;
+    const prevDayTimes = calculateEffectiveAvailableTimes(prevDay, prevMonth, prevYear);
+    
+    // نشوف لو في أوقات من اليوم السابق هتظهر في اليوم الحالي
+    for (let time of prevDayTimes) {
+      const converted = convertDateTimeWithTimezone(prevDateStr, time, wsTimezone, selectedTimezone);
+      if (converted.date === currentDateStr) {
+        return true; // ✅ فيه أوقات من اليوم السابق
+      }
+    }
+  }
+  
+  // 3️⃣ نشيك اليوم التالي (للـ timezones اللي ورانا زي Hawaii -10)
+  const nextDate = new Date(Date.UTC(year, month, day));
+  nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+  const nextDay = nextDate.getUTCDate();
+  const nextMonth = nextDate.getUTCMonth();
+  const nextYear = nextDate.getUTCFullYear();
+  
+  const nextDayAvailable = checkDateAvailability(nextDay, nextMonth, nextYear);
+  if (nextDayAvailable) {
+    // نجيب أوقات اليوم التالي ونحولها
+    const nextDateStr = `${String(nextDay).padStart(2, '0')} ${monthNames[nextMonth]} ${nextYear}`;
+    const nextDayTimes = calculateEffectiveAvailableTimes(nextDay, nextMonth, nextYear);
+    
+    // نشوف لو في أوقات من اليوم التالي هتظهر في اليوم الحالي
+    for (let time of nextDayTimes) {
+      const converted = convertDateTimeWithTimezone(nextDateStr, time, wsTimezone, selectedTimezone);
+      if (converted.date === currentDateStr) {
+        return true; // ✅ فيه أوقات من اليوم التالي
+      }
+    }
+  }
+  
+  return false; // ❌ مفيش أوقات متاحة
+};
 
-  const getDaysInMonth = (month, year) => {
-    return new Date(year, month + 1, 0).getDate();
+  const formatDateString = (day, month, year) => {
+    return `${String(day).padStart(2, '0')} ${monthAbbreviations[month]} ${year}`;
   };
 
-  const getFirstDayOfMonth = (month, year) => {
-    const day = new Date(year, month, 1).getDay();
-    return day === 0 ? 6 : day - 1;
-  };
+  // const getDaysInMonth = (m, y) => new Date(y, m + 1, 0).getDate();
+const getDaysInMonth = (m, y) => new Date(y, m + 1, 0).getDate();
+
+const getFirstDayOfMonth = (m, y) => {
+  const d = new Date(y, m, 1).getDay();  // غيرها من getUTCDay() لـ getDay()
+  return d;  
+};
 
   const generateCalendar = () => {
-    const daysInMonth = getDaysInMonth(currentMonth, currentYear);
-    const startDay = getFirstDayOfMonth(currentMonth, currentYear);
     const days = [];
-    
-    for (let i = 0; i < startDay; i++) {
-      days.push(<div key={`empty-${i}`} className="w-10 h-10"></div>);
+    const startPad = getFirstDayOfMonth(currentMonth, currentYear);
+    for (let i = 0; i < startPad; i++) {
+      days.push(<div key={`pad-${i}`} className="w-10 h-10" />);
     }
-    
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateString = formatDateString(day, currentMonth, currentYear);
-      const isSelected = selectedDate === dateString;
-      const isAvailable = isDateAvailable(day, currentMonth, currentYear);
-      const isInUnavailableRange = isDateInUnavailableRange(day, currentMonth, currentYear);
-      
+
+    for (let day = 1; day <= getDaysInMonth(currentMonth, currentYear); day++) {
+      const dateStr = formatDateString(day, currentMonth, currentYear);
+      const available = isDateAvailable(day, currentMonth, currentYear);
+      const unavailableRange = isDateInUnavailableRange(day, currentMonth, currentYear);
       const today = new Date();
-      const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-      const currentDateUTC = new Date(Date.UTC(currentYear, currentMonth, day));
-      const isToday = todayUTC.getTime() === currentDateUTC.getTime();
-      const isPastDate = currentDateUTC < todayUTC;
-      
-      let buttonClass = 'w-10 h-10 text-sm font-medium rounded transition-colors ';
-      let isClickable = true;
-      
-      if (isPastDate) {
-        buttonClass += 'text-gray-300 cursor-not-allowed pointer-events-none';
-        isClickable = false;
-      } else if (!isAvailable) {
-        if (isInUnavailableRange) {
-          buttonClass += 'text-red-400 bg-red-50 cursor-not-allowed line-through pointer-events-none';
-        } else {
-          buttonClass += 'text-gray-300 cursor-not-allowed pointer-events-none';
-        }
-        isClickable = false;
-      } else if (isSelected) {
-        buttonClass += 'bg-gray-800 text-white';
+      const isToday = today.getFullYear() === currentYear && today.getMonth() === currentMonth && today.getDate() === day;
+      const isPast = new Date(Date.UTC(currentYear, currentMonth, day)) < new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+
+      let className = 'w-10 h-10 text-sm font-medium rounded transition-colors flex items-center justify-center ';
+      if (isPast || !available) {
+        className += unavailableRange 
+          ? 'text-red-400 bg-red-50 line-through cursor-not-allowed' 
+          : 'text-gray-300 cursor-not-allowed';
+      } else if (selectedDate === dateStr) {
+        className += 'bg-black text-white';
       } else if (isToday) {
-        buttonClass += 'bg-blue-100 text-blue-600 border-2 border-blue-400 shadow-sm';
+        className += 'bg-blue-100 text-blue-700 border-2 border-blue-500';
       } else {
-        if (isInUnavailableRange) {
-          buttonClass += 'bg-orange-100 text-orange-700 border border-orange-300 hover:bg-orange-200';
-        } else {
-          buttonClass += 'text-gray-700 hover:bg-gray-100';
-        }
+        className += unavailableRange ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' : 'hover:bg-gray-100';
       }
-      
+
       days.push(
         <button
           key={day}
-          disabled={!isClickable}
-          className={buttonClass}
-          onClick={() => {
-            if (isClickable && isAvailable) {
-              onDateSelect(dateString);
-              onClose();
-            }
-          }}
-          title={
-            isPastDate ? 'Past date' :
-            !isAvailable && isInUnavailableRange ? 'Date unavailable - no times left' :
-            !isAvailable ? 'No available times' :
-            isInUnavailableRange ? 'Partially available - limited times' :
-            isToday ? 'Today' : ''
-          }
+          disabled={!available}
+          className={className}
+          onClick={() => available && onDateSelect(dateStr) && onClose()}
         >
           {day}
         </button>
       );
     }
-    
     return days;
   };
 
-  const navigateMonth = (direction) => {
-    if (direction === 'prev') {
-      if (currentMonth === 0) {
-        setCurrentMonth(11);
-        setCurrentYear(currentYear - 1);
-      } else {
-        setCurrentMonth(currentMonth - 1);
-      }
+  const navigateMonth = (dir) => {
+    if (dir === 'prev') {
+      if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
+      else setCurrentMonth(m => m - 1);
     } else {
-      if (currentMonth === 11) {
-        setCurrentMonth(0);
-        setCurrentYear(currentYear + 1);
-      } else {
-        setCurrentMonth(currentMonth + 1);
-      }
+      if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
+      else setCurrentMonth(m => m + 1);
     }
-  };
-
-  const goToToday = () => {
-    const today = new Date();
-    setCurrentMonth(today.getMonth());
-    setCurrentYear(today.getFullYear());
   };
 
   if (!show) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
         <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <button 
-              onClick={() => navigateMonth('prev')}
-              className="p-2 hover:bg-gray-100 rounded transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => navigateMonth('prev')} className="p-2 hover:bg-gray-100 rounded">
+              <ChevronLeft className="w-5 h-5" />
             </button>
-            <h2 className="text-lg font-semibold text-gray-800 min-w-[150px] text-center">
-              {monthNames[currentMonth]} {currentYear}
-            </h2>
-            <button 
-              onClick={() => navigateMonth('next')}
-              className="p-2 hover:bg-gray-100 rounded transition-colors"
-            >
-              <ChevronRight className="w-5 h-5 text-gray-600" />
+            <h2 className="text-xl font-bold">{monthNames[currentMonth]} {currentYear}</h2>
+            <button onClick={() => navigateMonth('next')} className="p-2 hover:bg-gray-100 rounded">
+              <ChevronRight className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <button
-              onClick={() => setCurrentYear(currentYear - 1)}
-              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-            >
-              {currentYear - 1}
-            </button>
-            <span className="px-3 py-1 text-sm font-semibold bg-blue-100 text-blue-800 rounded">
-              {currentYear}
-            </span>
-            <button
-              onClick={() => setCurrentYear(currentYear + 1)}
-              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-            >
-              {currentYear + 1}
-            </button>
+          <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-600 mb-2">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <div key={d}>{d}</div>)}
           </div>
 
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
-              <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 mb-4">
+          <div className="grid grid-cols-7 gap-1">
             {generateCalendar()}
           </div>
 
-          <div className="flex items-center justify-center gap-4 text-xs text-gray-600 mb-4">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-blue-100 border-2 border-blue-400 rounded"></div>
-              <span>Today</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-orange-100 border border-orange-300 rounded"></div>
-              <span>Partial</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-red-50 text-red-400 rounded flex items-center justify-center">
-                <span className="text-xs line-through">×</span>
-              </div>
-              <span>Unavailable</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-gray-800 rounded"></div>
-              <span>Selected</span>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={onClose}
-              className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition-colors"
-            >
+          <div className="mt-6 flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium">
               Cancel
             </button>
-            <button
-              onClick={goToToday}
-              className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-            >
+            <button onClick={() => { setCurrentMonth(new Date().getMonth()); setCurrentYear(new Date().getFullYear()); }}
+              className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
               Today
             </button>
           </div>

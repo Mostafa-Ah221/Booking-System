@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Copy } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { StaffFetchProfileData } from '../../redux/apiCalls/ProfileCallApi';
 
 const Staff_ShareBookingModal = ({ 
   isOpen, 
@@ -10,7 +12,22 @@ const Staff_ShareBookingModal = ({
   const [activeTab, setActiveTab] = useState('shareLink');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
+  const [orgBase, setOrgBase] = useState('');
+  const dispatch = useDispatch();
+  const { staffProfile } = useSelector(state => state.profileData);
+StaffFetchProfileData
+  // === Extract orgBase safely (string only) ===
+  useEffect(() => {
+    let base = '';
+    
+    if (staffProfile?.user?.customer_share_link) {
+      const link = staffProfile.user.customer_share_link;
+      base = typeof link === 'string' ? link : (link?.slug || link?.customer_share_link || '');
+    }
 
+    setOrgBase(base);
+  }, [staffProfile]);
+  
   // Reset copied states when modal opens/closes
   useEffect(() => {
     if (isOpen) {
@@ -19,25 +36,47 @@ const Staff_ShareBookingModal = ({
     }
   }, [isOpen]);
 
-  const bookingLink = shareLink 
-    ? `${window.location.origin}/${shareLink}` 
-    : '';
-  
-  const embedCode = shareLink 
-    ? `<iframe width="100%" height="750px" src="${window.location.origin}/${shareLink}" frameborder="0" allowfullscreen></iframe>` 
+  // === Safely extract shareLink as string ===
+  const shareLinkString = shareLink 
+    ? (typeof shareLink === 'string' ? shareLink : (shareLink?.slug || shareLink?.id || ''))
     : '';
 
+  const orgBaseString = orgBase 
+    ? (typeof orgBase === 'string' ? orgBase : (orgBase?.slug || ''))
+    : '';
+
+  // === Final URLs ===
+  const bookingLink = shareLinkString
+    ? `${window.location.origin}/${orgBaseString}/${shareLinkString}`
+    : orgBaseString
+      ? `${window.location.origin}/${orgBaseString}`
+      : '';
+
+  const embedCode = shareLinkString
+    ? `<embed src="${window.location.origin}/${orgBaseString}/${shareLinkString}" width="100%" height="600px" />`
+    : orgBaseString
+      ? `<embed src="${window.location.origin}/${orgBaseString}" width="100%" height="600px" />`
+      : '';
+
+  // === Copy Handlers ===
   const handleCopyLink = (text) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
   const handleCopyEmbed = (text) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedEmbed(true);
     setTimeout(() => setCopiedEmbed(false), 2000);
   };
+
+  // === Fetch Profile on Mount ===
+  useEffect(() => {
+    dispatch(StaffFetchProfileData());
+  }, [dispatch]);
 
   if (!isOpen) return null;
   
@@ -61,7 +100,7 @@ const Staff_ShareBookingModal = ({
           {/* User Info */}
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-purple-200 rounded-full flex items-center justify-center overflow-hidden">
-              {profile?.photo && typeof profile.photo === 'string' && profile.photo.trim() !== '' ? (
+              {profile?.photo && typeof profile.photo === 'string' && profile.photo.trim() ? (
                 <img 
                   src={profile.photo} 
                   alt="Profile" 
@@ -74,12 +113,19 @@ const Staff_ShareBookingModal = ({
               )}
             </div>
             <div>
-              <div className="font-medium text-gray-900">
+              <div className="font-medium text-gray-900 truncate max-w-[150px]">
                 {profile?.name || 'User Name'}
               </div>
-              <div className="text-gray-500 text-sm">
-                {profile?.duration || '30 mins'} | {profile?.type || 'One-on-One'}
-              </div>
+
+              {/* Show duration/type only if at least one exists */}
+              {profile?.duration || profile?.type ? (
+                <div className="text-gray-500 text-sm">
+                  {[
+                    profile?.duration ? `${profile.duration} mins` : null,
+                    profile?.type ? profile.type : null
+                  ].filter(Boolean).join(' | ')}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -87,14 +133,15 @@ const Staff_ShareBookingModal = ({
           <div className="mb-6">
             <div className="flex items-center gap-2">
               <div className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700 overflow-hidden overflow-ellipsis whitespace-nowrap">
-                {shareLink ? bookingLink : 'No share link available'}
+                {bookingLink || 'No booking link available'}
               </div>
+
               <button
                 onClick={() => handleCopyLink(bookingLink)}
-                disabled={!shareLink}
+                disabled={!bookingLink}
                 className={`px-4 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  !shareLink 
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                  !bookingLink
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : copiedLink
                       ? 'bg-green-600 text-white'
                       : 'bg-purple-600 hover:bg-purple-700 text-white'
@@ -129,19 +176,19 @@ const Staff_ShareBookingModal = ({
             </button>
           </div>
 
-          {/* Tab Content */}
+          {/* Embed Tab Content */}
           {activeTab === 'embedWidget' && (
             <div>
               <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-4 max-h-48 overflow-auto">
                 <pre className="text-xs text-gray-600 font-mono whitespace-pre-wrap break-all">
-                  {shareLink ? embedCode : 'Share link not available for embedding'}
+                  {embedCode || 'Share link not available for embedding'}
                 </pre>
               </div>
               <button
                 onClick={() => handleCopyEmbed(embedCode)}
-                disabled={!shareLink}
+                disabled={!embedCode}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ml-auto ${
-                  !shareLink 
+                  !embedCode
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
                     : copiedEmbed
                       ? 'bg-green-600 text-white'
@@ -154,8 +201,8 @@ const Staff_ShareBookingModal = ({
             </div>
           )}
 
-          {/* Warning message */}
-          {!shareLink && (
+          {/* Warning if no link */}
+          {!(orgBaseString || shareLinkString) && (
             <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
               <p className="text-sm text-yellow-800">
                 Share link is not available. Please create a share link first.

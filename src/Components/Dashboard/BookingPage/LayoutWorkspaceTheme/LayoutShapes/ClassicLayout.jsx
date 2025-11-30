@@ -1,64 +1,46 @@
-import React from 'react';
 
-const ClassicLayout = ({ themeColor }) => {
-  // Function to handle gradient and solid colors
-  const getBackgroundStyle = (color) => {
-    if (color.includes('-')) {
-      const [color1, color2] = color.split('-');
-      return { background: `linear-gradient(45deg, ${color1}, ${color2})` };
-    }
-    return { backgroundColor: color };
-  };
+const ClassicLayout = ({ themeData }) => {
+  const { color, pageProperties} = themeData;
 
-  // Default to indigo if no themeColor is provided
-  const accentColor = themeColor || '#4f46e5';
-  
+ 
+
+  const accentColor = color.includes('-') ? color.split('-')[0] : color;
+   const isGradient = color.includes('-');
+
+    const [firstColor, secondColor] = isGradient 
+      ? color.split('-') 
+      : [color, color];
+
   return (
-    <div className="bg-white min-h-screen flex flex-col">
-      {/* Header with name */}
-      <div className="border-b p-4">
-        <div className="flex items-center">
-          <div className="flex space-x-1 mr-2">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-          </div>
-          <h1 className="text-xl font-medium text-gray-800">Ahmed</h1>
-        </div>
-      </div>
+    <div className=" flex flex-col rounded-lg ">
+     
 
-      {/* Main content */}
-      <div className="flex-1 p-6 max-w-4xl mx-auto w-full">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold mb-2">Welcome!</h2>
-          <p className="text-sm text-gray-600">
-            Book your appointment in a few simple steps. Choose a service, pick your date and time, and fill in your details. See you soon!
-          </p>
-        </div>
+      {/* Main Content */}
+      <div className="flex-1 p-6 py-2 max-w-4xl mx-auto w-full">
+       
 
-        {/* Service selection */}
-        <div className="border rounded-lg mb-4 overflow-hidden">
+        {/* Service Selection */}
+        <div className="border  mb-4 overflow-hidden">
           <div className="p-4 flex items-center">
-            <div 
+            <div
               className="w-10 h-10 rounded-full flex items-center justify-center mr-4 text-white"
-              style={getBackgroundStyle(accentColor)}
+            
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <svg style={{ color: firstColor }} className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
               </svg>
             </div>
             <div className="flex-1">
-              <div style={{ color: accentColor.includes('-') ? accentColor.split('-')[0] : accentColor }} className="text-sm font-medium">Interview</div>
-              <div className="text-sm">Recruitment Strategy Meeting | 30 mins</div>
+              <div style={{ color: accentColor }} className="text-sm font-medium">Interview</div>
+              <div className="text-sm" style={{ color: themeData.textColor }}>Recruitment Strategy Meeting | 30 mins</div>
             </div>
             <div>
-              <svg 
-                className="w-5 h-5" 
-                style={{ color: accentColor.includes('-') ? accentColor.split('-')[0] : accentColor }}
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24" 
-                xmlns="http://www.w3.org/2000/svg"
+              <svg
+                className="w-5 h-5"
+                style={{ color: accentColor }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
               </svg>
@@ -66,43 +48,45 @@ const ClassicLayout = ({ themeColor }) => {
           </div>
         </div>
 
-        {/* Date selection */}
-        <div className="border rounded-lg mb-4 overflow-hidden">
+        {/* Date Selection */}
+        <div className="border  mb-4 overflow-hidden">
           <div className="p-4 flex items-center">
-            <div 
+            <div
               className="w-10 h-10 rounded-full flex items-center justify-center mr-4 text-white"
-              style={getBackgroundStyle(accentColor)}
+          
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+               <div className="h-full w-14  p-2 flex items-center justify-center " >
+              <svg style={{ color: firstColor }} className="h-full w-full text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
+            </div>
             <div className="flex-1">
-              <div style={{ color: accentColor.includes('-') ? accentColor.split('-')[0] : accentColor }} className="text-sm font-medium">Date, Time & Recruiter</div>
-              <div className="text-sm">26 Feb 2025 | 09:00 am</div>
+              <div style={{ color: accentColor }} className="text-sm font-medium">Date, Time & Recruiter</div>
+              <div className="text-sm" style={{ color: themeData.textColor }}>26 Feb 2025 | 09:00 am</div>
             </div>
           </div>
         </div>
 
-        {/* Calendar and time slots */}
+        {/* Calendar + Time Slots */}
         <div className="flex flex-col md:flex-row gap-6">
           {/* Calendar */}
           <div className="flex-1">
             <div className="flex justify-between items-center mb-4">
-              <button className="text-gray-500">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <button >
+                <svg style={{ color: accentColor }} className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
               </button>
-              <div>February 2025</div>
-              <button className="text-gray-500">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <div style={{ color: themeData.textColor }}>February 2025</div>
+              <button >
+                <svg style={{ color: accentColor }} className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
                 </svg>
               </button>
             </div>
-            
-            <table className="w-full text-center">
+
+            <table className="w-full text-center" style={{color :themeData.textColor}}>
               <thead>
                 <tr>
                   <th className="py-2 text-xs">SUN</th>
@@ -114,17 +98,12 @@ const ClassicLayout = ({ themeColor }) => {
                   <th className="py-2 text-xs">SAT</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-xs">
                 <tr>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
+                  <td></td><td></td><td></td><td></td><td></td><td></td>
                   <td className="py-2">1</td>
                 </tr>
-                <tr>
+                <tr >
                   <td className="py-2">2</td>
                   <td className="py-2">3</td>
                   <td className="py-2">4</td>
@@ -144,7 +123,7 @@ const ClassicLayout = ({ themeColor }) => {
                 </tr>
                 <tr>
                   <td className="py-2">16</td>
-                  <td className="py-2">17</td>
+                  <td className="py-2 rounded-lg" style={{background:firstColor, color:"white"}}>17</td>
                   <td className="py-2">18</td>
                   <td className="py-2">19</td>
                   <td className="py-2">20</td>
@@ -156,9 +135,9 @@ const ClassicLayout = ({ themeColor }) => {
                   <td className="py-2">24</td>
                   <td className="py-2">25</td>
                   <td className="py-2 px-1">
-                    <div 
+                    <div
                       className="w-6 h-6 rounded-full text-white flex items-center justify-center mx-auto"
-                      style={getBackgroundStyle(accentColor)}
+                    
                     >
                       26
                     </div>
@@ -171,16 +150,16 @@ const ClassicLayout = ({ themeColor }) => {
             </table>
           </div>
 
-          {/* Time slots */}
+          {/* Time Slots */}
           <div className="flex-1">
             <div className="mb-4">
-              <div className="text-lg font-medium mb-2">Slot Availability</div>
+              <div className=" font-medium mb-2" style={{ color: themeData.textColor }}>Slot Availability</div>
               <div className="relative">
-                <select className="w-full p-2 border rounded-lg appearance-none pr-8">
-                  <option>Africa/Cairo</option>
+                <select style={{ color: themeData.textColor }} className="w-full p-2 border rounded-lg appearance-none pr-8 bg-transparent outline-none" >
+                  <option >Africa/Cairo</option>
                 </select>
                 <div className="absolute top-0 right-0 h-full flex items-center pr-2 pointer-events-none">
-                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg style={{ color: themeData.textColor }} className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                   </svg>
                 </div>
@@ -188,13 +167,17 @@ const ClassicLayout = ({ themeColor }) => {
             </div>
 
             <div>
-              <p className="text-sm text-gray-500 mb-2">Morning</p>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                {['09:00 am', '09:30 am', '10:00 am', '10:30 am', '11:00 am', '11:30 am', '12:00 pm'].map((time, index) => (
-                  <button 
+              <p className="text-sm mb-2" style={{ color: themeData.textColor }}>Morning</p>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 ">
+                {['09:00 am', '09:30 am', '10:00 am', '10:30 am', '11:00 am', '11:30 am', '12:00 pm'].map((time,index) => (
+                  <button
                     key={index}
-                    className="p-2 text-white text-sm rounded-lg"
-                    style={getBackgroundStyle(accentColor)}
+                    className="p-2 text-xs rounded-md"
+                    style={{
+                      background: index ===0 ? firstColor : 'transparent',
+                       border: `1px solid ${firstColor}`,
+                        color: index ===0 ? "white" : themeData.textColor,
+                       }}
                   >
                     {time}
                   </button>
@@ -204,6 +187,9 @@ const ClassicLayout = ({ themeColor }) => {
           </div>
         </div>
       </div>
+
+   
+    
     </div>
   );
 };

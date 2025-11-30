@@ -27,8 +27,9 @@ export default function AppointmentHandler() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   const queryParams = new URLSearchParams(location.search);
-  const status = queryParams.get("status");
   const appointmentId = queryParams.get("app_id");
+
+console.log(appointmentId);
   
   const fetchAppointmentData = async (id) => {
     try {
@@ -98,7 +99,7 @@ export default function AppointmentHandler() {
     );
   }
 
-  if (!appointmentData?.appointment) {
+  if (!appointmentData?.data?.appointment) {
     return (
       <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
         <div className="p-6 text-center">
@@ -108,9 +109,10 @@ export default function AppointmentHandler() {
     );
   }
 
-  const appointment = appointmentData?.appointment;
+  const appointment = appointmentData?.data?.appointment;
 
   
+console.log(appointment);
 
   return (
     <>
@@ -196,7 +198,7 @@ export default function AppointmentHandler() {
               <User className="w-5 h-5 text-gray-400" />
               <div className="text-sm text-gray-600">Customer</div>
             </div>
-            <div className="w-1/3 text-left font-medium">
+            <div className="w-1/3 text-left font-medium truncate  max-w-[150px]">
               {appointment?.customer || appointment?.name || 'N/A'}
             </div>
             <div className="w-1/3"></div>
@@ -226,7 +228,7 @@ export default function AppointmentHandler() {
               <div className="text-sm text-gray-600">Contact Details</div>
             </div>
             <div className="w-1/3 text-left">
-              <div className="font-medium">{appointment?.name || 'N/A'}</div>
+              <div className="font-medium truncate  max-w-[150px]">{appointment?.name || 'N/A'}</div>
               <div className="text-sm text-blue-600 flex items-center justify-start">
                 <Phone className="w-3 h-3 mr-1" />
                 {formatPhoneNumber(appointment?.phone, appointment?.code_phone)}
@@ -275,11 +277,11 @@ export default function AppointmentHandler() {
             </svg>
             Download as ICS
           </button> */}
-          <div className="flex-1"></div>
-          <Link to={`/share/${appointment?.share_link}`} className="inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors">
+          {/* <div className="flex-1"></div>
+          <Link to={`/share${appointment?.share_link}`} className="inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors">
             <span>Book another appointment</span>
             <ChevronRight className="w-4 h-4" />
-          </Link>
+          </Link> */}
         </div>
       </div>
 

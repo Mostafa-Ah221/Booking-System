@@ -1,22 +1,21 @@
 import { interviewAction } from "../slices/interviewsSlice";
-import axios from "axios";
+import axiosInstance from "../../Components/pages/axiosInstance";
 import toast from "react-hot-toast";
 
 // *fetch function to get all interviews
 
-export function fetchInterviews({ work_space_id = 0, staff_id = null, force = false }) {
+export function fetchInterviews({ work_space_id = 0, staff_id = null,type=null, force = false }) {
   return async (dispatch, getState) => {
-    const { interviews, loading, currentWorkspaceId, currentStaffId } = getState().interview;
-
+    const { interviews, loading, currentWorkspaceId, currentStaffId,currentType } = getState().interview;
     if (loading) {
       return;
     }
-
     const shouldFetch =
       force ||
       !interviews ||
       currentWorkspaceId !== work_space_id ||
-      currentStaffId !== staff_id;
+      currentStaffId !== staff_id ||
+      currentType !== type; 
 
     if (!shouldFetch) {
       return;
@@ -25,23 +24,15 @@ export function fetchInterviews({ work_space_id = 0, staff_id = null, force = fa
     try {
       dispatch(interviewAction.setLoading(true));
 
-      const Token = localStorage.getItem("access_token");
-      let url = "https://backend-booking.appointroll.com/api/interview/index";
-
       const params = new URLSearchParams();
       if (work_space_id && work_space_id !== 0) params.append("work_space_id", work_space_id);
       if (staff_id) params.append("staff_id", staff_id);
+      if (type) params.append("type", type);
 
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
+      const queryString = params.toString();
+      const url = queryString ? `/interview/index?${queryString}` : '/interview/index';
 
-      const response = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: Token,
-        },
-      });
+      const response = await axiosInstance.get(url);
 
       if (response.data.status) {
         dispatch(
@@ -49,6 +40,7 @@ export function fetchInterviews({ work_space_id = 0, staff_id = null, force = fa
             interviews: response?.data?.data?.interviews || [],
             workspaceId: work_space_id,
             staffId: staff_id,
+            type:type
           })
         );
 
@@ -59,9 +51,10 @@ export function fetchInterviews({ work_space_id = 0, staff_id = null, force = fa
             interviews: [],
             workspaceId: work_space_id,
             staffId: staff_id,
+            type:type
           })
         );
-        dispatch(interviewAction.setError(response.data.message ));
+        dispatch(interviewAction.setError(response.data.message));
       }
     } catch (err) {
       console.error("Failed to fetch interviews:", err);
@@ -71,6 +64,7 @@ export function fetchInterviews({ work_space_id = 0, staff_id = null, force = fa
           interviews: [],
           workspaceId: work_space_id,
           staffId: staff_id,
+          type: type
         })
       );
     } finally {
@@ -78,6 +72,7 @@ export function fetchInterviews({ work_space_id = 0, staff_id = null, force = fa
     }
   };
 }
+
 export function fetchAllInterviews({ force = false } = {}) {
   return async (dispatch, getState) => {
     const { allInterviews, loading } = getState().interview;
@@ -93,15 +88,7 @@ export function fetchAllInterviews({ force = false } = {}) {
     try {
       dispatch(interviewAction.setLoading(true));
 
-      const Token = localStorage.getItem("access_token");
-      const url = "https://backend-booking.appointroll.com/api/interview/index";
-
-      const response = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: Token,
-        },
-      });
+      const response = await axiosInstance.get('/interview/index');
 
       if (response.data.status) {
         dispatch(
@@ -110,7 +97,7 @@ export function fetchAllInterviews({ force = false } = {}) {
         dispatch(interviewAction.setError(null));
       } else {
         dispatch(interviewAction.setAllInterviews([]));
-        dispatch(interviewAction.setError(response.data.message ));
+        dispatch(interviewAction.setError(response.data.message));
       }
     } catch (err) {
       console.error("Failed to fetch all interviews:", err);
@@ -125,22 +112,10 @@ export function fetchAllInterviews({ force = false } = {}) {
 export function editInterviewById(id) {
   return async (dispatch) => {
     try {
-      const Token = localStorage.getItem("access_token");
-
-      const response = await axios.get(
-        `https://backend-booking.appointroll.com/api/interview/edit/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: Token,
-          },
-        }
-      );
-    //   console.log(response?.data.data.interview);
+      const response = await axiosInstance.get(`/interview/edit/${id}`);
       
       if (response.data.status) {
         dispatch(interviewAction.setInterview(response?.data.data.interview)); 
-        
       }
     } catch (err) {
       console.error("Failed to fetch interviews:", err);
@@ -148,106 +123,105 @@ export function editInterviewById(id) {
   };
 }
 
-        export function updateInterview(id, formData) {
-          return async (dispatch) => {
-            dispatch(interviewAction.setLoading(true));
-        
-            try {
-              const Token = localStorage.getItem("access_token");
-        
-              const isFile = formData.photo instanceof File;
-        
-              let response;
-        
-              if (isFile) {
-                const data = new FormData();
-                for (const key in formData) {
-                  if (formData.hasOwnProperty(key)) {
-                    data.append(key, formData[key]);
-                  }
-                }
-        
-                response = await axios.post(
-                  `https://backend-booking.appointroll.com/api/interview/details/update/${id}`,
-                  data,
-                  {
-                    headers: {
-                      'Content-Type': 'multipart/form-data',
-                      authorization: Token,
-                    },
-                  }
-                );
-              } else {
-                response = await axios.post(
-                  `https://backend-booking.appointroll.com/api/interview/details/update/${id}`,
-                  formData,
-                  {
-                    headers: {
-                      'Content-Type': 'application/json',
-                      authorization: Token,
-                    },
-                  }
-                );
-              }
-        
-              if (response.data.status) {
-                dispatch(editInterviewById(id));
-                dispatch(interviewAction.setError(null));
-                return {
-                  success: true,
-                  message: response?.data.message || "Interview updated successfully",
-                };
-              }
-            } catch (error) {
-              console.error("Error updating interview:", error);
-              const errorMessage = error?.response?.data?.message || "Failed to update interview";
-        
-              dispatch(interviewAction.setError(errorMessage));
-              return {
-                success: false,
-                message: errorMessage,
-                errors: error?.response?.data?.errors || null,
-              };
-            } finally {
-              dispatch(interviewAction.setLoading(false));
-            }
-          };
+export function updateInterview(id, formData) {
+  return async (dispatch) => {
+    dispatch(interviewAction.setLoading(true));
+
+    try {
+      const isFile = formData.photo instanceof File;
+
+      let response;
+      let headers = {};
+
+      if (isFile) {
+        const data = new FormData();
+        for (const key in formData) {
+          if (formData.hasOwnProperty(key)) {
+            data.append(key, formData[key]);
+          }
         }
+
+        headers['Content-Type'] = 'multipart/form-data';
+
+        response = await axiosInstance.post(
+          `/interview/details/update/${id}`,
+          data,
+          { headers }
+        );
+      } else {
+        response = await axiosInstance.post(
+          `/interview/details/update/${id}`,
+          formData
+        );
+      }
+
+      if (response.data.status) {
+        const updatedData = response?.data?.data?.interview;
+        if (updatedData) {
+          dispatch(interviewAction.updateInterviewInList(updatedData));
+        }
+        dispatch(editInterviewById(id));
+        dispatch(interviewAction.setError(null));
+        return {
+          success: true,
+          message: response?.data.message || "Interview updated successfully",
+        };
+      }
+    } catch (error) {
+      console.error("Error updating interview:", error);
+      const errorMessage = error?.response?.data?.message || "Failed to update interview";
+
+      dispatch(interviewAction.setError(errorMessage));
+      return {
+        success: false,
+        message: errorMessage,
+        errors: error?.response?.data?.errors || null,
+      };
+    } finally {
+      dispatch(interviewAction.setLoading(false));
+    }
+  };
+}
+
 // create a new interview function
 export function createInterview(formData) { 
   return async (dispatch) => { 
     dispatch(interviewAction.setLoading(true)); 
  
     try { 
-      const token = localStorage.getItem("access_token"); 
- 
       const data = new FormData(); 
+      
       for (const key in formData) { 
-        if (formData[key]) { 
-          data.append(key, formData[key]); 
+        if (formData[key] !== null && formData[key] !== '') { 
+          if (key === 'groups' && Array.isArray(formData[key])) {
+            formData[key].forEach((group, groupIndex) => {
+              data.append(`groups[${groupIndex}][name]`, group.name);
+              if (Array.isArray(group.staff_ids)) {
+                group.staff_ids.forEach((staffId, staffIndex) => {
+                  data.append(`groups[${groupIndex}][staff_ids][${staffIndex}]`, staffId);
+                });
+              }
+            });
+          } else if (formData[key] instanceof File) {
+            data.append(key, formData[key]);
+          } else if (typeof formData[key] === 'object') {
+            data.append(key, JSON.stringify(formData[key]));
+          } else {
+            data.append(key, formData[key]);
+          }
         } 
       } 
  
-      const response = await axios.post( 
-        `https://backend-booking.appointroll.com/api/interview/store`, 
-        data, 
-        { 
-          headers: { 
-            'Content-Type': 'multipart/form-data', 
-            'Authorization': token, 
-          }, 
-        } 
-      ); 
- 
-      console.log("Full API Response:", response.data); 
+      const response = await axiosInstance.post('/interview/store', data, { 
+        headers: { 'Content-Type': 'multipart/form-data' }, 
+      }); 
  
       if (response.data.status) {
         const newInterview = response.data.data?.interview || response.data.data;
         
-        if (newInterview && newInterview.id) {
+        if (newInterview?.id) {
           dispatch(interviewAction.addInterviewToList(newInterview));
         } else {
-          console.warn("API didn't return interview data, fetching manually");
           await dispatch(fetchAllInterviews({ force: true }));
         }
         
@@ -257,55 +231,35 @@ export function createInterview(formData) {
           position: 'top-center',          
           duration: 5000, 
           icon: '✅', 
-          style: { 
-            borderRadius: '8px', 
-            background: '#333', 
-            color: '#fff', 
-            padding: '12px 16px', 
-            fontWeight: '500', 
-          }, 
         }); 
         
         return { 
           success: true, 
-          message: response?.data.message || "Interview created successfully",
+          message: response?.data.message,
           data: newInterview
         }; 
       }
       
-      return {
-        success: false,
-        message: "Failed to create interview"
-      };
+      return { success: false, message: "Failed to create interview" };
       
     } catch (error) { 
-      if (error.response && error.response.data) { 
-        const { errors } = error.response.data; 
-
-        console.log(error);
+      if (error.response?.data?.errors) { 
+        const backendErrors = error.response.data.errors;
+        console.log(backendErrors);
         
-        if (errors) { 
-          Object.values(errors).forEach((fieldErrors) => { 
-            fieldErrors.forEach((msg) => { 
-              toast.error(msg); 
-            }); 
-          }); 
-        } else { 
-          toast.error("Something went wrong, please try again."); 
-        } 
- 
+        const formattedErrors = {};
+        Object.keys(backendErrors).forEach((field) => {
+          formattedErrors[field] = backendErrors[field][0]; 
+        });
+        
         return { 
           success: false, 
-          message: "Validation failed", 
+          errors: formattedErrors,
+          message: "Validation failed" 
         }; 
-      } 
- 
-      dispatch(interviewAction.setError(error.message)); 
+      }
       
-      return {
-        success: false,
-        message: error.message || "An error occurred"
-      };
+      return { success: false, message: error.message };
  
     } finally { 
       dispatch(interviewAction.setLoading(false)); 
@@ -313,39 +267,27 @@ export function createInterview(formData) {
   }; 
 }
 
-
 // updata availability time and date for the interview action
 export function updateAvailability(id, formData) {
   return async (dispatch) => {
     dispatch(interviewAction.setLoading(true));
     
     try {
-      const Token = localStorage.getItem("access_token");
-      
-      // Validate formData structure
       if (!formData || (!formData.available_times && !formData.available_dates)) {
         throw new Error("Invalid availability data format");
       }
 
-      // Prepare the request body according to API template
       const requestBody = {
         available_times: formData.available_times || [],
         available_dates: formData.available_dates || []
       };
 
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/interview/availability/update/${id}`,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/interview/availability/update/${id}`,
+        requestBody
       );
       
       if (response.data.status) {
-        // Fetch the updated interview data
         await dispatch(editInterviewById(id));
         dispatch(interviewAction.setError(null));
         
@@ -356,7 +298,6 @@ export function updateAvailability(id, formData) {
         };
       } else {
         throw new Error(response.data.message || "Failed to update availability");
-        
       }
     } catch (error) {
       console.error("Error updating availability:", error);
@@ -384,20 +325,18 @@ export function updateAvailability(id, formData) {
     }
   };
 }
+
 export function updateUnAvailability(id, formData) {
   return async (dispatch) => {
     dispatch(interviewAction.setLoading(true));
     
     try {
-      const Token = localStorage.getItem("access_token");
-      
-      // Validate formData structure
-      if (!formData ) {
+      if (!formData) {
         throw new Error("Invalid availability data format");
       }
-
-      // Prepare the request body according to API template
-     const requestBody = {};
+      console.log(formData);
+      
+      const requestBody = {};
       if (formData.un_available_times) {
         requestBody.un_available_times = formData.un_available_times;
       }
@@ -405,19 +344,12 @@ export function updateUnAvailability(id, formData) {
         requestBody.un_available_dates = formData.un_available_dates;
       }
 
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/interview/unavailability/update/${id}`,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/interview/unavailability/update/${id}`,
+        requestBody
       );
       
       if (response.data.status) {
-        // Fetch the updated interview data
         await dispatch(editInterviewById(id));
         dispatch(interviewAction.setError(null));
         
@@ -461,19 +393,14 @@ export function notificationReminder(id, formData) {
     dispatch(interviewAction.setLoading(true));
     
     try {
-      const Token = localStorage.getItem("access_token");
-      
-      // Validate formData structure
       if (!formData || !formData.methods || !Array.isArray(formData.methods)) {
         throw new Error("Invalid notification data format - methods array is required");
       }
 
-      // Validate methods array
       if (formData.methods.length === 0) {
         throw new Error("Methods array cannot be empty");
       }
 
-      // Validate each method object
       for (const method of formData.methods) {
         if (!method.name || !method.reminders) {
           throw new Error("Each method must have 'name' and 'reminders' fields");
@@ -483,7 +410,6 @@ export function notificationReminder(id, formData) {
           throw new Error("Reminders array is required and cannot be empty for each method");
         }
         
-        // Validate each reminder object
         for (const reminder of method.reminders) {
           if (!reminder.before || !reminder.type) {
             throw new Error("Each reminder must have 'before' and 'type' fields");
@@ -494,7 +420,6 @@ export function notificationReminder(id, formData) {
         }
       }
 
-      // Use the formData directly as it matches the required API format
       const requestBody = {
         methods: formData.methods.map(method => ({
           name: method.name,
@@ -505,19 +430,12 @@ export function notificationReminder(id, formData) {
         }))
       };
 
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/interview/notifications/update/${id}`,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/interview/notifications/update/${id}`,
+        requestBody
       );
       
       if (response.data.status) {
-        // Fetch the updated interview data
         await dispatch(editInterviewById(id));
         dispatch(interviewAction.setError(null));
         
@@ -559,22 +477,10 @@ export function notificationReminder(id, formData) {
 export function getAvailableStaffForInterview(id) {
   return async (dispatch) => {
     try {
-      const Token = localStorage.getItem("access_token");
-
-      const response = await axios.get(
-        `https://backend-booking.appointroll.com/api/interview/available_staff/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: Token,
-          },
-        }
-      );
-      // console.log("🔹 API response:", response.data);
+      const response = await axiosInstance.get(`/interview/available_staff/${id}`);
 
       if (response.data.status) {
         dispatch(interviewAction.setAvailableStForIntV(response?.data.data.available_staff)); 
-        
       }
     } catch (err) {
       console.error("Failed to fetch interviews:", err);
@@ -582,102 +488,94 @@ export function getAvailableStaffForInterview(id) {
   };
 }
 
- export function assignInterViewToStaff(id, formData) {
-    return async (dispatch) => {
-      try {
-        const token = localStorage.getItem("access_token");
-  
-        const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/interview/assign-staff/${id}`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        );
-  
-        if (response.data.status) { 
-          toast.success(response?.data?.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
+export function assignInterViewToStaff(id, formData) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.post(
+        `/interview/assign/${id}`,
+        formData
+      );
+
+      if (response.data.status) { 
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
             borderRadius: '8px',
             background: '#333',
             color: '#fff',
             padding: '12px 16px',
             fontWeight: '500',
-            },
-          });
-          return { success: true, message: response.data.message };
+          },
+        });
+
+        // ✅ حدّث الـ interview state
+        if (response.data.data) {
+          dispatch(interviewAction.setInterview(response.data.data));
         } else {
-          throw new Error(response.data.message );
+          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
+          dispatch(editInterviewById(id));
         }
-      } catch (error) {
-        console.error("Error updating staff:", error);
-        return { success: false, message: error.message };
+
+        return { success: true, message: response.data.message };
+      } else {
+        throw new Error(response.data.message);
       }
-    };
-  }
- export function unAssignStaffFromInterview(id, formData) {
-    return async (dispatch) => {
-      try {
-        const token = localStorage.getItem("access_token");
-  
-        const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/interview/unassign-staff/${id}`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        );
-  
-        if (response.data.status) { 
-          toast.success(response?.data?.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
+    } catch (error) {
+      console.error("Error updating staff:", error);
+      return { success: false, message: error.message };
+    }
+  };
+}
+
+export function unAssignStaffFromInterview(id, formData) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.post(
+        `/interview/unassign/${id}`,
+        formData
+      );
+
+      if (response.data.status) { 
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
             borderRadius: '8px',
             background: '#333',
             color: '#fff',
             padding: '12px 16px',
             fontWeight: '500',
-            },
-          });
-          return { success: true, message: response.data.message };
+          },
+        });
+
+        // ✅ حدّث الـ interview state
+        if (response.data.data) {
+          dispatch(interviewAction.setInterview(response.data.data));
         } else {
-          throw new Error(response.data.message );
+          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
+          dispatch(editInterviewById(id));
         }
-      } catch (error) {
-        console.error("Error updating staff:", error);
-        return { success: false, message: error.message };
+
+        return { success: true, message: response.data.message };
+      } else {
+        throw new Error(response.data.message);
       }
-    };
-  }
+    } catch (error) {
+      console.error("Error updating staff:", error);
+      return { success: false, message: error.message };
+    }
+  };
+}
 
 export function deleteInterview(id) {
   return async (dispatch) => {
     try {
-      const Token = localStorage.getItem("access_token");
-
-      const response = await axios.delete(
-        `https://backend-booking.appointroll.com/api/interview/delete/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: Token,
-          },
-        }
-      );
+      const response = await axiosInstance.delete(`/interview/delete/${id}`);
 
       if (response.data.status) {
-        // حذف من القائمة
         dispatch(interviewAction.removeInterview(id));
       }
     } catch (err) {
@@ -689,23 +587,13 @@ export function deleteInterview(id) {
 export function updateInterviewType(id, type) {
   return async (dispatch) => {
     try {
-      const Token = localStorage.getItem("access_token");
-
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/interview/details/update/${id}`,
-        { type }, 
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: Token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/interview/details/update/${id}`,
+        { type }
       );
 
       if (response.data.status) {
-        // جدد الداتا بعد التغيير
         dispatch(editInterviewById(id));
-        // toast.success("Interview type updated successfully");
         return { success: true };
       } else {
         toast.error(response.data.message || "Failed to update type");
@@ -713,30 +601,20 @@ export function updateInterviewType(id, type) {
       }
     } catch (err) {
       console.error("Failed to update interview type:", err);
-      // toast.error("Error updating type");
       return { success: false };
     }
   };
 }
+
 export const updateShareLinkIntreview = (newShareLink, id) => {
   return async (dispatch, getState) => {
     dispatch(interviewAction.setLoading(true)); 
     try {
-      const token = localStorage.getItem("access_token");
-      const url = `https://backend-booking.appointroll.com/api/interview/regenerate-share-link/${id}`;
-
-      // لو newShareLink هو null أو undefined، متبعتش share_link في الـ body
       const requestBody = newShareLink ? { share_link: newShareLink } : {};
 
-      const response = await axios.post(
-        url,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/interview/regenerate-share-link/${id}`,
+        requestBody
       );
 
       if (response.data && response.data.data) {
@@ -758,3 +636,183 @@ export const updateShareLinkIntreview = (newShareLink, id) => {
     }
   };
 };
+
+
+export function addNewGroupToInterview(id, formData) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.post(
+        `/interview/store/${id}/group`,
+        formData
+      );
+      
+      if (response.data.status) { 
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
+          },
+        });
+
+        // ✅ حدّث الـ interview state
+        if (response.data.data) {
+          dispatch(interviewAction.setInterview(response.data.data));
+        } else {
+          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
+          dispatch(editInterviewById(id));
+        }
+
+        return { success: true, message: response.data.message };
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (error) {
+      console.error("Error creating group:", error);
+
+      const errors = error.response?.data?.errors;
+
+      if (errors) {
+        Object.values(errors).forEach(errArray => {
+          errArray.forEach(errMsg => {
+            toast.error(errMsg, {
+              position: "top-center",
+              duration: 5000,
+              className: "!text-[14px] !font-normal",
+              style: {
+                borderRadius: "8px",
+                background: "#c00",
+                color: "#fff",
+                padding: "12px 16px",
+                fontWeight: "500",
+              },
+            });
+          });
+        });
+      }
+
+      return { success: false };
+    }
+  };
+}
+
+// ✅ Fixed updateNewGroupToInterview with state update
+export function updateNewGroupToInterview(idGroup, idInterview, formData) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.post(
+        `/interview/update/${idInterview}/group/${idGroup}`,
+        formData
+      );
+
+      if (response.data.status) {
+        toast.success(response?.data?.message, {
+          position: "top-center",
+          duration: 5000,
+          icon: "✅",
+          style: {
+            borderRadius: "8px",
+            background: "#333",
+            color: "#fff",
+            padding: "12px 16px",
+            fontWeight: "500",
+          },
+        });
+
+        // ✅ حدّث الـ interview state
+        if (response.data.data) {
+          dispatch(interviewAction.setInterview(response.data.data));
+        } else {
+          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
+          dispatch(editInterviewById(idInterview));
+        }
+
+        return { success: true, message: response.data.message };
+      } else {
+        throw new Error(response.data.message);
+      }
+
+    } catch (error) {
+      console.error("Error updating group:", error);
+
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+
+        Object.values(errors).forEach((errArr) => {
+          errArr.forEach((errMsg) =>
+            toast.error(errMsg, {
+              position: "top-center",
+              duration: 5000,
+              className: "!text-[14px]", 
+              style: {
+                borderRadius: "8px",
+                background: "#c00",
+                color: "#fff",
+                padding: "12px 16px",
+              },
+            })
+          );
+        });
+      }
+
+      return { success: false, message: error.message };
+    }
+  };
+}
+
+// ✅ Fixed deleteGroup with proper state update
+export function deleteGroup(idGroup, idInterview) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.delete(
+        `/interview/delete/${idInterview}/group/${idGroup}`
+      );
+
+      if (response.data.status) {
+        toast.success(response?.data?.message || "Group deleted successfully", {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
+          },
+        });
+
+        // ✅ حدّث الـ interview state بالـ data الصحيحة
+        if (response.data.data) {
+          dispatch(interviewAction.setInterview(response.data.data));
+        } else {
+          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
+          dispatch(editInterviewById(idInterview));
+        }
+
+        return { success: true };
+      }
+    } catch (err) {
+      console.error("Failed to delete group:", err);
+      
+      toast.error(err.response?.data?.message || "Failed to delete group", {
+        position: "top-center",
+        duration: 5000,
+        style: {
+          borderRadius: "8px",
+          background: "#c00",
+          color: "#fff",
+          padding: "12px 16px",
+          fontWeight: "500",
+        },
+      });
+
+      return { success: false };
+    }
+  };
+}

@@ -10,6 +10,7 @@ import RecruitersContent from './RecruitersContent';
 import ClientsContent from './ClientsContent';
 import { usePermission } from '../../hooks/usePermission';
 import { Calendar, ChevronDown, FileText, User, Users, Filter, X } from 'lucide-react';
+import axiosInstance from '../../pages/axiosInstance';
 
 export default function Analytics() {
     const canViewAppointment = usePermission("view appointment");
@@ -19,19 +20,16 @@ export default function Analytics() {
 
     const [activeTab, setActiveTab] = useState('appointments');
 
-  
     useEffect(() => {
-     
         if (canViewAppointment !== undefined || canViewInterview !== undefined || 
             canViewStaff !== undefined || canViewClients !== undefined) {
             
-         
             if (canViewAppointment) {
                 setActiveTab('appointments');
             } else if (canViewInterview) {
                 setActiveTab('interviews');
             } else if (canViewStaff) {
-                setActiveTab('users');
+                 setActiveTab('recruiters');
             } else if (canViewClients) {
                 setActiveTab('customers');
             }
@@ -41,6 +39,8 @@ export default function Analytics() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [showAppointmentFilters, setShowAppointmentFilters] = useState(false);
     const dropdownRef = useRef(null);
+
+    const [dateError, setDateError] = useState('');
 
     const [filters, setFilters] = useState({
         appointments: {
@@ -61,7 +61,6 @@ export default function Analytics() {
         }
     });
 
-    // Local filters for appointments
     const [localAppointmentFilters, setLocalAppointmentFilters] = useState(filters.appointments);
 
     useEffect(() => {
@@ -90,82 +89,29 @@ export default function Analytics() {
     };
 
     const fetchAppointmentAnalytics = async () => {
-        const token = localStorage.getItem("access_token");
         const queryString = buildQueryString(filters.appointments);
-      
-        const response = await fetch(`https://backend-booking.appointroll.com/api/analytics/dashboard/appointments${queryString}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        });
-      
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-      
-        const data = await response.json();
-        return data;
+        const response = await axiosInstance.get(`/analytics/dashboard/appointments${queryString}`);
+        return response.data;
     };
 
     const fetchInterviewAnalytics = async () => {
-        const token = localStorage.getItem("access_token");
         const queryString = buildQueryString(filters.interviews);
-      
-        const response = await fetch(`https://backend-booking.appointroll.com/api/analytics/dashboard/interviews${queryString}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        });
-      
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-      
-        const data = await response.json();
-        return data;
+        const response = await axiosInstance.get(`/analytics/dashboard/interviews${queryString}`);
+        return response.data;
     };
 
     const fetchRecruiterAnalytics = async () => {
-        const token = localStorage.getItem("access_token");
         const queryString = buildQueryString(filters.recruiters);
-      
-        const response = await fetch(`https://backend-booking.appointroll.com/api/analytics/dashboard/recruiters${queryString}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        });
-      
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-      
-        const data = await response.json();
-        return data;
+        const response = await axiosInstance.get(`/analytics/dashboard/recruiters${queryString}`);
+        return response.data;
     };
 
     const fetchClientsAnalytics = async () => {
-        const token = localStorage.getItem("access_token");
         const queryString = buildQueryString(filters.customers);
-      
-        const response = await fetch(`https://backend-booking.appointroll.com/api/analytics/dashboard/clients${queryString}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        });
-      
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-      
-        const data = await response.json();
-        return data;
+        const response = await axiosInstance.get(`/analytics/dashboard/clients${queryString}`);
+        return response.data;
     };
 
-    
     const {
         data: appointmentsData,
         isLoading: appointmentsLoading,
@@ -190,7 +136,7 @@ export default function Analytics() {
     } = useQuery({
         queryKey: ['analytics-interviews', filters.interviews],
         queryFn: fetchInterviewAnalytics,
-        enabled: Boolean(canViewInterview), // تحويل إلى boolean صريح
+        enabled: Boolean(canViewInterview),
         refetchInterval: canViewInterview ? 5 * 60 * 1000 : false,
         staleTime: 2 * 60 * 1000,
         retry: 3,
@@ -233,14 +179,13 @@ export default function Analytics() {
         customers: clientsData
     };
 
-
     const getActiveData = () => {
         switch(activeTab) {
             case 'appointments':
                 return analyticsData.appointments;
             case 'interviews':
                 return analyticsData.interviews;
-            case 'users':
+            case 'recruiters': 
                 return analyticsData.recruiters;
             case 'customers':
                 return analyticsData.customers;
@@ -249,7 +194,6 @@ export default function Analytics() {
         }
     };
 
-    // وظيفة لتحديث الفلاتر
     const updateFilters = (tabId, newFilters) => {
         setFilters(prevFilters => ({
             ...prevFilters,
@@ -260,27 +204,38 @@ export default function Analytics() {
         }));
     };
 
-
     const getActiveFilters = () => {
         return filters[activeTab] || {};
     };
 
-    // Handle appointment filter changes
+    // ✅ إصلاح: إضافة مسح الخطأ عند التعديل
     const handleAppointmentFilterChange = (key, value) => {
+        setDateError(''); // مسح الخطأ عند التعديل
         setLocalAppointmentFilters(prev => ({
             ...prev,
             [key]: value
         }));
     };
 
-    // Apply appointment filters
     const applyAppointmentFilters = () => {
+        setDateError('');
+        
+        if (localAppointmentFilters.start_date && localAppointmentFilters.end_date) {
+            const startDate = new Date(localAppointmentFilters.start_date);
+            const endDate = new Date(localAppointmentFilters.end_date);
+            
+            if (endDate < startDate) {
+                setDateError('Start date cannot be after end date');
+                return; 
+            }
+        }
+        
         updateFilters('appointments', localAppointmentFilters);
         setShowAppointmentFilters(false);
     };
 
-    // Clear appointment filters
     const clearAppointmentFilters = () => {
+        setDateError(''); 
         const clearedFilters = {
             start_date: '',
             end_date: ''
@@ -289,22 +244,21 @@ export default function Analytics() {
         updateFilters('appointments', clearedFilters);
     };
 
- 
     const hasActiveAppointmentFilters = filters.appointments.start_date || filters.appointments.end_date;
 
     const tabs = [
-        canViewAppointment && { id: 'appointments', label: 'Appointments', icon: <Calendar size={18} /> },
-        canViewInterview && { id: 'interviews', label: 'Interviews', icon: <FileText size={18} />},
-        canViewStaff && { id: 'users', label: 'Recruiter', icon: <Users size={18} /> },
-        canViewClients && { id: 'customers', label: 'Clients', icon: <User size={18} /> }
-    ].filter(Boolean);
+    canViewAppointment && { id: 'appointments', label: 'Appointments', icon: <Calendar size={18} /> },
+    canViewInterview && { id: 'interviews', label: 'Interviews', icon: <FileText size={18} />},
+    canViewStaff && { id: 'recruiters', label: 'Recruiter', icon: <Users size={18} /> },
+    canViewClients && { id: 'customers', label: 'Clients', icon: <User size={18} /> }
+].filter(Boolean);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
         setIsDropdownOpen(false);
     };
+    
     const currentTab = tabs.find(tab => tab.id === activeTab);
-
 
     const isLoading = (
         (canViewAppointment && appointmentsLoading) ||
@@ -312,7 +266,6 @@ export default function Analytics() {
         (canViewStaff && recruitersLoading) ||
         (canViewClients && clientsLoading)
     );
-    
 
     const isError = (
         (canViewAppointment && appointmentsError) ||
@@ -320,8 +273,7 @@ export default function Analytics() {
         (canViewStaff && recruitersError) ||
         (canViewClients && clientsError)
     );
-    
-    // جمع كل الأخطاء - فقط للتبويبات المفعلة
+
     const errors = [
         canViewAppointment && appointmentsError && appointmentsErrorDetails,
         canViewInterview && interviewsError && interviewsErrorDetails,
@@ -329,7 +281,6 @@ export default function Analytics() {
         canViewClients && clientsError && clientsErrorDetails
     ].filter(Boolean);
 
-    // refetch function لكل البيانات المفعلة فقط
     const refetchAll = () => {
         if (canViewAppointment) refetchAppointments();
         if (canViewInterview) refetchInterviews();
@@ -346,7 +297,6 @@ export default function Analytics() {
             </div>
         );
     }
-
 
     const renderActiveContent = () => {
         const activeData = getActiveData();
@@ -379,6 +329,18 @@ export default function Analytics() {
 
                             {showAppointmentFilters && (
                                 <div className="mt-4 pt-4 border-t border-gray-200">
+                                    {/* ✅ عرض رسالة الخطأ */}
+                                    {dateError && (
+                                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                            <div className="flex items-center">
+                                                <svg className="w-5 h-5 text-red-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                </svg>
+                                                <span className="text-sm text-red-700 font-medium">{dateError}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -422,17 +384,34 @@ export default function Analytics() {
                             )}
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <StatisticsCards data={activeData} />
-                            <ChartsSection data={activeData} />
-                            <Chart2 data={activeData} />
-                            <CalendarAnalytics data={activeData} />
-                        </div>
-                        <AppointmentTable 
-                            data={activeData} 
-                            filters={activeFilters}
-                            onFiltersChange={(newFilters) => updateFilters('appointments', newFilters)}
-                        />
+                       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <h3 className="text-lg font-semibold text-gray-900 mb-6">Appointment Statistics</h3>
+    <StatisticsCards data={activeData} />
+  </div>
+
+  {/* Charts Section */}
+  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <ChartsSection data={activeData} />
+  </div>
+
+  {/* Pie Chart + Calendar Side by Side */}
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <Chart2 data={activeData} />
+    </div>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <CalendarAnalytics data={activeData} />
+    </div>
+  </div>
+
+  {/* Table */}
+  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-x-auto">
+    <AppointmentTable 
+      data={activeData} 
+      filters={activeFilters}
+      onFiltersChange={(newFilters) => updateFilters('appointments', newFilters)}
+    />
+  </div>
                     </>
                 );
             case 'interviews':
@@ -444,13 +423,13 @@ export default function Analytics() {
                         onFiltersChange={(newFilters) => updateFilters('interviews', newFilters)}
                     />
                 );
-            case 'users':
+           case 'recruiters': 
                 if (!canViewStaff) return null;
                 return (
                     <RecruitersContent 
                         data={activeData} 
                         filters={activeFilters}
-                        onFiltersChange={(newFilters) => updateFilters('users', newFilters)}
+                        onFiltersChange={(newFilters) => updateFilters('recruiters', newFilters)}
                     />
                 );
             case 'customers':
@@ -468,7 +447,7 @@ export default function Analytics() {
     };
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="p-6 bg-gray-50 min-h-screen max-w-[27rem] md:max-w-[49rem] lg:max-w-full">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h1 className="text-2xl md:text-xl font-bold text-gray-900">Analytics Dashboard</h1>
                 

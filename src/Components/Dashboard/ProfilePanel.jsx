@@ -3,20 +3,20 @@ import {
   User, 
   LogOut, 
   Video, 
-  HelpCircle,
-  Users,
-  Book,
-  MapPin,
-  Crown,
+
   Trash2,
   Eye,
   EyeOff,
   AlertTriangle,
+  Shield,
+  ShieldUser,
+  ReceiptText,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useState, useCallback } from 'react';
 import toast from "react-hot-toast";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+ 
 
 const ProfilePanel = ({ isOpen, onClose }) => {
   const [imageError, setImageError] = useState(false);
@@ -24,115 +24,113 @@ const ProfilePanel = ({ isOpen, onClose }) => {
   const [deleteFormData, setDeleteFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
-    const userType = localStorage.getItem("userType");
-
+  const userType = localStorage.getItem("userType");
+ const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { profile,staffProfile, loading = false } = useSelector(state => state.profileData);
+  const { profile, staffProfile, loading = false } = useSelector(state => state.profileData);
 
- 
   const profileData = userType === 'staff' ? staffProfile?.user : profile?.user;
 
   // Handle logout
- const handleLogout = useCallback(async () => {
-  const token = localStorage.getItem("access_token");
-  const userType = localStorage.getItem("userType");
+  const handleLogout = useCallback(async () => {
+    setLogoutLoading(true);
+    
+    const token = localStorage.getItem("access_token");
+    const userType = localStorage.getItem("userType");
 
-  const logoutUrl =
-    userType === "staff"
-      ? "https://backend-booking.appointroll.com/api/staff/logout"
-      : "https://backend-booking.appointroll.com/api/customer/logout";
+    const logoutUrl =
+      userType === "staff"
+        ? "https://backend-booking.appointroll.com/api/staff/logout"
+        : "https://backend-booking.appointroll.com/api/customer/logout";
 
-  try {
-    if (token) {
-      const response = await fetch(logoutUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": token,
-        },
-      });
+    try {
+      if (token) {
+        const response = await fetch(logoutUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": token,
+          },
+        });
 
-      if (response.ok) {
-        toast.success("Logged out successfully");
+        if (response.ok) {
+          toast.success("Logged out successfully");
+        } else {
+          const data = await response.json().catch(() => ({}));
+          toast.error(data?.message || "Logout failed on server");
+        }
       } else {
-        const data = await response.json().catch(() => ({}));
-        toast.error(data?.message || "Logout failed on server");
+        toast("No active session found", { icon: "⚠️" });
       }
-    } else {
-      toast("No active session found", { icon: "⚠️" });
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast.error("Network error while logging out");
+    } finally {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("userType");
+
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 800);
     }
-  } catch (error) {
-    console.error("Logout failed:", error);
-    toast.error("Network error while logging out");
-  } finally {
-  
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("userType");
-
-    setTimeout(() => {
-      window.location.href = "/login";
-    }, 800);
-  }
-}, []);
-
-
+  }, []);
 
   // Handle delete account API call
   const handleDeleteAccount = useCallback(async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!deleteFormData.email || !deleteFormData.password) {
-    toast.error('Please fill in all fields');
-    return;
-  }
-
-  setDeleteLoading(true);
-  setDeleteError('');
-
-  try {
-    const Token = localStorage.getItem("access_token");
-
-    const response = await fetch('https://backend-booking.appointroll.com/api/delete-account', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': Token,
-      },
-      body: JSON.stringify(deleteFormData),
-    });
-
-    const data = await response.json();
-    const isError =
-      !response.ok ||
-      data.message === 400 || 
-      data.data?.message?.toLowerCase().includes("credentials") ||
-      data.data?.message?.toLowerCase().includes("do not match");
-
-    if (isError) {
-      const errorMessage = data.data?.message || 'Invalid email or password';
-      setDeleteError(errorMessage);
-      toast.error(errorMessage);
+    if (!deleteFormData.email || !deleteFormData.password) {
+      toast.error('Please fill in all fields');
       return;
     }
 
-    toast.success('Account deleted successfully');
-    localStorage.removeItem('access_token');
-    setShowDeleteModal(false);
+    setDeleteLoading(true);
+    setDeleteError('');
 
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 1500);
+    try {
+      const Token = localStorage.getItem("access_token");
 
-  } catch (error) {
-    const errorMessage = 'Network error. Please try again.';
-    setDeleteError(errorMessage);
-    toast.error(errorMessage);
-  } finally {
-    setDeleteLoading(false);
-  }
-}, [deleteFormData]);
+      const response = await fetch('https://backend-booking.appointroll.com/api/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': Token,
+        },
+        body: JSON.stringify(deleteFormData),
+      });
 
+      const data = await response.json();
+      const isError =
+        !response.ok ||
+        data.message === 400 || 
+        data.data?.message?.toLowerCase().includes("credentials") ||
+        data.data?.message?.toLowerCase().includes("do not match");
+
+      if (isError) {
+        const errorMessage = data.data?.message || 'Invalid email or password';
+        setDeleteError(errorMessage);
+        toast.error(errorMessage);
+        return;
+      }
+
+      toast.success('Account deleted successfully');
+      localStorage.removeItem('access_token');
+      setShowDeleteModal(false);
+
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
+
+    } catch (error) {
+      const errorMessage = 'Network error. Please try again.';
+      setDeleteError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deleteFormData]);
 
   // Handle opening delete modal
   const handleDeleteClick = useCallback(() => {
@@ -190,13 +188,42 @@ const ProfilePanel = ({ isOpen, onClose }) => {
   };
 
   // Navigation items configuration
-  const helpItems = [
-    { icon: Video, label: 'Webinars', action: () => toast('Webinars feature coming soon!', { icon: '📹' }) },
-    { icon: Book, label: "What's New?", action: () => toast('Check out our latest updates!', { icon: '📖' }) },
-    { icon: HelpCircle, label: 'Help Guide', action: () => toast('Help guide opened!', { icon: '❓' }) },
-    { icon: Users, label: 'Community', action: () => toast('Join our community!', { icon: '👥' }) },
-  ];
+const helpItems = [
+  { 
+    icon: Video, 
+    label: 'Webinars', 
+    action: () => {
+      onClose(); // أقفل الـ panel الأول
+      navigate('/webinars'); // استخدم navigate بدل window.open
+    } 
+  },
+  { 
+    icon: ReceiptText, 
+    label: "Terms of Service", 
+    action: () => {
+      onClose();
+      navigate('/termsOf-service');
+    } 
+  },
+  { 
+    icon: Shield, 
+    label: 'Security', 
+    action: () => {
+      onClose();
+      navigate('/security');
+    } 
+  },
+  { 
+    icon: ShieldUser, 
+    label: 'Privacy Policy', 
+    action: () => {
+      onClose();
+      navigate('/privacy-policy');
+    } 
+  },
+];
 
+ 
   return (
     <>
       {/* Backdrop */}
@@ -238,7 +265,7 @@ const ProfilePanel = ({ isOpen, onClose }) => {
             
             <h2 
               id="profile-panel-title"
-              className="text-lg sm:text-xl font-semibold mb-1 truncate px-4" 
+              className="text-lg sm:text-xl font-semibold mb-1 truncate  max-w-[150px] px-4" 
               title={profileData?.name || 'Loading...'}
             >
               {profileData?.name || 'User Name'}
@@ -264,27 +291,36 @@ const ProfilePanel = ({ isOpen, onClose }) => {
           {/* Account Actions */}
           <div className="p-3 sm:p-4">
             <div className="flex justify-between items-center mb-4">
-              <Link to={`${userType === 'staff' ? 'Staff_Profilepage' : 'profilepage'}`} 
+              <Link 
+                to={`${userType === 'staff' ? 'Staff_Profilepage' : 'profilepage'}`} 
                 className="flex items-center text-gray-700 hover:text-gray-900 text-sm sm:text-base transition-colors duration-200"
-              onClick={onClose}
+                onClick={onClose}
               >
                 <User className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
                 My Account
               </Link>
               
               <button 
-                className="flex items-center text-red-500 hover:text-red-600 text-sm sm:text-base transition-colors duration-200"
+                className="flex items-center text-red-500 hover:text-red-600 text-sm sm:text-base transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleLogout}
+                disabled={logoutLoading}
               >
-                <LogOut className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-                Sign Out
+                {logoutLoading ? (
+                  <>
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin mr-1 sm:mr-2"></div>
+                    Signing Out...
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                    Sign Out
+                  </>
+                )}
               </button>
             </div>
           </div>
 
           <hr className="border-gray-200" />
-
-   
 
           {/* Help Section */}
           <div className="p-3 sm:p-4">
@@ -305,16 +341,17 @@ const ProfilePanel = ({ isOpen, onClose }) => {
         </div>
 
         {/* Fixed Bottom Section - Delete Account */}
-          {userType !== 'staff' ? (<div className="p-4 border-t border-gray-200 bg-gray-50">
-          <button 
-            className="flex items-center justify-center w-full text-red-500 hover:text-red-600 hover:bg-red-50 py-2 px-3 rounded-lg transition-all duration-200 text-sm sm:text-base"
-            onClick={handleDeleteClick}
-          >
-            <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-            Delete My Account
-          </button>
-        </div>) : null}
-        
+        {userType !== 'staff' ? (
+          <div className="p-4 border-t border-gray-200 bg-gray-50">
+            <button 
+              className="flex items-center justify-center w-full text-red-500 hover:text-red-600 hover:bg-red-50 py-2 px-3 rounded-lg transition-all duration-200 text-sm sm:text-base"
+              onClick={handleDeleteClick}
+            >
+              <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+              Delete My Account
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {/* Delete Account Modal */}

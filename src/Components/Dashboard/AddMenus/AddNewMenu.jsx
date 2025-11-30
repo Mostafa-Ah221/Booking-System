@@ -16,11 +16,11 @@ import SpecialWorking from './SpecialWorking';
 import WorkspaceModal from './ModelsForAdd/NewWorkspace';
 import InviteRecModal from './ModelsForAdd/InviteRecModal';
 import AddCustomerModal from './ModelsForAdd/AddCustomer';
-// import AddResourceModal from './ModelsForAdd/AddResource';
+import AddResourceModal from './ModelsForAdd/AddResource';
 import RoleModal from './ModelsForAdd/NewRoleModal';
 import { usePermission } from "../../hooks/usePermission";
 import AddAppointment from '../Appointments/AddAppointment';
-import AddStaff from './ModelsForAdd/AddStaff';
+import AddStaff from './ModelsForAdd/add_Staff/AddStaff';
 
 const AddNewMenu = () => {
   const [openForm, setOpenForm] = useState(null);
@@ -91,13 +91,13 @@ const AddNewMenu = () => {
       form: "add_staff_modal",
       requiredPermission: "create staff"
     },
-    // { 
-    //   icon: FileText, 
-    //   text: 'Resource', 
-    //   color: 'bg-indigo-50 text-indigo-500', 
-    //   form: "add_resourse_model",
-    //   // requiredPermission: "create resource"
-    // },
+    { 
+      icon: FileText, 
+      text: 'Resource', 
+      color: 'bg-indigo-50 text-indigo-500', 
+      form: "add_resourse_model",
+      // requiredPermission: "create resource"
+    },
     { 
       icon: ShieldUser, 
       text: 'Roles', 
@@ -192,10 +192,10 @@ const AddNewMenu = () => {
         isOpen={openForm === 'add_staff_modal'}
         onClose={handleClose}
       />
-      {/* <AddResourceModal
+      <AddResourceModal
         isOpen={openForm === 'add_resourse_model'}
         onClose={handleClose}
-      /> */}
+      />
       <RoleModal
         isOpen={openForm === 'add_roles_model'}
         onClose={handleClose}

@@ -1,18 +1,12 @@
 import {rolesAction} from "../slices/rolesSlice";
-import axios from "axios";
+import axiosInstance from "../../Components/pages/axiosInstance";
 import toast from "react-hot-toast";
 
 export function getRoles() {
     return async (dispatch)=> {
         try {
             dispatch(rolesAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            const response =await axios.get(`https://backend-booking.appointroll.com/api/role/index`,{
-                 headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-            })
+            const response = await axiosInstance.get('/role/index');
             
             if (response.status === 200) {
                 dispatch(rolesAction.setRoles(response.data.data));
@@ -24,17 +18,12 @@ export function getRoles() {
         }
     }
 }
+
 export function getPermissions () {
     return async (dispatch)=> {
         try {
             dispatch(rolesAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            const response =await axios.get(`https://backend-booking.appointroll.com/api/role/create`,{
-                 headers: {
-                        "Content-Type": "application/json",
-                        authorization: Token,
-                    },
-            })
+            const response = await axiosInstance.get('/role/create');
             
             if (response.status === 200) {
                 dispatch(rolesAction.setPermissions(response.data.data));
@@ -43,7 +32,6 @@ export function getPermissions () {
         } catch (error) {
             dispatch(rolesAction.setLoading(false));
             dispatch(rolesAction.setError(error.message));
-            // toast.error("حدث خطأ أثناء تحميل الأدوار");
         }
     }
 }
@@ -57,21 +45,10 @@ export function createRole(roleData) {
 
     try {
       dispatch(rolesAction.setLoading(true));
-      const Token = localStorage.getItem("access_token");
 
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/role/store`,
-        roleData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            authorization: Token,
-          },
-        }
-      );
+      const response = await axiosInstance.post('/role/store', roleData);
 
       if (response?.data?.message === 200) {
-        // ✅ نجح
         dispatch(rolesAction.addRoleToList(response.data.data));
 
         toast.success(response.data.data.message || "Role created successfully", {
@@ -90,19 +67,17 @@ export function createRole(roleData) {
         dispatch(rolesAction.setLoading(false));
         return { success: true, data: response.data };
       } else {
-        // ❌ فشل مع وجود response
         dispatch(rolesAction.setLoading(false));
 
         let errorMessage =
-          response.data?.data?.errors?.message || // الشكل الأول
-          response.data?.message ||               // رسالة عامة
+          response.data?.data?.errors?.message ||
+          response.data?.message ||
           "Failed to create role";
 
-        // 👇 هنا نتأكد من الشكل التاني
         if (response.data?.errors) {
           const fieldErrors = Object.values(response.data.errors)
             .flat()
-            .join(" , "); // يطلع "The name must be at least 2 characters."
+            .join(" , ");
           errorMessage = fieldErrors || errorMessage;
         }
 
@@ -118,7 +93,7 @@ export function createRole(roleData) {
             color: "#fff",
             padding: "12px 16px",
             fontWeight: "500",
-             fontSize: "14px", 
+            fontSize: "14px", 
           },
         });
 
@@ -133,7 +108,6 @@ export function createRole(roleData) {
         error.message ||
         "Network error occurred";
 
-      // 👇 التعامل مع الشكل التاني برضه في الـ catch
       if (error.response?.data?.errors) {
         const fieldErrors = Object.values(error.response.data.errors)
           .flat()
@@ -153,7 +127,7 @@ export function createRole(roleData) {
           color: "#fff",
           padding: "12px 16px",
           fontWeight: "500",
-           fontSize: "14px", 
+          fontSize: "14px", 
         },
       });
 
@@ -162,18 +136,11 @@ export function createRole(roleData) {
   };
 }
 
-
 export function getRoleById(roleId) {
     return async (dispatch) => {
         try {
             dispatch(rolesAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            const response = await axios.get(`https://backend-booking.appointroll.com/api/role/edit/${roleId}`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    authorization: Token,
-                },
-            });
+            const response = await axiosInstance.get(`/role/edit/${roleId}`);
             
             if (response.status === 200) {
                 dispatch(rolesAction.setRole(response.data.data));
@@ -214,21 +181,14 @@ export function updateRole(roleId, roleData) {
             console.log(formattedData);
             
             dispatch(rolesAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            const response = await axios.put(`https://backend-booking.appointroll.com/api/role/update/${roleId}`, formattedData, {
-                headers: {
-                    "Content-Type": "application/json",
-                    authorization: Token,
-                }
-            });
+            const response = await axiosInstance.put(`/role/update/${roleId}`, formattedData);
             
             if (response?.data?.status) {
                 console.log(response);
                 dispatch(rolesAction.updateRoleInList({ 
-    id: roleId, 
-    ...roleData 
-}));
-
+                    id: roleId, 
+                    ...roleData 
+                }));
                 
                 toast.success(response.data.data.message || "تم تحديث الدور بنجاح", {
                     position: "top-center",
@@ -272,13 +232,7 @@ export function deleteRoleById(roleId) {
     return async (dispatch) => {
         try {
             dispatch(rolesAction.setLoading(true));
-            const Token = localStorage.getItem("access_token");
-            const response = await axios.delete(`https://backend-booking.appointroll.com/api/role/delete/${roleId}`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    authorization: Token,
-                }
-            });
+            const response = await axiosInstance.delete(`/role/delete/${roleId}`);
             
             if (response?.data?.status) {
                 console.log(response);
@@ -321,6 +275,3 @@ export function deleteRoleById(roleId) {
         }
     };
 }
-
-
-

@@ -1,18 +1,13 @@
-import { Search, Instagram, Linkedin, Twitter, Youtube, Mail } from 'lucide-react';
+import { Instagram, Linkedin, Twitter, Youtube } from 'lucide-react';
 
 const Footer = () => {
   const bottomLinks = [
-    { title: 'Appointroll Home', href: '#' },
-    { title: 'Contact Us', href: '#' },
-    { title: 'Security', href: '#' },
-    { title: 'Compliance', href: '#' },
-    { title: 'IPR Complaints', href: '#' },
-    { title: 'Anti-spam Policy', href: '#' },
-    { title: 'Terms of Service', href: '#' },
-    { title: 'Privacy Policy', href: '#' },
-    { title: 'Cookie Policy', href: '#' },
-    { title: 'GDPR Compliance', href: '#' },
-    { title: 'Abuse Policy', href: '#' },
+    { title: 'Appoint Roll Home', href: '/' },
+    { title: 'Webinars', href: '/Webinars' },
+    { title: 'Security', href: '/security' },
+    { title: 'Terms of Service', href: '/termsOf-service' },
+    { title: 'Privacy Policy', href: '/privacy-policy' },
+    { title: 'Abuse Policy', href: '/abuse-policy' },
   ];
 
   return (
@@ -24,19 +19,22 @@ const Footer = () => {
           
           {/* Footer Links */}
           <div className="mb-8">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 lg:gap-4">
-              {bottomLinks.map((link, index) => (
-                <a 
-                  key={link.title}
-                  href={link.href} 
-                  className="group text-sm text-gray-600 hover:text-blue-600 transition-all duration-300 ease-in-out py-2 px-1 rounded-md hover:bg-white/50 hover:shadow-sm"
-                >
-                  <span className="border-b border-transparent group-hover:border-blue-600 transition-all duration-300">
-                    {link.title}
-                  </span>
-                </a>
-              ))}
-            </div>
+         <div className="flex flex-wrap gap-x-3 gap-y-2 items-center justify-center">
+            {bottomLinks.map((link, index) => (
+              <a 
+                key={link.title}
+                href={link.href} 
+                className="group text-sm text-gray-600 hover:text-blue-600 transition-all duration-300 ease-in-out py-2 px-1 rounded-md hover:bg-white/50 hover:shadow-sm"
+              >
+                <span className="border-b border-transparent group-hover:border-blue-600 transition-all duration-300">
+                  {link.title}
+                </span>
+                {index < bottomLinks.length - 1 && (
+                  <span className='ml-3'> |</span>
+                )}
+              </a>
+            ))}
+          </div>
           </div>
 
           {/* Divider */}
@@ -48,7 +46,7 @@ const Footer = () => {
             {/* Copyright */}
             <div className="text-center lg:text-left">
               <p className="text-gray-600 text-sm leading-relaxed">
-                <span className="font-medium text-gray-800">© 2025 Appointroll</span>
+                <span className="font-medium text-gray-800">© 2025 Appoint Roll</span>
                 <span className="mx-2">•</span>
                 All Rights Reserved
               </p>

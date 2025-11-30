@@ -40,7 +40,7 @@ const ShareModal = ({ isOpen, onClose, interview }) => {
             {interview?.name?.substring(0, 2).toUpperCase() || "RS"}
           </div>
           <div>
-            <h3 className="font-semibold">{interview?.name || "Recruitment Strategy Meeting Copy"}</h3>
+            <h3 className="font-semibold truncate  max-w-[150px]">{interview?.name || "Recruitment Strategy Meeting Copy"}</h3>
             <p className="text-gray-500 text-sm">{interview?.duration_cycle } {interview.duration_period} | {interview?.mode || "One-on-One"}</p>
           </div>
         </div>

@@ -76,7 +76,7 @@ const WorkSpaceInfo = () => {
             {formData.fields.map(field => (
               <div key={field.id} className="flex items-center gap-2">
                 <span className="w-4 h-4 text-gray-400">::</span>
-                <span className="text-blue-600">{field.name}</span>
+                <span className="text-blue-600 truncate  max-w-[150px]">{field.name}</span>
                 {field.required && <span className="text-red-500">*</span>}
               </div>
             ))}

@@ -20,8 +20,10 @@ const AppointmentDetailsSidebar = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [approveStatus, setApproveStatus] = useState('pending');
   const dropdownRef = useRef(null);
+  const actionsDropdownRef = useRef(null); 
   const dispatch = useDispatch(); 
   const userType = localStorage.getItem("userType");
+console.log(appointment);
 
   useEffect(() => {
     if (appointment?.approve_status !== undefined) {
@@ -37,35 +39,42 @@ const AppointmentDetailsSidebar = ({
       setApproveStatus('pending');
     }
   }, [appointment]);
-console.log(appointment);
 
-  // Use permissions only if userType is customer
   const canEditAppointment = userType === 'staff' ? true : usePermission("edit appointment");
   const canControlAppointment = userType === 'staff' ? true : usePermission("control appointment");
   const canDeleteAppointment = userType === 'staff' ? true : usePermission("delete appointment");
 
-  // Close dropdown when clicking outside
+  // 🔹 Close dropdowns when clicking outside - معدل
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Check approval dropdown
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setOpenDropdown(null);
+        if (openDropdown === 'approval') {
+          setOpenDropdown(null);
+        }
+      }
+      
+      // Check actions dropdown
+      if (actionsDropdownRef.current && !actionsDropdownRef.current.contains(event.target)) {
+        if (openDropdown === appointment?.id) {
+          setOpenDropdown(null);
+        }
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    if (openDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [openDropdown, appointment?.id]);
 
   const handleApproveReject = async (approved) => {
     if (!appointment?.id) return;
-    console.log(approved);
-
-    console.log('Sending approval request:', { approved });
     
     const previousStatus = approveStatus;
-    
     const newStatus = approved ? 'approved' : 'rejected';
     setApproveStatus(newStatus);
     setIsProcessing(true);
@@ -85,8 +94,6 @@ console.log(appointment);
           };
           onAppointmentUpdate(updatedAppointment);
         }
-        
-       
       } else {
         setApproveStatus(previousStatus);
         console.error('Failed to update appointment:', result.message);
@@ -100,7 +107,6 @@ console.log(appointment);
     }
   };
 
-  // Handle dropdown options
   const handleDropdownOption = async (option, appointment) => {
     setOpenDropdown(null);
 
@@ -116,19 +122,16 @@ console.log(appointment);
     }
   };
 
-  // Toggle dropdown
   const toggleDropdown = (dropdownId) => {
     setOpenDropdown(openDropdown === dropdownId ? null : dropdownId);
   };
 
-  // Handle delete appointment
   const handleDeleteClick = () => {
     if (onDelete && appointment) {
       onDelete(appointment);
     }
   };
 
-  // Handle cancel appointment
   const handleCancelClick = () => {
     if (onCancel && appointment) {
       onCancel(appointment);
@@ -146,7 +149,6 @@ console.log(appointment);
     });
   };
 
-  // Format time function
   const formatTime = (timeString) => {
     const [hours, minutes] = timeString.split(':');
     const hour = parseInt(hours);
@@ -155,7 +157,6 @@ console.log(appointment);
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  // Format created_at date
   const formatCreatedAt = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB', {
@@ -169,7 +170,6 @@ console.log(appointment);
     });
   };
 
-  // Calculate end time
   const getEndTime = (startTime) => {
     const [hours, minutes] = startTime.split(':');
     const startDate = new Date();
@@ -188,14 +188,14 @@ console.log(appointment);
 
   return (
     <>
-      {/* Overlay */}
+      {/* Overlay - 🔹 زودنا الـ z-index */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        className="fixed inset-0 bg-black bg-opacity-50 z-[60]"
         onClick={onClose}
       />
       
-      {/* Sidebar */}
-      <div className="fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
+      {/* Sidebar - 🔹 زودنا الـ z-index */}
+      <div className="fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 bg-white shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-lg font-semibold text-gray-800">Appointment Summary</h2>
@@ -212,19 +212,21 @@ console.log(appointment);
         {/* Content */}
         <div className="p-6 overflow-y-auto h-full pb-20">
           {/* Appointment Time Card */}
-          {appointment?.approve_interview_status === "1" && (
-            <div className="rounded-md p-4 mb-6 border border-blue-200">
+          <div className="rounded-md p-4 mb-6 border border-blue-200">
             <div className="flex items-center justify-between mb-2">
               <div className="font-medium text-gray-800">
-                {formatDate(appointment.date)}, {formatTime(appointment.time)} - {formatTime(endTime)}
+                {formatDate(appointment.date)}, {formatTime(appointment.time)} 
               </div>
               <div className="flex gap-2">
                 {/* Approval Section */}
-                {canControlAppointment && (
+                {appointment?.approve_status === "0" && appointment?.approve_interview_status === true && canControlAppointment && (
                   <div className="relative" ref={dropdownRef}>
                     <button
                       className="border border-gray-300 px-3 py-1 rounded flex items-center gap-1 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => toggleDropdown('approval')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleDropdown('approval');
+                      }}
                       disabled={isProcessing}
                     >
                       <span className="text-xs">
@@ -238,11 +240,10 @@ console.log(appointment);
                       />
                     </button>
 
-                    {/* Approval Dropdown Menu */}
+                    {/* Approval Dropdown Menu - 🔹 زودنا الـ z-index */}
                     {openDropdown === 'approval' && (
-                      <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                      <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-[80]">
                         <div className="py-2 px-3">
-                          {/* Accept Radio */}
                           <label className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-2">
                             <input
                               type="radio"
@@ -255,7 +256,6 @@ console.log(appointment);
                             <span className="text-xs text-green-600 font-medium">Accept</span>
                           </label>
 
-                          {/* Reject Radio */}
                           <label className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50 rounded px-2">
                             <input
                               type="radio"
@@ -273,12 +273,16 @@ console.log(appointment);
                   </div>
                 )}
 
-                {/* Actions Section - Hidden for staff */}
+                {/* Actions Section - 🔹 كل التعديلات هنا */}
                 {userType !== 'staff' && (canEditAppointment || canControlAppointment || canDeleteAppointment) && (
-                  <div className="relative">
+                  <div className="relative" ref={actionsDropdownRef}>
                     <button
                       className="border border-gray-300 px-3 py-1 rounded flex items-center gap-1 text-sm hover:bg-gray-50"
-                      onClick={() => toggleDropdown(appointment.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleDropdown(appointment.id);
+                      }}
                       disabled={isCancelling}
                     >
                       <span className="text-xs">Actions</span>
@@ -290,15 +294,24 @@ console.log(appointment);
                       />
                     </button>
 
-                    {/* Actions Dropdown Menu */}
+                    {/* 🔹 زودنا الـ z-index وعدلنا الـ event handlers */}
                     {openDropdown === appointment.id && (
-                      <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                      <div
+                        className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-[80]"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
                         <div className="py-1">
-                          {/* Reschedule Option */}
                           {canControlAppointment && (
                             <button
                               className="w-full text-right px-4 py-2 text-sm text-blue-600 hover:bg-gray-50 flex items-center justify-end gap-2"
                               onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
                                 handleDropdownOption('reschedule', appointment);
                               }}
@@ -308,12 +321,12 @@ console.log(appointment);
                               <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                             </button>
                           )}
-                          
-                          {/* Cancel Option */}
-                          {canEditAppointment && (
+
+                          {canEditAppointment &&  appointment?.status !== 'cancelled' && (
                             <button
                               className="w-full text-right px-4 py-2 text-sm text-yellow-600 hover:bg-gray-50 flex items-center justify-end gap-2"
                               onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
                                 handleDropdownOption('cancel', appointment);
                               }}
@@ -323,12 +336,12 @@ console.log(appointment);
                               <div className="w-2 h-2 bg-yellow-600 rounded-full"></div>
                             </button>
                           )}
-                          
-                          {/* Delete Option */}
+
                           {canDeleteAppointment && (
                             <button
                               className="w-full text-right px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center justify-end gap-2"
                               onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
                                 handleDropdownOption('delete', appointment);
                               }}
@@ -348,11 +361,9 @@ console.log(appointment);
             
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <User size={16} />
-              <span>{appointment.name}, {appointment.email}</span>
+              <div><span className='truncate max-w-[150px]'>{appointment.name}</span>, <span>{appointment.email}</span></div>
             </div>
           </div>
-          )}
-          
 
           {/* Tab Navigation */}
           <div className="flex mb-6 border-b">
@@ -380,7 +391,7 @@ console.log(appointment);
 
           {/* Tab Content */}
           {activeTab === 'Appointment Details' && (
-            <div className="space-y-4">
+            <div className="space-y-4 mb-40">
               {/* Interview */}
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-600">Interview</span>
@@ -388,9 +399,21 @@ console.log(appointment);
                   <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-medium">
                     {appointment.interview_name?.substring(0, 2).toUpperCase() || 'IN'}
                   </span>
-                  <span className="text-sm text-gray-800">{appointment.interview_name || 'N/A'}</span>
+                  <span className="text-sm text-gray-800 truncate block max-w-[100px]">{appointment.interview_name || 'N/A'}</span>
                 </div>
               </div>
+              {appointment?.resource && (
+                <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-gray-600">Resource</span>
+                <div className="flex items-center gap-2">
+                  <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-medium">
+                    {appointment?.resource.name?.substring(0, 2).toUpperCase() || 'IN'}
+                  </span>
+                  <span className="text-sm text-gray-800 truncate max-w-[150px]">{appointment?.resource.name || 'N/A'}</span>
+                </div>
+              </div>
+              )}
+              
 
               {/* Status */}
               <div className="flex items-center justify-between py-2">
@@ -411,20 +434,22 @@ console.log(appointment);
               </div>
 
               {/* Approval Status */}
-              {appointment?.approve_status == "1" ?   <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-600">Approval Status</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  approveStatus === 'approved' ? 'bg-green-100 text-green-800' :
-                  approveStatus === 'rejected' ? 'bg-red-100 text-red-800' :
-                  approveStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {approveStatus === 'approved' ? 'Approved' :
-                   approveStatus === 'rejected' ? 'Rejected' :
-                   approveStatus === 'pending' ? 'Pending' :
-                   approveStatus || ''}
-                </span>
-              </div> :""}
+              {appointment?.approve_status == "1" && (
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-gray-600">Approval Status</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    approveStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                    approveStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                    approveStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {approveStatus === 'approved' ? 'Approved' :
+                     approveStatus === 'rejected' ? 'Rejected' :
+                     approveStatus === 'pending' ? 'Pending' :
+                     approveStatus || ''}
+                  </span>
+                </div>
+              )}
 
               {/* Time */}
               <div className="flex items-center justify-between py-2">
@@ -432,10 +457,22 @@ console.log(appointment);
                 <div className="flex items-center gap-2">
                   <Clock size={16} className="text-gray-500" />
                   <span className="text-sm text-gray-800">
-                    {formatTime(appointment.time)} - {formatTime(endTime)} (2 hrs 15 mins)
+                    {formatTime(appointment.time)} 
                   </span>
                 </div>
               </div>
+              {appointment?.end_time && (
+                <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-gray-600">End-Time</span>
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className="text-gray-500" />
+                  <span className="text-sm text-gray-800">
+                    {formatTime(appointment.end_time)} 
+                  </span>
+                </div>
+              </div>
+              )}
+              
 
               {/* Time Zone */}
               <div className="flex items-center justify-between py-2">
@@ -463,7 +500,7 @@ console.log(appointment);
               {/* Client Name */}
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-600">Name</span>
-                <span className="text-sm font-medium text-gray-800">{appointment.name}</span>
+                <span className="text-sm font-medium text-gray-800 truncate max-w-[150px]">{appointment.name}</span>
               </div>
 
               {/* Email */}
@@ -522,9 +559,9 @@ console.log(appointment);
                 </div>
               </div>
             </div>
-         )}
+          )}
 
-          {/* My Appointments Button - Shared across all tabs */}
+          {/* My Appointments Button */}
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
             <button
               onClick={onClose}
@@ -533,7 +570,6 @@ console.log(appointment);
               My Appointments
             </button>
           </div>
-          
         </div>
       </div>
     </>

@@ -4,12 +4,15 @@ import { FileText, Users, Clock, Calendar, Bell, ChevronDown, ChevronRight, Mail
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { usePermission } from "../../hooks/usePermission";
 import { FaWhatsapp } from "react-icons/fa6";
+import { useSelector } from "react-redux";
 
 export default function SliderInterviewPages({ toggleSidebar, id }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeItem, setActiveItem] = useState(location.pathname);
   const [expandedItems, setExpandedItems] = useState({});
+  const { interview } = useSelector(state => state.interview);
+console.log(interview?.type);
 
   const ControlInterview = usePermission("control interview");
   
@@ -17,16 +20,14 @@ export default function SliderInterviewPages({ toggleSidebar, id }) {
 useEffect(() => {
   const currentPath = location.pathname;
   
-  // If we're on any notification route, expand the submenu and set active item
   if (currentPath.includes('notifications')) {
     setExpandedItems(prev => ({
       ...prev,
-      5: true // Expand notification preferences submenu
+      5: true 
     }));
     
-    // Extract the notification type from URL (email, sms, calendar)
     const pathParts = currentPath.split('/');
-    const notificationType = pathParts[pathParts.length - 1]; // Gets the :type parameter
+    const notificationType = pathParts[pathParts.length - 1]; 
     
     setActiveItem(`notifications/${notificationType}`);
   } else {
@@ -48,13 +49,40 @@ const isNotificationRoute = (path) => {
       description: "Set the duration, payment type, and meeting mode.",
       path: `/interview-layout/${id}`
     },
-    // {
-    //   id: 2,
-    //   icon: <Users className="w-5 h-5" />,
-    //   title: "Assigned Recruiters",
-    //   description: "View Recruiters who offer this event type.",
-    //   path: "recruiters-managment"
-    // },
+      ...(interview?.type === "collective-booking"
+    ? [
+        {
+          id: 2,
+          icon: <Users className="w-5 h-5" />,
+          title: "Assigned Groups",
+          description: "View groups who offer this event type.",
+          path: "assign-groups-to-interview" 
+        }
+      ]
+    : []),
+     ...(interview?.type !== "collective-booking" && interview?.type !== "resource"
+    ? [
+    {
+      id: 4,
+      icon: <Users className="w-5 h-5" />,
+      title: "Assign Recruiter",
+      description: "Assign recruiter to this Interview.",
+      path: "assign-recruiter-to-interview" 
+    },
+     ]
+    : []),
+     ...(interview?.type === "resource"
+    ? [
+    {
+      id: 4,
+      icon: <Users className="w-5 h-5" />,
+      title: "Assign Resource",
+      description: "Assign Resource to this Interview.",
+      path: "assign-resource-to-interview" 
+    },
+     ]
+    : [])
+    ,
     ...(ControlInterview ? [{
       id: 3,
       icon: <Clock className="w-5 h-5" />,
@@ -69,13 +97,7 @@ const isNotificationRoute = (path) => {
     //   description: "Set buffers, notices, and intervals.",
     //   path: "scheduling-rules" 
     // },
-    {
-      id: 4,
-      icon: <Users className="w-5 h-5" />,
-      title: "Assign Staff",
-      description: "Assign staff to this Interview.",
-      path: "assign-staff-to-interview" 
-    },
+     
     ...(ControlInterview ? [{
       id: 5,
       icon: <Bell className="w-5 h-5" />,

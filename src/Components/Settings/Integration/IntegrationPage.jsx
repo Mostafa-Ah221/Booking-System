@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import UnifiedIntegrationModal from './IntegrationModal';
 import CalendarCategory from './categoriesIntegrations/CalendarCategory';
@@ -24,17 +24,26 @@ const IntegrationsPage = () => {
   const dispatch = useDispatch();
   const location = useLocation();
 
-  useEffect(() => {
-    if (location.hash) {
-      const sectionId = location.hash.replace("#", "");
-      // تعيين القسم النشط بناءً على الهاش
-      setActiveSection(sectionId);
-      const element = document.getElementById(sectionId);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth" });
-      }
+  useLayoutEffect(() => {
+  const sectionId = location.hash.replace("#", "") || location.state?.scrollTo;
+  
+  if (sectionId) {
+    setActiveSection(sectionId);
+    
+    // جرب scroll مباشرة
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      setTimeout(() => {
+        const elem = document.getElementById(sectionId);
+        if (elem) {
+          elem.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 50);
     }
-  }, [location.hash, location.pathname]);
+  }
+}, [location.hash, location.state?.scrollTo]);
 
   // تعريف دقيق للخدمات مع التمييز الواضح
   const SERVICE_MAPPING = {
@@ -283,6 +292,7 @@ const IntegrationsPage = () => {
             onConnectClick={(serviceName, integrationId) => handleConnectClick(serviceName, integrationId, 'whatsapp')}
             onDeleteClick={handleDeleteWhatsAppSettings}
             refreshTrigger={refreshWhatsAppCategory}
+            active={activeSection === "whatsapp"}
           />
         );
       default:

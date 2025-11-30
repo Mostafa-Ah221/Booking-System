@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { X, ChevronDown, Calendar, Clock, User, Mail } from 'lucide-react';
+import { X, ChevronDown, Calendar, Clock, User, Mail, MapPin } from 'lucide-react';
 import { getCustomers } from '../../../redux/apiCalls/CustomerCallApi';
 import { createAppointment, fetchAppointments } from '../../../redux/apiCalls/AppointmentCallApi';
-import DateTimeSelector from './DateTimeSelector';
+import DateTimeSelector from './DataTimeSections/DateTimeSelector';
 import toast from 'react-hot-toast';
 
 const AddAppointment = ({ 
@@ -14,9 +14,13 @@ const AddAppointment = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+ const [selectedType, setSelectedType] = useState('');
+ const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+
   const [selectedInterview, setSelectedInterview] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [selectedStaff, setSelectedStaff] = useState(null); // أضف state لـ selectedStaff
+  const [selectedStaff, setSelectedStaff] = useState(null); 
   const [showInterviewDropdown, setShowInterviewDropdown] = useState(false);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,6 +31,7 @@ const AddAppointment = ({
   const { customers: { clients = [], loading = false } = {} } = useSelector(state => state.customers);
   const dispatch = useDispatch();
 
+console.log(selectedInterview?.mode);
 
   useEffect(() => {
     dispatch(getCustomers());
@@ -36,8 +41,10 @@ const AddAppointment = ({
     setSelectedInterview(interview);
     setSelectedDate(null);
     setSelectedTime(null);
-    setSelectedStaff(null); // أضف reset لـ selectedStaff عند اختيار interview جديد
+    setEndTime(null);
+    setSelectedStaff(null); 
     setShowInterviewDropdown(false);
+    setSelectedType('');
     setError(null);
   };
 
@@ -48,7 +55,7 @@ const AddAppointment = ({
   };
 
   const handleStaffSelect = (staff) => {
-    setSelectedStaff(staff); // تحديث selectedStaff
+    setSelectedStaff(staff);
   };
 
   const handleSubmit = async () => {
@@ -57,7 +64,6 @@ const AddAppointment = ({
       return;
     }
 
-    // لو فيه staff، لازم تتأكد إن selectedStaff مش فاضي
     if (selectedInterview?.staff?.length > 0 && !selectedStaff) {
       setError('Please select a staff member');
       return;
@@ -96,20 +102,29 @@ const AddAppointment = ({
         '-' + 
         String(selectedDate.getDate()).padStart(2, '0');
       const appointmentData = {
-        interview_id: selectedInterview.id,
-        date: formattedDate, 
-        time: selectedTime, 
-        send_notifications: sendUpdates,
-        time_zone: 'Africa/Cairo', 
-        staff_id: selectedStaff?.id // أضف staff_id لو موجود
-      };
+          interview_id: selectedInterview.id,
+          date: formattedDate, 
+          time: selectedTime, 
+          end_time: selectedInterview?.type === "resource" ? endTime : null,
+          type:selectedType,
+          // send_notifications: sendUpdates,
+          time_zone: 'Africa/Cairo',
+          ...(selectedInterview?.type === "collective-booking" && selectedStaff?.group_id && {
+            group_id: selectedStaff.group_id
+          }),
+          ...(selectedInterview?.type === "resource" && selectedStaff?.id && {
+            resource_id: selectedStaff.id
+          }),
+          ...(selectedInterview?.type !== "collective-booking" && selectedInterview?.type !== "resource" && selectedStaff?.id && {
+            staff_id: selectedStaff.id
+          })
+        };
+      console.log(appointmentData);
       
-      // التأكد من وجود customer ID
       if (!selectedCustomer.id) {
         throw new Error('Customer ID is missing');
       }
       
-      // استدعاء createAppointment function
       const result = await dispatch(createAppointment(selectedCustomer.id, appointmentData));
       
       if (result.success) {
@@ -119,6 +134,7 @@ const AddAppointment = ({
         
         setSelectedDate(null);
         setSelectedTime(null);
+        setEndTime(null);
         setSelectedInterview(null);
         setSelectedCustomer(null);
         setSelectedStaff(null); // reset selectedStaff
@@ -133,18 +149,18 @@ const AddAppointment = ({
       const errorMessage = err.message || 'Failed to schedule appointment. Please try again.';
       setError(errorMessage);
       
-      toast.error(errorMessage, {
-        position: 'top-center',
-        duration: 5000,
-        icon: '❌',
-        style: {
-          borderRadius: '8px',
-          background: '#333',
-          color: '#fff',
-          padding: '12px 16px',
-          fontWeight: '500',
-        },
-      });
+      // toast.error(errorMessage, {
+      //   position: 'top-center',
+      //   duration: 5000,
+      //   icon: '❌',
+      //   style: {
+      //     borderRadius: '8px',
+      //     background: '#333',
+      //     color: '#fff',
+      //     padding: '12px 16px',
+      //     fontWeight: '500',
+      //   },
+      // });
     }
   };
 
@@ -248,7 +264,7 @@ const AddAppointment = ({
           {/* Interview Selection */}
           <div className="mb-6">
             <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-              <Calendar size={16} />
+              {/* <Calendar size={16} /> */}
               Select Interview
             </h3>
             <div className="relative">
@@ -265,7 +281,7 @@ const AddAppointment = ({
                         </span>
                       </div>
                       <div className="text-left">
-                        <div className="font-medium">{selectedInterview.name}</div>
+                        <div className="font-medium truncate block max-w-[150px]">{selectedInterview.name}</div>
                         <div className="text-sm text-gray-500">
                           {selectedInterview.duration ? `${selectedInterview.duration} mins` : ''}
                         </div>
@@ -293,7 +309,7 @@ const AddAppointment = ({
                           </span>
                         </div>
                         <div className="text-left">
-                          <div className="font-medium">{interview.name}</div>
+                          <div className="font-medium truncate block max-w-[150px]">{interview.name}</div>
                           <div className="text-sm text-gray-500">
                             {interview.duration ? `${interview.duration} mins` : ''}
                           </div>
@@ -308,6 +324,62 @@ const AddAppointment = ({
             </div>
           </div>
 
+          {/* Appointment Type Selection - Only show when mode is "online/inperson" */}
+          {selectedInterview?.mode === "online/inperson" && (
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                <MapPin size={16} />
+                Select Appointment Type
+              </h3>
+              <div className="relative">
+                <button
+                  onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                  className="w-full p-3 border border-gray-300 rounded-lg flex items-center justify-between hover:bg-gray-50 transition-colors"
+                >
+                  <span className={selectedType ? "text-gray-900" : "text-gray-500"}>
+                    {selectedType === 'online' && 'Online'}
+                    {selectedType === 'inhouse' && 'In House'}
+                    {selectedType === 'athome' && 'At Home'}
+                    {!selectedType && 'Select appointment type'}
+                  </span>
+                  <ChevronDown size={16} className="text-gray-400" />
+                </button>
+
+                {showTypeDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                    <button
+                      onClick={() => {
+                        setSelectedType('online');
+                        setShowTypeDropdown(false);
+                      }}
+                      className="w-full p-3 hover:bg-gray-50 transition-colors border-b border-gray-100 text-left"
+                    >
+                      <span className="text-gray-800">Online</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedType('inhouse');
+                        setShowTypeDropdown(false);
+                      }}
+                      className="w-full p-3 hover:bg-gray-50 transition-colors border-b border-gray-100 text-left"
+                    >
+                      <span className="text-gray-800">In House</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedType('athome');
+                        setShowTypeDropdown(false);
+                      }}
+                      className="w-full p-3 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <span className="text-gray-800">At Home</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Date & Time Selector */}
           {selectedInterview && (
             <DateTimeSelector
@@ -316,10 +388,13 @@ const AddAppointment = ({
               selectedTime={selectedTime}
               onDateSelect={setSelectedDate}
               onTimeSelect={setSelectedTime}
-              onStaffSelect={handleStaffSelect} // أضف prop لتمرير selectedStaff
+              onEndTimeSelect={setEndTime}
+              selectedEndTime={endTime}
+              onStaffSelect={handleStaffSelect} 
               mode={mode}
             />
           )}
+
 
           {/* Selected Details Summary */}
           {(selectedCustomer || selectedInterview || selectedDate || selectedTime || selectedStaff) && (
@@ -341,7 +416,7 @@ const AddAppointment = ({
                   <Calendar size={16} className="text-gray-500" />
                   <div>
                     <div className="text-sm font-medium">Interview Type</div>
-                    <div className="text-sm text-gray-600">{selectedInterview.name} ({selectedInterview.duration} mins)</div>
+                    <div className="text-sm text-gray-600 truncate block max-w-[150px] ">{selectedInterview.name} </div>
                   </div>
                 </div>
               )}
@@ -394,7 +469,8 @@ const AddAppointment = ({
               !selectedTime ||
               !selectedInterview ||
               !selectedCustomer ||
-              (selectedInterview?.staff?.length > 0 && !selectedStaff) || // أضف الشرط الخاص بـ staff
+              (selectedInterview?.staff?.length > 0 && !selectedStaff) || 
+              (selectedInterview?.mode === "online/inperson" && !selectedType) ||
               isProcessing
             }
             className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center ${

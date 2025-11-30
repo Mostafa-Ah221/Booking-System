@@ -21,13 +21,15 @@ const InterviewTypeCard = ({ icon, title, description, path }) => {
   return (
     <div 
       onClick={isDisabled ? undefined : handleNavigation} 
-      className={`bg-white p-6 rounded-lg shadow transition-shadow duration-200 relative group 
+      className={`bg-white p-1 rounded-lg shadow transition-shadow duration-200 relative group 
         ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:shadow-lg'}
       `}
     >
       <div className="space-y-4">
         <div className="flex items-center space-x-4">
+          <div className="h-20 w-20 bg-gradient-to-tr  from-blue-100 via-white to-white flex items-center justify-center">
           <img src={icon} alt={title} className="w-12 h-12" />
+          </div>
           <div>
             <h3 className="text-xl font-bold">{title}</h3>
             <p className="text-gray-600">
@@ -59,15 +61,15 @@ const navigate = useNavigate();
     },
     {
       icon: collectiveIcon,
-      title: "Collective Booking",
+      title: "collective-booking",
       description: "panel interviews, board meetings, and any many-to-one meetings",
-      path: ""
+      path: "InterFormOne"
     },
     {
       icon: resourceIcon,
-      title: "Resource",
+      title: "resource",
       description: "conference room bookings and equipment rentals",
-      path: ""
+      path: "InterFormOne"
     },
   ];
 

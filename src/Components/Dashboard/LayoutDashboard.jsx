@@ -7,11 +7,10 @@ export default function LayoutDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   
-  // Check if current path contains "setting"
   const isSettingsPage = location.pathname.includes("/layoutDashboard/setting");
 
   return (
-    <div className="min-h-screen flex bg-gray-100 overflow-hidden">
+    <div className="h-screen flex bg-gray-100 overflow-hidden">
       {/* Sidebar - Hidden on desktop when in settings */}
       <div className={`fixed inset-y-0 left-0 z-10 w-64 bg-white transition-transform duration-300 ease-in-out 
           ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} 
@@ -21,17 +20,19 @@ export default function LayoutDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className={`flex flex-col flex-grow w-full overflow-y-auto h-screen transition-all duration-300
+      <div className={`flex flex-col flex-1 transition-all duration-300
           ${isSettingsPage ? "" : "lg:ml-64"}`}
       >
-        {/* Navbar */}
-        <NavDashbord 
-          isSidebarOpen={isSidebarOpen}
-          setIsSidebarOpen={setIsSidebarOpen}
-        />
+        {/* Navbar - Fixed height */}
+        <div className="flex-shrink-0">
+          <NavDashbord 
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+          />
+        </div>
 
-        {/* Page Content */}
-        <div className="overflow-y-auto flex-grow">
+        {/* Page Content - This is the ONLY place with scroll */}
+        <div className="flex-1 overflow-y-auto">
           <Outlet />
         </div>
       </div>

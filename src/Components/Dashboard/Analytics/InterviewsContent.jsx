@@ -7,6 +7,7 @@ function InterviewsContent({ data, filters, onFiltersChange }) {
     const [localFilters, setLocalFilters] = useState(filters || {});
 
     const interviewsData = data?.data?.interviews_by_status || {};
+    console.log(data);
     
     const stats = [
         {
@@ -18,6 +19,10 @@ function InterviewsContent({ data, filters, onFiltersChange }) {
     ];
 
     const handleFilterChange = (key, value) => {
+        const numValue = parseFloat(value);
+    if (value !== '' && numValue < 0) {
+        return; 
+    }
         const newFilters = {
             ...localFilters,
             [key]: value
@@ -312,25 +317,25 @@ function InterviewsContent({ data, filters, onFiltersChange }) {
                                     {
                                         id: 'types',
                                         label: 'Interview Types',
-                                        value: typeData.reduce((sum, item) => sum + item.value, 0),
+                                        value: typeData.reduce((sum, item) => +sum + +item.value, 0),
                                         color: '#4f46e5'
                                     },
                                     {
                                         id: 'currencies',
                                         label: 'Currencies',
-                                        value: currencyData.reduce((sum, item) => sum + item.value, 0),
+                                        value: currencyData.reduce((sum, item) => +sum + +item.value, 0),
                                         color: '#10b981'
                                     },
                                     {
                                         id: 'durations',
                                         label: 'Duration Periods',
-                                        value: durationData.reduce((sum, item) => sum + item.value, 0),
+                                        value: durationData.reduce((sum, item) => +sum + +item.value, 0),
                                         color: '#f59e0b'
                                     },
                                     {
                                         id: 'prices',
                                         label: 'Price Intervals',
-                                        value: priceData.reduce((sum, item) => sum + item.value, 0),
+                                        value: priceData.reduce((sum, item) => +sum + +item.value, 0),
                                         color: '#ef4444'
                                     }
                                 ].filter(item => item.value > 0)}

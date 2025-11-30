@@ -1,48 +1,57 @@
 import { Calendar, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 function Staff_StatisticsCards({ data }) {
-  const stats = data?.data?.stats || {};
+   const stats = data?.data?.stats  || {};
+  const appointmentsStats = data?.data?.appointments_by_status || {};
+  const datePeriods = data?.data?.date_periods || {};
   
-  const cards = [
+ const cards = [
     {
       title: 'Total Appointments',
-      value: stats.total_appointments || 0,
+      value: stats?.total_appointments || 0,
       icon: Calendar,
       color: 'blue',
-      change: '+12.5%',
       changeType: 'positive'
     },
     {
       title: 'Upcoming Appointments',
-      value: stats.upcoming_appointments || 0,
+      value: appointmentsStats.upcoming?.count || 0,
       icon: Clock,
       color: 'yellow',
-      change: '+8.2%',
+      change: `${appointmentsStats.upcoming?.percentage || 0}%`,
       changeType: 'positive'
     },
     {
       title: 'Passed Appointments',
-      value: stats.passed_appointments || 0,
+      value: appointmentsStats.passed?.count || 0,
       icon: CheckCircle,
       color: 'green',
-      change: '+15.3%',
+      change: `${appointmentsStats.passed?.percentage || 0}%`,
       changeType: 'positive'
     },
     {
       title: 'Completed Appointments',
-      value: stats.completed_appointments || 0,
+      value: appointmentsStats.completed?.count || 0,
       icon: CheckCircle,
       color: 'green',
-      change: '+15.3%',
+      change: `${appointmentsStats.completed?.percentage || 0}%`,
       changeType: 'positive'
     },
     {
       title: 'Cancelled Appointments',
-      value: stats.cancelled_appointments || 0,
+      value: appointmentsStats.cancelled?.count || 0,
       icon: XCircle,
       color: 'red',
-      change: '-2.1%',
+      change: `${appointmentsStats.cancelled?.percentage || 0}%`,
       changeType: 'negative'
+    },
+    {
+      title: 'Custom Range Appointments',
+      value: datePeriods.appointments_by_custom_range?.count || 0,
+      icon: Calendar,
+      color: 'green',
+      change: `${datePeriods.appointments_by_custom_range?.percentage || 0}%`,
+      changeType: 'positive'
     }
   ];
 
@@ -75,7 +84,7 @@ function Staff_StatisticsCards({ data }) {
               <span className={`text-sm font-medium ${card.changeType === 'positive' ? 'text-green-500' : 'text-red-500'}`}>
                 {card.change}
               </span>
-              <span className="text-sm text-gray-500 ml-1">from last week</span>
+              {/* <span className="text-sm text-gray-500 ml-1">from last week</span> */}
             </div>
           </div>
         );

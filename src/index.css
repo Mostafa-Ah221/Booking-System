@@ -98,10 +98,23 @@ body {
       display: none !important;
     }
     .booking-details {
-      position: static; /* استخدام position: static بدلاً من absolute لضمان الظهور */
+      position: static; 
       width: 100%;
       padding: 20px;
       background: white;
       box-sizing: border-box;
     }
   }
+
+    /* style phone input */
+    .react-tel-input .country-list .search-emoji {
+    padding: 3px !important;
+    margin-top: 5px !important;
+  }
+  .react-tel-input .country-list{
+    z-index: 999 !important;
+  }
+  .react-timezone-select {
+    width: 100% !important;
+  }
+ 

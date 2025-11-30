@@ -1,25 +1,124 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Eye, Upload } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronRight, Eye, EyeOff, Upload, Check, X } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { updateTheme, updateThemeStaff } from '../../../../redux/apiCalls/ThemeCallApi';
+import { LAYOUT_TO_THEME } from '../LayoutWorkspaceTheme/LayoutShapes/themeMapping';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
-const ThemePanel = ({ onLayoutChange, onColorChange, onHeaderChange, onPagePropertiesChange }) => {
-  const [openSection, setOpenSection] = useState(null);
+const ThemePanel = ({
+  header,
+  pageProperties,
+  socialLinks,
+  onLayoutChange,
+  onColorChange,
+  onHeaderChange,
+  onPagePropertiesChange,
+  onFooterChange,
+}) => {
+
+  const dispatch = useDispatch();
+  const theme = useSelector(state => state.themes?.theme?.theme);
+  console.log(theme);
+  
+  const [openSection, setOpenSection] = useState('');
   const [selectedLayout, setSelectedLayout] = useState('default');
-  const [selectedColor, setSelectedColor] = useState('bg-indigo-600');
-  const [header, setHeader] = useState({ title: 'Ahmed', logo: null });
-  const [pageProperties, setPageProperties] = useState({
-    title: 'Welcome!',
-    description: 'Book your appointment in a few simple steps...',
-    language: 'Based on customer location',
-  });
+  const [selectedColor, setSelectedColor] = useState(null);
+  const [logoDeleted, setLogoDeleted] = useState(false);
+  const userType = localStorage.getItem("userType");
+
+  useEffect(() => {
+    if (theme) {
+      // Helper function
+      const toBool = (val) => val === 1 || val === "1" || val === true;
+      
+      // Layout
+      const reverseMap = Object.fromEntries(
+        Object.entries(LAYOUT_TO_THEME).map(([ui, api]) => [api, ui])
+      );
+      const uiLayout = reverseMap[theme.theme];
+      if (uiLayout) {
+        setSelectedLayout(uiLayout);
+        onLayoutChange(uiLayout);
+      }
+
+      // Colors
+      let parsedColors = {};
+      try { 
+        parsedColors = JSON.parse(theme.colors || '{}'); 
+      } catch {}
+
+      if (parsedColors.primary) {
+        // Find matching color option
+        const matchingColor = colorOptions.find(
+          opt => `${opt.color1}-${opt.color2}` === parsedColors.primary
+        );
+        if (matchingColor) {
+          setSelectedColor(matchingColor);
+          onColorChange(matchingColor);
+        }
+      }
+
+      // Header
+      if (theme.nickname) {
+        onHeaderChange({
+          ...header,
+          title: theme.nickname,
+          visibleTitle: toBool(theme.show_nickname),
+          visibleLogo: toBool(theme.show_photo),
+          logo: logoDeleted ? null : (theme.photo || header.logo) // لا تسترجع اللوجو لو تم حذفه
+        });
+      }
+
+      // Page Properties
+      if (theme.page_title || theme.page_description) {
+        onPagePropertiesChange({
+          ...pageProperties,
+          title: theme.page_title || pageProperties.title,
+          description: theme.page_description || pageProperties.description,
+          visibleTitle: toBool(theme.show_page_title),
+          visibleDescription: toBool(theme.show_page_description)
+        });
+      }
+
+      // Footer
+      onFooterChange({
+        facebook: theme.footer_facebook || "",
+        visibleFacebook: toBool(theme.show_facebook),
+        
+        instagram: theme.footer_instagram || "",
+        visibleInstagram: toBool(theme.show_instagram),
+        
+        x: theme.footer_x || "",
+        visibleX: toBool(theme.show_x),
+        
+        linkedin: theme.footer_linkedin || "",
+        visibleLinkedin: toBool(theme.show_linkedin),
+        
+        phone: theme.footer_phone || "",
+        visiblePhone: toBool(theme.show_phone),
+        
+        email: theme.footer_email || "",
+        visibleEmail: toBool(theme.show_email)
+      });
+    }
+  }, [theme]);
 
   const toggleSection = (section) => {
-    setOpenSection(openSection === section ? null : section);
+    setOpenSection(openSection === section ? '' : section);
   };
 
   const colorOptions = [
-    'bg-indigo-600', 'bg-red-500', 'bg-purple-500', 'bg-blue-400', 
-    'bg-emerald-500', 'bg-purple-700', 'bg-pink-700', 'bg-blue-700',
-    'bg-green-600', 'bg-orange-600', 'bg-orange-500'
+    { color1: '#F5F5F5', color2: '#A6517D', textColor: '#000000', type: 'split' },
+    { color1: '#F6CB45', color2: '#1C3E74', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#F9E062', color2: '#33373A', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#F6CB45', color2: '#3B817B', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#FFC900', color2: '#2651C7', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#EB5380', color2: '#784CBC', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#FF5D6D', color2: '#755B5B', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#F5F5F5', color2: '#E95646', textColor: '#000000', type: 'split' },
+    { color1: '#F5F5F5', color2: '#27D8A1', textColor: '#000000', type: 'split' },
+    { color1: '#F5F5F5', color2: '#FF427F', textColor: '#000000', type: 'split' },
   ];
 
   const handleLayoutChange = (layout) => {
@@ -34,14 +133,27 @@ const ThemePanel = ({ onLayoutChange, onColorChange, onHeaderChange, onPagePrope
 
   const handleHeaderChange = (field, value) => {
     const updatedHeader = { ...header, [field]: value };
-    setHeader(updatedHeader);
+    
+    // إذا تم حذف اللوجو، نضع علامة
+    if (field === 'logo' && value === null) {
+      setLogoDeleted(true);
+    } else if (field === 'logo' && value !== null) {
+      setLogoDeleted(false);
+    }
+    
     onHeaderChange(updatedHeader);
   };
 
   const handlePagePropertiesChange = (field, value) => {
     const updatedPageProperties = { ...pageProperties, [field]: value };
-    setPageProperties(updatedPageProperties);
     onPagePropertiesChange(updatedPageProperties);
+  };
+
+  const handleSocialLinksChange = (field, value) => {
+    const updatedSocialLinks = { ...socialLinks, [field]: value };
+    if (onFooterChange) {
+      onFooterChange(updatedSocialLinks);
+    }
   };
 
   const handleLogoUpload = (e) => {
@@ -55,125 +167,282 @@ const ThemePanel = ({ onLayoutChange, onColorChange, onHeaderChange, onPagePrope
     }
   };
 
-  return (
-    <div className="w-full h-full max-w-md bg-white rounded-lg shadow">
-      {/* Theme Section */}
-      <div className="border-b">
-        <button
-          onClick={() => toggleSection('theme')}
-          className="w-full px-4 py-3 flex items-center justify-between text-left"
-        >
-          <span className="font-medium">Theme</span>
-          {openSection === 'theme' ? (
-            <ChevronDown className="w-5 h-5 text-gray-500" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-gray-500" />
-          )}
-        </button>
-        
-        {openSection === 'theme' && (
-          <div className="p-4 bg-gray-50">
-            <div className="mb-4">
-              <h3 className="text-sm font-medium mb-2">Layouts</h3>
-              <div className="flex gap-4">
-                <div 
-                  onClick={() => handleLayoutChange('sleek')}
-                  className={`border-2 rounded-lg p-2 bg-white cursor-pointer ${
-                    selectedLayout === 'sleek' ? 'border-indigo-600' : 'border-gray-200'
-                  }`}
-                >
-                  <div className="w-24 h-24 bg-gray-100 rounded relative">
-                    {selectedLayout === 'sleek' && (
-                      <div className="absolute bottom-2 right-2">
-                        <div className="w-4 h-4 bg-indigo-600 rounded-full flex items-center justify-center">
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
-                          </svg>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <p className="mt-2 text-sm text-center">Sleek</p>
-                </div>
+  const handleSaveTheme = () => {
+    const apiThemeValue = LAYOUT_TO_THEME[selectedLayout];
 
-                <div 
-                  onClick={() => handleLayoutChange('default')}
-                  className={`border-2 rounded-lg p-2 bg-white cursor-pointer ${
-                    selectedLayout === 'default' ? 'border-indigo-600' : 'border-gray-200'
-                  }`}
-                >
-                  <div className="w-24 h-24 bg-gray-100 rounded relative">
-                    {selectedLayout === 'default' && (
-                      <div className="absolute bottom-2 right-2">
-                        <div className="w-4 h-4 bg-indigo-600 rounded-full flex items-center justify-center">
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
-                          </svg>
-                        </div>
+    const payload = {
+      theme: apiThemeValue,
+      colors: JSON.stringify({
+        primary: `${selectedColor.color1}-${selectedColor.color2}`,
+        text_color: selectedColor.textColor,
+      }),
+    };
+    if (userType === "staff") {
+      dispatch(updateThemeStaff(payload));
+    } else {
+      dispatch(updateTheme(payload));
+    }
+  };
+
+  const handleSaveHeader = async () => {
+    const formData = new FormData();
+    formData.append('nickname', header.title);
+    formData.append('show_nickname', header.visibleTitle ? 1 : 0);
+    formData.append('show_photo', header.visibleLogo ? 1 : 0);
+
+    if (header.logo) {
+      if (typeof header.logo === 'string' && header.logo.startsWith('data:')) {
+        const response = await fetch(header.logo);
+        const blob = await response.blob();
+        const file = new File([blob], 'logo.png', { type: 'image/png' });
+        formData.append('photo', file);
+      } else if (header.logo instanceof File) {
+        formData.append('photo', header.logo);
+      }
+    } else if (logoDeleted) {
+      // إرسال قيمة فارغة عند حذف اللوجو
+      formData.append('photo', '');
+      formData.append('delete_photo', '1'); // إضافة flag للحذف
+    }
+
+    if (userType === "staff") {
+      await dispatch(updateThemeStaff(formData));
+    } else {
+      await dispatch(updateTheme(formData));
+    }
+    
+    // بعد الحفظ الناجح، نعيد تعيين العلامة
+    if (logoDeleted) {
+      setLogoDeleted(false);
+    }
+  };
+
+  const handleSaveFooter = () => {
+    const payload = {
+      footer_facebook: socialLinks.facebook,
+      show_facebook: socialLinks.visibleFacebook ? 1 : 0,
+      footer_instagram: socialLinks.instagram,
+      show_instagram: socialLinks.visibleInstagram ? 1 : 0,
+      footer_x: socialLinks.x,
+      show_x: socialLinks.visibleX ? 1 : 0,
+      footer_linkedin: socialLinks.linkedin,
+      show_linkedin: socialLinks.visibleLinkedin ? 1 : 0,
+      footer_phone: socialLinks.phone,
+      show_phone: socialLinks.visiblePhone ? 1 : 0,
+      footer_email: socialLinks.email,
+      show_email: socialLinks.visibleEmail ? 1 : 0,
+    };
+    if (userType === "staff") {
+      dispatch(updateThemeStaff(payload));
+    } else {
+      dispatch(updateTheme(payload));
+    }
+  };
+
+  // دالة لإزالة tags الزائدة من HTML وإبقاء التنسيق فقط
+  const cleanHtmlForSave = (html) => {
+    // إزالة <p> tags الخارجية فقط إذا كان المحتوى بسيط
+    let cleaned = html.trim();
+    
+    // إذا كان المحتوى يبدأ وينتهي بـ <p> واحد فقط، نزيله
+    if (cleaned.startsWith('<p>') && cleaned.endsWith('</p>') && 
+        (cleaned.match(/<p>/g) || []).length === 1) {
+      cleaned = cleaned.slice(3, -4);
+    }
+    
+    return cleaned;
+  };
+
+  const handleSavePageProperties = () => {
+    const payload = {
+      page_title: pageProperties.title,
+      page_description: cleanHtmlForSave(pageProperties.description), // تنظيف HTML
+      show_page_title: pageProperties.visibleTitle ? 1 : 0,
+      show_page_description: pageProperties.visibleDescription ? 1 : 0,
+    };
+    if (userType === "staff") {
+      dispatch(updateThemeStaff(payload));
+    } else {
+      dispatch(updateTheme(payload));
+    }
+  };
+
+  // React Quill modules configuration
+  const quillModules = {
+    toolbar: [
+      ['bold', 'italic', 'underline'],
+      [{ 'align': [] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      ['link']
+    ]
+  };
+
+  // React Quill formats - إزالة paragraph format
+  const quillFormats = [
+    'bold', 'italic', 'underline',
+    'align',
+    'list', 'bullet',
+    'link'
+  ];
+
+  return (
+    <div className="w-full max-w-md bg-white rounded-lg shadow pb-3">
+      <div className="divide-y">
+        {/* Theme Section */}
+        <div>
+          <div 
+            className="flex justify-between items-center p-4 cursor-pointer" 
+            onClick={() => toggleSection('theme')}
+          >
+            <span className="text-sm font-medium">Theme</span>
+            {openSection === 'theme' ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+          </div>
+
+          {openSection === 'theme' && (
+            <div className="p-4 bg-gray-50">
+              <div className="mb-4">
+                <p className="text-sm font-medium mb-2">Layouts</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div
+                    onClick={() => handleLayoutChange('sleek')}
+                    className={`p-2 bg-white rounded-lg cursor-pointer relative border-2 ${
+                      selectedLayout === 'sleek' ? 'border-indigo-600' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="mb-1 text-sm">Sleek</div>
+                    <div className="w-full h-3 bg-gray-100 rounded mb-1"></div>
+                    <div className="w-full h-3 bg-gray-100 rounded mb-1"></div>
+                    <div className="w-full h-3 bg-gray-100 rounded"></div>
+                    {selectedLayout === 'sleek' && (
+                      <div className="absolute bottom-0 right-0 bg-indigo-600 rounded-tl-md rounded-br-md p-1">
+                        <Check size={17} className="text-white" />
                       </div>
                     )}
                   </div>
-                  <p className="mt-2 text-sm text-center">Default</p>
+
+                  <div
+                    onClick={() => handleLayoutChange('default')}
+                    className={`p-2 bg-white rounded-lg cursor-pointer relative border-2 ${
+                      selectedLayout === 'default' ? 'border-indigo-600' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="mb-1 text-sm">Default</div>
+                    <div className="w-full h-3 bg-gray-100 rounded mb-1"></div>
+                    <div className="w-full h-3 bg-gray-100 rounded mb-1"></div>
+                    <div className="w-full h-3 bg-gray-100 rounded"></div>
+                    {selectedLayout === 'default' && (
+                      <div className="absolute bottom-0 right-0 bg-indigo-600 rounded-tl-md rounded-br-md p-1">
+                        <Check size={17} className="text-white" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            {selectedLayout === 'sleek' && (
-              <div>
-                <h3 className="text-sm font-medium mb-2">Color Options</h3>
-                <div className="grid grid-cols-6 gap-2">
+
+              <div className="mb-4">
+                <p className="text-sm font-medium mb-2">Color Options</p>
+                <div className="grid grid-cols-5 gap-2">
                   {colorOptions.map((color, index) => (
                     <button
                       key={index}
                       onClick={() => handleColorChange(color)}
-                      className={`w-8 h-8 rounded-full ${color} ${
-                        selectedColor === color ? 'ring-2 ring-offset-2 ring-indigo-600' : ''
+                      className={`w-10 h-10 rounded-full overflow-hidden border-2 transition-all ${
+                        selectedColor && 
+                        selectedColor.color1 === color.color1 && 
+                        selectedColor.color2 === color.color2
+                          ? 'ring-2 ring-offset-2 ring-indigo-600 border-indigo-600' 
+                          : 'border-gray-300'
                       }`}
+                      style={{
+                        background: `linear-gradient(135deg, ${color.color1} 50%, ${color.color2} 50%)`
+                      }}
+                      title={`${color.color1} / ${color.color2}`}
                     />
                   ))}
                 </div>
               </div>
-            )}
-            
-            <button className="mt-4 w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">
-              Save
-            </button>
-          </div>
-        )}
-      </div>
 
-      {/* Header Section */}
-      <div className="border-b">
-        <button
-          onClick={() => toggleSection('header')}
-          className="w-full px-4 py-3 flex items-center justify-between text-left"
-        >
-          <span className="font-medium">Header</span>
-          {openSection === 'header' ? (
-            <ChevronDown className="w-5 h-5 text-gray-500" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-gray-500" />
+              <button 
+                onClick={handleSaveTheme} 
+                className="py-2 px-5 text-sm rounded-lg w-24 text-white bg-[#5646A5]"
+                disabled={!selectedColor}
+              >
+                Save
+              </button>
+            </div>
           )}
-        </button>
-        
-        {openSection === 'header' && (
-          <div className="p-4 bg-gray-50">
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Title</label>
-              <div className="relative">
+        </div>
+
+        {/* Header Section */}
+        <div>
+          <div
+            className="flex justify-between items-center p-4 cursor-pointer"
+            onClick={() => toggleSection('header')}
+          >
+            <span className="text-sm font-medium">Header</span>
+            {openSection === 'header' ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+          </div>
+
+          {openSection === 'header' && (
+            <div className="p-4 bg-gray-50">
+              <div>
+                <div className='flex justify-between mb-1'>
+                  <label className="block text-sm font-medium">Title</label>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handleHeaderChange('visibleTitle', !header.visibleTitle)}
+                  >
+                    {header.visibleTitle ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={header.title}
                   onChange={(e) => handleHeaderChange('title', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full p-2 border rounded-lg mb-4 text-sm"
+                  placeholder="Header Title"
                 />
-                <Eye className="absolute right-3 top-2.5 w-5 h-5 text-gray-400" />
               </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Logo</label>
-              <div className="border rounded-md px-3 py-2 flex justify-between items-center">
+
+              <div>
+                <div className='flex justify-between mb-1'>
+                  <label className="block text-sm font-medium">Logo</label>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handleHeaderChange('visibleLogo', !header.visibleLogo)}
+                  >
+                    {header.visibleLogo ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                {header.logo ? (
+                  <div className="flex items-center justify-between w-full p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50 mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded overflow-hidden">
+                        <img src={header.logo} alt="Logo" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-sm text-gray-600">Logo uploaded</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <label htmlFor="logo-upload" className="text-indigo-600 text-sm hover:underline cursor-pointer">
+                        Change
+                      </label>
+                      <button
+                        onClick={() => handleHeaderChange('logo', null)}
+                        className="text-red-600 text-sm hover:underline"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="logo-upload"
+                    className="w-full p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-between transition-colors mb-4 cursor-pointer"
+                  >
+                    <span className="text-sm text-gray-600">Upload logo</span>
+                    <Upload size={17} className='text-gray-500' />
+                  </label>
+                )}
                 <input
                   type="file"
                   accept="image/*"
@@ -181,78 +450,212 @@ const ThemePanel = ({ onLayoutChange, onColorChange, onHeaderChange, onPagePrope
                   className="hidden"
                   id="logo-upload"
                 />
-                <label htmlFor="logo-upload" className="cursor-pointer">
-                  <span className="text-gray-500">Upload Logo</span>
-                </label>
-                <Upload className="w-5 h-5 text-gray-400" />
               </div>
-            </div>
-            
-            <button className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">
-              Save
-            </button>
-          </div>
-        )}
-      </div>
 
-      {/* Page Properties Section */}
-      <div className="border-b">
-        <button
-          onClick={() => toggleSection('properties')}
-          className="w-full px-4 py-3 flex items-center justify-between text-left"
-        >
-          <span className="font-medium">Page Properties</span>
-          {openSection === 'properties' ? (
-            <ChevronDown className="w-5 h-5 text-gray-500" />
-          ) : (
-            <ChevronRight className="w-5 h-5 text-gray-500" />
+              <button onClick={handleSaveHeader} className="py-2 px-5 text-sm rounded-lg w-24 text-white bg-[#5646A5]">
+                Save
+              </button>
+            </div>
           )}
-        </button>
-        
-        {openSection === 'properties' && (
-          <div className="p-4 bg-gray-50">
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Title</label>
-              <div className="relative">
+        </div>
+
+        {/* Footer Section */}
+        <div>
+          <div
+            className="flex justify-between items-center p-4 cursor-pointer"
+            onClick={() => toggleSection('footer')}
+          >
+            <span className="text-sm font-medium">Footer</span>
+            {openSection === 'footer' ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+          </div>
+
+          {openSection === 'footer' && (
+            <div className="p-4 bg-gray-50 space-y-3">
+              {/* Facebook */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="text-sm text-gray-700">Facebook</p>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handleSocialLinksChange('visibleFacebook', !socialLinks.visibleFacebook)}
+                  >
+                    {socialLinks.visibleFacebook ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://facebook.com/yourpage"
+                  value={socialLinks.facebook}
+                  onChange={(e) => handleSocialLinksChange('facebook', e.target.value)}
+                  className="w-full p-2 border rounded-lg text-sm"
+                />
+              </div>
+
+              {/* Instagram */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="text-sm text-gray-700">Instagram</p>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handleSocialLinksChange('visibleInstagram', !socialLinks.visibleInstagram)}
+                  >
+                    {socialLinks.visibleInstagram ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://instagram.com/yourhandle"
+                  value={socialLinks.instagram}
+                  onChange={(e) => handleSocialLinksChange('instagram', e.target.value)}
+                  className="w-full p-2 border rounded-lg text-sm"
+                />
+              </div>
+
+              {/* X (Twitter) */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="text-sm text-gray-700">X</p>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handleSocialLinksChange('visibleX', !socialLinks.visibleX)}
+                  >
+                    {socialLinks.visibleX ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://x.com/yourhandle"
+                  value={socialLinks.x}
+                  onChange={(e) => handleSocialLinksChange('x', e.target.value)}
+                  className="w-full p-2 border rounded-lg text-sm"
+                />
+              </div>
+
+              {/* LinkedIn */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="text-sm text-gray-700">LinkedIn</p>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handleSocialLinksChange('visibleLinkedin', !socialLinks.visibleLinkedin)}
+                  >
+                    {socialLinks.visibleLinkedin ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://linkedin.com/in/yourprofile"
+                  value={socialLinks.linkedin}
+                  onChange={(e) => handleSocialLinksChange('linkedin', e.target.value)}
+                  className="w-full p-2 border rounded-lg text-sm"
+                />
+              </div>
+
+              {/* Phone */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="text-sm text-gray-700">Phone</p>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handleSocialLinksChange('visiblePhone', !socialLinks.visiblePhone)}
+                  >
+                    {socialLinks.visiblePhone ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="tel"
+                  placeholder="+1234567890"
+                  value={socialLinks.phone}
+                  onChange={(e) => handleSocialLinksChange('phone', e.target.value)}
+                  className="w-full p-2 border rounded-lg text-sm"
+                />
+              </div>
+
+              {/* Email */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="text-sm text-gray-700">Email</p>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handleSocialLinksChange('visibleEmail', !socialLinks.visibleEmail)}
+                  >
+                    {socialLinks.visibleEmail ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={socialLinks.email}
+                  onChange={(e) => handleSocialLinksChange('email', e.target.value)}
+                  className="w-full p-2 border rounded-lg text-sm"
+                />
+              </div>
+
+              <button onClick={handleSaveFooter} className="py-2 px-5 text-sm rounded-lg w-24 text-white bg-[#5646A5]">
+                Save
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Page Properties Section */}
+        <div>
+          <div
+            className="flex justify-between items-center p-4 cursor-pointer"
+            onClick={() => toggleSection('properties')}
+          >
+            <span className="text-sm font-medium">Page Properties</span>
+            {openSection === 'properties' ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+          </div>
+
+          {openSection === 'properties' && (
+            <div className="p-4 bg-gray-50">
+              <div>
+                <div className='flex justify-between mb-1'>
+                  <label className="block text-sm font-medium">Page Title</label>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handlePagePropertiesChange('visibleTitle', !pageProperties.visibleTitle)}
+                  >
+                    {pageProperties.visibleTitle ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={pageProperties.title}
                   onChange={(e) => handlePagePropertiesChange('title', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
+                  className="w-full p-2 border rounded-lg mb-4 text-sm"
+                  placeholder="Page Title"
                 />
-                <Eye className="absolute right-3 top-2.5 w-5 h-5 text-gray-400" />
               </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Description</label>
-              <div className="relative">
-                <input
-                  type="text"
+
+              <div>
+                <div className='flex justify-between mb-1'>
+                  <label className="block text-sm font-medium">Page Description</label>
+                  <button 
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => handlePagePropertiesChange('visibleDescription', !pageProperties.visibleDescription)}
+                  >
+                    {pageProperties.visibleDescription ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <ReactQuill
+                  theme="snow"
                   value={pageProperties.description}
-                  onChange={(e) => handlePagePropertiesChange('description', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
+                  onChange={(content) => handlePagePropertiesChange('description', content)}
+                  placeholder="Page Description"
+                  className="mb-4 bg-white rounded-lg"
+                  modules={quillModules}
+                  formats={quillFormats}
                 />
-                <Eye className="absolute right-3 top-2.5 w-5 h-5 text-gray-400" />
               </div>
+
+              <button onClick={handleSavePageProperties} className="py-2 px-5 text-sm rounded-lg w-24 text-white bg-[#5646A5]">
+                Save
+              </button>
             </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Language</label>
-              <select 
-                value={pageProperties.language}
-                onChange={(e) => handlePagePropertiesChange('language', e.target.value)}
-                className="w-full px-3 py-2 border rounded-md bg-white"
-              >
-                <option>Based on customer location</option>
-              </select>
-            </div>
-            
-            <button className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">
-              Save
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

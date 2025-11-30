@@ -17,7 +17,6 @@ import BasicInfo from './Components/Settings/Organization/Basic-Info';
 import CreateInterviewModal from './Components/Dashboard/CreateNewInterview/CreateInterviewPage';
 import CustomDomain from './Components/Settings/Organization/CustomDomain';
 import Availability from './Components/Dashboard/Profile_Page/Availability';
-import InterviewDetails from './Components/Dashboard/InterviewsPages/InterViewPage/InterviewDetails';
 import InterviewLayut from './Components/Dashboard/InterviewsPages/InterviewLayut';
 import SchedulingRules from './Components/Dashboard/InterviewsPages/InterViewPage/SchedulingRules';
 import BookingForm from './Components/Dashboard/InterviewsPages/InterViewPage/BookingForm';
@@ -30,6 +29,7 @@ import NotificationSettings from './Components/Settings/ProductCustom/Notificati
 import CustomLabels from './Components/Settings/ProductCustom/CustomLabels';
 import RolesPermissions from './Components/Settings/ProductCustom/RolesPermissions';
 import Customers from './Components/Settings/Modules/Customers';
+import EditCustomer from './Components/Settings/Modules/EditCustomer';
 import Reports from './Components/Settings/Modules/Reports';
 import InterviewFormOne from './Components/Dashboard/CreateNewInterview/InterviewFormOne';
 import PrivacyAndSecurity from './Components/Settings/Administration/PrivacyAndSecurity';
@@ -53,9 +53,9 @@ import Analytics from './Components/Dashboard/Analytics/Analytics';
 import ResetPassword from './Components/Auth/ForgetPassword/ResetPassword';
 import AppointmentConfirmation from './Components/embeded/AppointmentConfirmation';
 import BookingSummary from './Components/embeded/BookingSummary';
-import Recruiters from './Components/Settings/Organization/Recruiters/Recruiters';
+import Recruiters from './Components/Dashboard/Recruiters/Recruiters';
 import { useDispatch, useSelector } from 'react-redux';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { getPermissions } from './redux/apiCalls/PermissionsCallApi';
 import PermissionRoute from './Components/ProtectedRoute/PermissionRoute';
 import AppointmentHandler from './Components/pages/AppointmentHandler';
@@ -66,20 +66,34 @@ import SMSNotificationsSection from './Components/Dashboard/InterviewsPages/Inte
 import UnifiedNotifications from './Components/Dashboard/InterviewsPages/InterViewPage/EmailNotifications';
 import Webinars from './Components/Webinars/Webinars';
 import FeaturesView from './Components/Features/FeaturesView';
-import StaffComp from './Components/Dashboard/StaffPages/StaffComp';
-import LayoutDetails from './Components/Dashboard/StaffPages/Staff_Details/layoutDetails';
 import WorkspaceDetails from './Components/Dashboard/Workspace/WorkspaceDetails';
 import AssignStaffToIntVw from './Components/Dashboard/InterviewsPages/InterViewPage/AssignStaffToIntVw';
 import StaffDashboardLayout from './Components/Staff_Dashboard/Staff_DashboardLayout';
 import StaffAppointments from './Components/Staff_Dashboard/StaffAppointments';
 import StaffProfile from './Components/Staff_Dashboard/StaffProfile';
-import Staff_Interview from './Components/Staff_Dashboard/Staff_Interview';
+import Staff_Interview from './Components/Staff_Dashboard/Staff_Interview_Pages/Staff_Interview';
 import NotFound from './Components/ProtectedRoute/NotFound';
 import StaffAvailability from './Components/Staff_Dashboard/StaffAvailability/StaffAvailability';
 import Staff_Analytics from './Components/Staff_Dashboard/Staff_Analytics/Staff_Analytics';
+import NetworkStatus from './Components/pages/NetworkStatus';
+import { useFirebaseNotifications } from './firebase/firebaseNotifications';
+import GuestRoute from './Components/pages/GuestRoute';
+import ContactUs from './Components/Home/ContactUs';
+import TermsOfService from './Components/Home/TermsOfService';
+import PrivacyPolicy from './Components/Home/PrivacyPolicy';
+import SecurityPage from './Components/Home/SecurityPage';
+import AbusePolicy from './Components/Home/AbusePolicy';
+import IndustriesPage from './Components/Features/IndustriesPage';
+import AssignGroupToIntVw from './Components/Dashboard/InterviewsPages/InterViewPage/assignGroupToIntVw';
+import InterviewDetails from './Components/Dashboard/InterviewsPages/InterViewPage/InterviewDetails/InterviewDetails';
+import StaffComp from './Components/Settings/Organization/StaffPages/StaffComp';
+import LayoutDetails from './Components/Settings/Organization/StaffPages/Staff_Details/LayoutDetails';
+import AppointmentBooking2 from './Components/embeded/Theme-2/AppointmentBooking2';
+import ThemeRouter from './Components/embeded/ThemeRouter';
+import AppointmentBooking_3 from './Components/embeded/Theme-3/AppointmentBooking-3';
 
-const router = createBrowserRouter ([
-    { path: "/verifyNotification", element: <VerifyForm /> },
+const router = createBrowserRouter([
+  { path: "/verifyNotification", element: <VerifyForm /> },
   {
     path: "manage",
     element: (
@@ -88,17 +102,18 @@ const router = createBrowserRouter ([
       </VerifyRoute>
     ),
   },
-   { path: "/:idAdmin", element: <AppointmentBooking /> },
+  { path: "/:idAdmin", element: <ThemeRouter />  },
   { path: "/:idAdmin/appointmentConfirmation", element: <AppointmentConfirmation /> },
   { path: "/:idAdmin/appointmentConfirmation/summary", element: <BookingSummary /> },
 
   // ========== Workspace (Space) ==========
-  { path: "/:idAdmin_or/w/:idSpace", element: <AppointmentBooking /> },
+  { path: "/:idAdmin_or/w/:idSpace", element: <ThemeRouter /> },
+  // { path: "/:idAdmin_or/w/:idSpace", element: <AppointmentBooking2 /> },
   { path: "/:idAdmin_or/w/:idSpace/appointmentConfirmation", element: <AppointmentConfirmation /> },
   { path: "/:idAdmin_or/w/:idSpace/appointmentConfirmation/summary", element: <BookingSummary /> },
 
   // ========== Staff ==========
-  { path: "/:idAdmin_or/s/:idCustomer", element: <AppointmentBooking /> },
+  { path: "/:idAdmin_or/s/:idCustomer", element: <ThemeRouter />  },
   { path: "/:idAdmin_or/s/:idCustomer/appointmentConfirmation", element: <AppointmentConfirmation /> },
   { path: "/:idAdmin_or/s/:idCustomer/appointmentConfirmation/summary", element: <BookingSummary /> },
 
@@ -106,147 +121,200 @@ const router = createBrowserRouter ([
   { path: "/:idAdmin_or/service/:id", element: <AppointmentBooking /> },
   { path: "/:idAdmin_or/service/:id/appointmentConfirmation", element: <AppointmentConfirmation /> },
   { path: "/:idAdmin_or/service/:id/appointmentConfirmation/summary", element: <BookingSummary /> },
-  { path: "setup_1", element: <ProtectedRoute><Setup_1 /></ProtectedRoute> },
-  { path: "signup", element: <Signup /> },
-  { path: "recruiter/register/:token", element: <Signup /> },
   
-  { path: "login", element: <Login /> },
+  { path: "setup_1", element: <ProtectedRoute><Setup_1 /></ProtectedRoute> },
+  { path: "signup", element: <GuestRoute><Signup /></GuestRoute> },
+  { path: "recruiter/register/:token", element: <Signup /> },
+  { path: "login", element: <GuestRoute><Login /></GuestRoute> },
   { path: "/forget-password", element: <ForgetPassword /> },
   { path: "/reset-password", element: <ResetPassword /> },
   { path: "/verify", element: <Verify /> },
   { path: "/bookPage/themes-and-layout", element: <ProtectedRoute><LayoutThemPanal /></ProtectedRoute> },
-  { path: "/bookPage/workspace-themes", element:<ProtectedRoute><AllLayout /></ProtectedRoute>  },
- {
-  path: "/create_interview",
-  element: (
-    <ProtectedRoute>
-      <PermissionRoute permission="create interview">
-        <CreateInterviewModal />
-      </PermissionRoute>
-    </ProtectedRoute>
-  ),
-  children: [
-    {
-      path: "InterFormOne",
-      element: (
+  { path: "/bookPage/workspace-themes", element: <ProtectedRoute><AllLayout /></ProtectedRoute> },
+  
+  {
+    path: "/create_interview",
+    element: (
+      <ProtectedRoute>
         <PermissionRoute permission="create interview">
-          <InterviewFormOne />
+          <CreateInterviewModal />
         </PermissionRoute>
-      )
-    }
-  ]
-},
-       {
-        path: "/layoutDashboard",
-        element:<ProtectedRoute><LayoutDashboard /></ProtectedRoute> ,
-        children: [
-            { index: true, element: <Analytics /> }, 
-            { path: "userDashboard", element:(<PermissionRoute permission="view appointment"><UserDashboard /></PermissionRoute>)  },
-            { path: "interviews", element:( <PermissionRoute permission="view interview"><Interviews /></PermissionRoute>)  },
-            { path: "bookPage", element: <BookPage /> },
-            { path: "profilepage", element: <ProfilePage /> },            
-            { path: "analytics", element:<Analytics />  },            
-            { path: "WorkspaceAvailability", element:<WorkspaceDetails />  },            
-            {path: "recruiterPage", element: <StaffComp />},
-            {path: "recruiter/:id",  element: <LayoutDetails />},
-            
-            // Settings as nested route under layoutDashboard
-            {
-              path: "/layoutDashboard/setting",
-              element: <SettingsLayout />,
-              children: [
-                { index: true, element: <AdminCenter /> }, 
-                { path: "basic-info", element: <BasicInfo /> },
-                { path: "business-hours", element: <Availability />},
-                { path: "users", element:(<PermissionRoute permission="view staff"><Recruiters /></PermissionRoute>) },
-                { path: "custom-domain", element: <CustomDomain /> },
-                { path: "workspaces", element: <WorkspaceManag /> },
-                { path: "resources-section", element: <ResourcesSection /> },
-                { path: "person-location", element: <PersonLocation /> },
-                { path: "notification-settings", element: <NotificationSettings /> },
-                { path: "custom-labels", element: <CustomLabels /> },
-                { path: "roles-permissions", element: (<PermissionRoute permission="view roles"><RolesPermissions /></PermissionRoute>) },
-                { path: "reports", element: <Reports /> },
-                { path: "clients", element: (<PermissionRoute permission="view clients"><Customers /></PermissionRoute>) },
-                { path: "editcustomer", element: <Customers /> },
-                { path: "privacy-and-security", element: <PrivacyAndSecurity /> },
-                { path: "export-data", element: <ExportData /> },
-                { path: "integrations-page", element: <IntegrationsPage /> },
-              ],
-            },
-                        
-        ],
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        path: "InterFormOne",
+        element: (
+          <PermissionRoute permission="create interview">
+            <InterviewFormOne />
+          </PermissionRoute>
+        )
+      }
+    ]
+  },
+
+  // ========== Layout Dashboard ==========
+  {
+    path: "/layoutDashboard",
+    element: <ProtectedRoute><LayoutDashboard /></ProtectedRoute>,
+    children: [
+      { index: true, element: <Analytics /> },
+      { path: "userDashboard", element: (<PermissionRoute permission="view appointment"><UserDashboard /></PermissionRoute>) },
+      { path: "interviews", element: (<PermissionRoute permission="view interview"><Interviews /></PermissionRoute>) },
+      { path: "bookPage", element: <BookPage /> },
+      { path: "profilepage", element: <ProtectedRoute><ProfilePage /></ProtectedRoute> },
+      { path: "analytics", element: <Analytics /> },
+      { path: "WorkspaceAvailability", element: <WorkspaceDetails /> },
+      
+      { path: "users", element: (<PermissionRoute permission="view staff"><Recruiters /></PermissionRoute>) },
+
+      // { path: "recruiterPage/:id", element: <LayoutDetails /> },
+    ],
+  },
+
+  // ========== Settings (خارج layoutDashboard) ==========
+  {
+    path: "/layoutDashboard/setting",
+    element: <ProtectedRoute><SettingsLayout /></ProtectedRoute>,
+    children: [
+      { index: true, element: <AdminCenter /> },
+      { path: "basic-info", element: <BasicInfo /> },
+      { path: "business-hours", element: <Availability /> },
+     { path: "recruiterPage", element: <StaffComp /> },
+     { path: "recruiterPage/:id", element: <LayoutDetails /> },
+      // { path: "users", element: (<PermissionRoute permission="view staff"><Recruiters /></PermissionRoute>) },
+      { path: "custom-domain", element: <CustomDomain /> },
+      { path: "workspaces", element: <WorkspaceManag /> },
+      { path: "resources-section", element: <ResourcesSection /> },
+      { path: "person-location", element: <PersonLocation /> },
+      { path: "notification-settings", element: <NotificationSettings /> },
+      { path: "custom-labels", element: <CustomLabels /> },
+      { path: "roles-permissions", element: (<PermissionRoute permission="view roles"><RolesPermissions /></PermissionRoute>) },
+      { path: "reports", element: <Reports /> },
+      {
+        path: "clients",
+        element: (
+          <PermissionRoute permission="view clients">
+            <Customers />
+          </PermissionRoute>
+        )
       },
       {
-        path: "/staff_dashboard_layout",
-        element: <ProtectedRoute><StaffDashboardLayout /></ProtectedRoute> ,
-        children: [
-            {index: true, element:(<StaffProfile />)  },
-            { path: "Staff_Profilepage", element: <StaffProfile /> }, 
-            { path: "Staff_Analytics", element: <Staff_Analytics /> }, 
-            { path: "Staff_Availability", element: <StaffAvailability /> }, 
-            { path: "Staff_Appointment", element:(<StaffAppointments />)  },
-            { path: "Staff_Interviews", element:( <Staff_Interview />)  },
-                        
-        ],
+        path: "clients/:id",
+        element: (
+          <PermissionRoute permission="view clients">
+            <EditCustomer />
+          </PermissionRoute>
+        )
       },
-      
- {
-    path: "/",
-    element: <Layout />,
+      { path: "privacy-and-security", element: <PrivacyAndSecurity /> },
+      { path: "export-data", element: <ExportData /> },
+      { path: "integrations-page", element: <IntegrationsPage /> },
+    ],
+  },
+
+  // ========== Staff Dashboard ==========
+  {
+    path: "/staff_dashboard_layout",
+    element: <ProtectedRoute><StaffDashboardLayout /></ProtectedRoute>,
     children: [
-      { path: "/", element: <Home /> }, 
+      { index: true, element: (<StaffProfile />) },
+      { path: "Staff_Profilepage", element: <StaffProfile /> },
+      { path: "Staff_Analytics", element: <Staff_Analytics /> },
+      { path: "Staff_Availability", element: <StaffAvailability /> },
+      { path: "Staff_Appointment", element: (<StaffAppointments />) },
+      { path: "Staff_Interviews", element: (<Staff_Interview />) },
+    ],
+  },
+
+  // ========== Public Routes ==========
+  {
+    path: "/",
+    element: <GuestRoute><Layout /></GuestRoute>,
+    children: [
+      { path: "/", element: <Home /> },
       { path: "/pricing", element: <PricingComponent /> },
       { path: "/Webinars", element: <Webinars /> },
       { path: "/features", element: <FeaturesView /> },
-      { path: "*", element: <NotFound /> }, 
+      { path: "/contact-us", element: <ContactUs /> },
+      { path: "/termsOf-service", element: <TermsOfService /> },
+      { path: "/privacy-policy", element: <PrivacyPolicy /> },
+      { path: "/security", element: <SecurityPage /> },
+      { path: "/industries", element: <IndustriesPage /> },
+      { path: "/abuse-policy", element: <AbusePolicy /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
-    { path: "/interview-layout/:id", element:(<ProtectedRoute>
-      <PermissionRoute permission="view interview"><InterviewLayut /></PermissionRoute>
-      </ProtectedRoute>) ,
-        children: [
-          { index: true, element: <ProtectedRoute>
+
+  // ========== Interview Layout ==========
+  {
+    path: "/interview-layout/:id",
+    element: (
+      <ProtectedRoute>
+        <PermissionRoute permission="view interview">
+          <InterviewLayut />
+        </PermissionRoute>
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: (
+          <ProtectedRoute>
             <PermissionRoute permission="edit interview">
               <InterviewDetails />
             </PermissionRoute>
-            </ProtectedRoute> },
-          { path: "scheduling-rules", element:<ProtectedRoute><SchedulingRules /></ProtectedRoute>  },
-          { path: "assign-staff-to-interview", element:<ProtectedRoute><AssignStaffToIntVw /></ProtectedRoute>  },
-          { path: "recruiters-managment", element: <ProtectedRoute><RecruitersManag /></ProtectedRoute> },
-          { path: "interview-availability", element:<ProtectedRoute><InterviewAvailability /></ProtectedRoute>  },
-        { path: "notifications/:type", element: <ProtectedRoute><UnifiedNotifications /></ProtectedRoute> },
+          </ProtectedRoute>
+        )
+      },
+      { path: "scheduling-rules", element: <ProtectedRoute><SchedulingRules /></ProtectedRoute> },
+      { path: "assign-recruiter-to-interview", element: <ProtectedRoute><AssignStaffToIntVw /></ProtectedRoute> },
+      { path: "assign-groups-to-interview", element: <ProtectedRoute><AssignGroupToIntVw /></ProtectedRoute> },
+      { path: "assign-resource-to-interview", element: <ProtectedRoute><AssignGroupToIntVw /></ProtectedRoute> },
+      { path: "recruiters-managment", element: <ProtectedRoute><RecruitersManag /></ProtectedRoute> },
+      { path: "interview-availability", element: <ProtectedRoute><InterviewAvailability /></ProtectedRoute> },
+      { path: "notifications/:type", element: <ProtectedRoute><UnifiedNotifications /></ProtectedRoute> },
+    ]
+  },
 
-        ]
-       },
-       { path: "/layoutAcount", element: <LayoutAcount />, 
-        children: [
-          { path: "acount-profile", element: <AcountProfile /> },
-          { path: "security-setting", element: <SecuritySetting /> },
-          { path: "newGroups", element: <NewGroups /> },
-        ]
-       },
-       
+  // ========== Account Layout ==========
+  {
+    path: "/layoutAcount",
+    element: <LayoutAcount />,
+    children: [
+      { path: "acount-profile", element: <AcountProfile /> },
+      { path: "security-setting", element: <SecuritySetting /> },
+      { path: "newGroups", element: <NewGroups /> },
+    ]
+  },
 ]);
 
 function App() {
-   const dispatch = useDispatch();
-    const token = useSelector((state) => state.auth.token);
+  const dispatch = useDispatch();
+  const token = useSelector((state) => state.auth.token);
 
-useEffect(() => {
-  if (token) {
-    dispatch(getPermissions());
-  }
-}, [dispatch, token]);
+  const hasLoadedPermissions = useRef(false);
 
- 
-  return( 
-    <>
-    <Toaster position="top-center" reverseOrder={false} />
-    <RouterProvider router={router} />
+  useFirebaseNotifications();
+  
+  useEffect(() => {
+    if (token && !hasLoadedPermissions.current) {
+      hasLoadedPermissions.current = true;
+      dispatch(getPermissions());
+    }
     
+    if (!token) {
+      hasLoadedPermissions.current = false;
+    }
+  }, [dispatch, token]);
+
+  return (
+    <>
+      <NetworkStatus />
+      <Toaster position="top-center" reverseOrder={false} />
+      <RouterProvider router={router} />
     </>
-)
+  )
 }
 
 export default App;

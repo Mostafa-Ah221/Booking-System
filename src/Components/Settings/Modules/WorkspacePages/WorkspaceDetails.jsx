@@ -198,7 +198,7 @@ const WorkspaceDetails = () => {
                   <label className="block text-gray-500 text-sm mb-1">
                     Workspace Name
                   </label>
-                  <p>{workspaceData.name}</p>
+                  <p className='truncate  max-w-[150px]'>{workspaceData.name}</p>
                 </div>
                 <div>
                   <label className="block text-gray-500 text-sm mb-1">

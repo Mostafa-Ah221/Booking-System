@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { MessageSquare, Clock, X, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { notificationReminder } from '../../../../redux/apiCalls/interviewCallApi';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import { fetchSmsSettings, fetchSmsIntegrations } from '../../../../redux/apiCalls/smsIntegrationCallApi';
 
 const SMSNotificationsSection = () => {
   const dispatch = useDispatch();
   const { id } = useOutletContext();
-  
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState('customer');
   const [reminders, setReminders] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -16,10 +17,14 @@ const SMSNotificationsSection = () => {
   const [isDataReady, setIsDataReady] = useState(false);
   const [isCheckingIntegrations, setIsCheckingIntegrations] = useState(false);
   const [hasValidIntegration, setHasValidIntegration] = useState(false);
-  const [activeIntegrationName, setActiveIntegrationName] = useState(''); // إضافة state لاسم التكامل
+  const [activeIntegrationName, setActiveIntegrationName] = useState('');
   
   const { integrations, settings, loading } = useSelector((state) => state.sms);
-  console.log(integrations);
+  
+  // Ref for debounce timeout
+  const saveTimeoutRef = useRef(null);
+  const hasInitializedRef = useRef(false);
+  const pendingChangesRef = useRef(null);
 
   const isSmsIntegrated = !loading && !isCheckingIntegrations && hasValidIntegration;
   
@@ -31,43 +36,85 @@ const SMSNotificationsSection = () => {
     { id: 'noshow', icon: <AlertCircle className="w-6 h-6 text-gray-400" />, label: 'No Show' },
   ];
 
-const saveRemindersToAPI = async (updatedReminders) => {
-  if (!isSmsIntegrated) {
-    return;
-  }
-
-  try {
-    setIsSaving(true);
-    
-    // Update formData structure to match the required format
-    const formData = {
-      methods: [
-        {
-          name: "sms",
-          reminders: updatedReminders.map(reminder => ({
-            before: String(reminder.before),
-            type: reminder.type
-          }))
-        }
-      ]
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
     };
+  }, []);
 
-    console.log('Saving SMS reminders to API:', formData);
-    const result = await dispatch(notificationReminder(id, formData));
-    
-    if (result.status) {
-      console.log('✅ SMS reminders saved successfully!');
-    } else {
-      console.error('❌ Failed to save SMS reminders:', result.message);
-      alert(result.message || 'An error occurred while saving SMS reminders');
+  const saveRemindersToAPI = async (updatedReminders) => {
+    if (!isSmsIntegrated) {
+      return;
     }
-  } catch (error) {
-    console.error('❌ Error while saving SMS reminders:', error);
-    alert('An error occurred while saving SMS reminders');
-  } finally {
-    setIsSaving(false);
-  }
-};
+
+    try {
+      const formData = {
+        methods: [
+          {
+            name: "sms",
+            reminders: updatedReminders.map(reminder => ({
+              before: String(reminder.before),
+              type: reminder.type
+            }))
+          }
+        ]
+      };
+
+      console.log('Saving SMS reminders to API:', formData);
+      const result = await dispatch(notificationReminder(id, formData));
+      
+      if (result.status) {
+        console.log('✅ SMS reminders saved successfully!');
+      } else {
+        console.error('❌ Failed to save SMS reminders:', result.message);
+        alert(result.message || 'An error occurred while saving SMS reminders');
+      }
+    } catch (error) {
+      console.error('❌ Error while saving SMS reminders:', error);
+      alert('An error occurred while saving SMS reminders');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Save pending changes on blur
+  const handleInputBlur = () => {
+    if (pendingChangesRef.current) {
+      const { reminders, reminderId, field } = pendingChangesRef.current;
+      
+      // Validate if it's a 'before' field
+      if (field === 'before') {
+        const validatedReminders = reminders.map(reminder => {
+          if (reminder.id === reminderId) {
+            const currentValue = reminder.before;
+            let numValue;
+            
+            if (currentValue === '' || currentValue === null || currentValue === undefined) {
+              numValue = 1;
+            } else {
+              numValue = parseInt(currentValue, 10);
+              if (isNaN(numValue) || numValue < 1) {
+                numValue = 1;
+              }
+            }
+            
+            return { ...reminder, before: numValue };
+          }
+          return reminder;
+        });
+        
+        setReminders(validatedReminders);
+        saveRemindersToAPI(validatedReminders);
+      } else {
+        saveRemindersToAPI(reminders);
+      }
+      
+      pendingChangesRef.current = null;
+    }
+  };
 
   // Function to check all integrations for valid SMS settings
   const checkAllSmsIntegrations = async () => {
@@ -91,11 +138,7 @@ const saveRemindersToAPI = async (updatedReminders) => {
         if (result.status && result.data !== null) {
           console.log(`✅ Found valid SMS integration with ID: ${integration.id}`);
           setHasValidIntegration(true);
-          
-          // Save active integration name
           setActiveIntegrationName(integration.name || integration.provider || 'Unknown Integration');
-          
-          // Found a valid integration, stop checking
           return;
         } else {
           console.log(`❌ Integration ID ${integration.id} returned null or failed`);
@@ -132,29 +175,46 @@ const saveRemindersToAPI = async (updatedReminders) => {
   };
 
   // تحديث تذكير
-  const updateReminder = async (id, field, value) => {
-    const updatedReminders = reminders.map(reminder => 
-      reminder.id === id 
+  const updateReminder = (id, field, value) => {
+    // Update state immediately for smooth typing
+    const updatedReminders = reminders.map(reminder =>
+      reminder.id === id
         ? { ...reminder, [field]: value }
         : reminder
     );
-    
+
     setReminders(updatedReminders);
     
-    // حفظ فوري في الـ API فقط لو SMS متكامل
-    await saveRemindersToAPI(updatedReminders);
+    // Store pending changes
+    pendingChangesRef.current = {
+      reminders: updatedReminders,
+      reminderId: id,
+      field: field
+    };
     
-    console.log(`تم تحديث تذكير SMS ${id}:`, { field, value });
+    // Clear any existing timeout (don't save while typing)
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Show saving indicator
+    setIsSaving(true);
   };
 
   // حذف تذكير
   const removeReminder = async (id) => {
     if (reminders.length > 1) {
+      // Clear any pending saves
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
       const filteredReminders = reminders.filter(reminder => reminder.id !== id);
       setReminders(filteredReminders);
       
+      // Save immediately when deleting
+      setIsSaving(true);
       await saveRemindersToAPI(filteredReminders);
-      
     }
   };
 
@@ -179,9 +239,16 @@ const saveRemindersToAPI = async (updatedReminders) => {
     }
   }, [loading, isCheckingIntegrations, hasValidIntegration, isDataReady]);
 
-  // Initialize reminders only when data is ready and reminders array is empty
+  const handleNavigateToIntegrations = (type) => {
+    navigate('/layoutDashboard/setting/integrations-page', {
+      state: { scrollTo: type },
+      replace: false
+    });
+  };
+
+  // Initialize reminders only when data is ready and not yet initialized
   useEffect(() => {
-    if (isDataReady && reminders.length === 0) {
+    if (isDataReady && reminders.length === 0 && !hasInitializedRef.current) {
       console.log('Initializing default reminder with SMS status:', hasValidIntegration);
       
       const defaultReminder = { id: 1, before: 30, type: 'minute' };
@@ -195,15 +262,10 @@ const saveRemindersToAPI = async (updatedReminders) => {
       } else {
         console.log('SMS not integrated, not saving initial reminders');
       }
+      
+      hasInitializedRef.current = true;
     }
   }, [isDataReady, hasValidIntegration, reminders.length]);
-
-  // معالجة تكامل SMS
-  const handleSMSIntegration = () => {
-    // هنا يمكن إضافة منطق فتح نافذة التكامل
-    setSmsIntegrated(true);
-    console.log('فتح نافذة تكامل SMS...');
-  };
 
   return (
     <div className="mx-auto p-6 bg-white">
@@ -287,16 +349,23 @@ const saveRemindersToAPI = async (updatedReminders) => {
             <div key={reminder.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
               <span className="text-sm text-gray-600 min-w-[50px]">Before</span>
               <input
-                type="number"
+                type="text"
                 value={reminder.before}
-                onChange={(e) => updateReminder(reminder.id, 'before', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string or numbers only
+                  if (value === '' || /^\d+$/.test(value)) {
+                    updateReminder(reminder.id, 'before', value);
+                  }
+                }}
+                onBlur={handleInputBlur}
                 className="w-20 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                min="1"
                 disabled={isSaving || !isSmsIntegrated || loading || isCheckingIntegrations}
               />
               <select 
                 value={reminder.type}
                 onChange={(e) => updateReminder(reminder.id, 'type', e.target.value)}
+                onBlur={handleInputBlur}
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={isSaving || !isSmsIntegrated || loading || isCheckingIntegrations}
               >
@@ -348,22 +417,15 @@ const saveRemindersToAPI = async (updatedReminders) => {
               </p>
             </div>
           </div>
-          <Link to={`/setting/integrations-page#sms`} 
+          <button
+            onClick={() => handleNavigateToIntegrations('sms')}
             disabled={loading || isCheckingIntegrations}
             className="px-4 py-2 bg-white border border-orange-300 text-orange-700 text-sm font-medium rounded-md hover:bg-orange-50 transition-colors disabled:opacity-50"
           >
             {(loading || isCheckingIntegrations) ? 'Loading...' : 'Integrate'}
-          </Link>
+          </button>
         </div>
       </div>
-
-      {/* Saving Indicator (fixed position) */}
-      {isSaving && (
-        <div className="fixed bottom-4 right-4 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg z-50">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-          <span className="text-sm">Saving SMS settings...</span>
-        </div>
-      )}
     </div>
   );
 };

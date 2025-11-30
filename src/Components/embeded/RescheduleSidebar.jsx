@@ -14,6 +14,8 @@ const RescheduleSidebar = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState('');
+  const [selectedEndTime, setSelectedEndTime] = useState('');
+  const [activeTab, setActiveTab] = useState('start');
   const [selectedTimezone, setSelectedTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -32,11 +34,11 @@ const RescheduleSidebar = ({
   const dispatch = useDispatch();
   
   
-console.log(appointmentData);
+console.log(appointmentData?.id);
 
   const idAppointment = appointmentData?.id;
   const { id: shareId } = useParams();
-  const finalShareId = shareId || outShareId;
+  // const finalShareId = shareId || outShareId;
   
 
   const monthNames = [
@@ -101,48 +103,48 @@ console.log(appointmentData);
     });
   };
 
-  const isTimeUnavailable = (date, time) => {
-    if (!date || !time || !unavailableTimes || !Array.isArray(unavailableTimes)) {
-      return false;
-    }
+  // const isTimeUnavailable = (date, time) => {
+  //   if (!date || !time || !unavailableTimes || !Array.isArray(unavailableTimes)) {
+  //     return false;
+  //   }
     
-    if (isDateInUnavailableDatesRange(date)) {
-      return true;
-    }
+  //   if (isDateInUnavailableDatesRange(date)) {
+  //     return true;
+  //   }
     
-    const dayId = getDayId(date);
-    const dayUnavailableTimes = unavailableTimes.filter(timeRange => 
-      timeRange.day_id.toString() === dayId.toString()
-    );
+  //   const dayId = getDayId(date);
+  //   const dayUnavailableTimes = unavailableTimes.filter(timeRange => 
+  //     timeRange.day_id.toString() === dayId.toString()
+  //   );
     
-    if (dayUnavailableTimes.length === 0) {
-      return false;
-    }
+  //   if (dayUnavailableTimes.length === 0) {
+  //     return false;
+  //   }
     
-    const timeToMinutes = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
+  //   const timeToMinutes = (timeStr) => {
+  //     const [hours, minutes] = timeStr.split(':').map(Number);
+  //     return hours * 60 + minutes;
+  //   };
     
-    const checkTimeMinutes = timeToMinutes(time);
+  //   const checkTimeMinutes = timeToMinutes(time);
     
-    return dayUnavailableTimes.some(dayUnavailableTime => {
-      if (!dayUnavailableTime || !dayUnavailableTime.from) {
-        return false;
-      }
+  //   return dayUnavailableTimes.some(dayUnavailableTime => {
+  //     if (!dayUnavailableTime || !dayUnavailableTime.from) {
+  //       return false;
+  //     }
       
-      const fromMinutes = timeToMinutes(dayUnavailableTime.from);
+  //     const fromMinutes = timeToMinutes(dayUnavailableTime.from);
       
-      // If to is null, from this time to end of day is unavailable
-      if (!dayUnavailableTime.to || dayUnavailableTime.to === null) {
-        return checkTimeMinutes >= fromMinutes;
-      }
+  //     // If to is null, from this time to end of day is unavailable
+  //     if (!dayUnavailableTime.to || dayUnavailableTime.to === null) {
+  //       return checkTimeMinutes >= fromMinutes;
+  //     }
       
-      const toMinutes = timeToMinutes(dayUnavailableTime.to);
+  //     const toMinutes = timeToMinutes(dayUnavailableTime.to);
       
-      return checkTimeMinutes >= fromMinutes && checkTimeMinutes <= toMinutes;
-    });
-  };
+  //     return checkTimeMinutes >= fromMinutes && checkTimeMinutes <= toMinutes;
+  //   });
+  // };
 
   // Check if date is in available range with support for to: null
   const isDateInAvailableRange = (date, availableDatesRanges) => {
@@ -329,6 +331,7 @@ console.log(appointmentData);
 
   
 // Check if date is available with new logic
+
 const isDateAvailable = (date, interview = interviewDetails) => {
   if (!date || !interview) return false;
 
@@ -344,33 +347,29 @@ const isDateAvailable = (date, interview = interviewDetails) => {
 
   const dayId = getDayId(checkDate);
 
-  // PRIORITY 1: Check unavailable_dates + unavailable_times
-  const isInUnavailableRange = isDateInUnavailableDatesRange(checkDate);
-  if (isInUnavailableRange) {
-    const isDayInUnavailableTimes = unavailableTimes.some(
-      time => time.day_id.toString() === dayId.toString()
-    );
-    if (isDayInUnavailableTimes) {
-      return false;
-    }
-  }
-
-  // PRIORITY 2: Check if date is in available range
+  // PRIORITY 1: Check if date is in available range
   const isInDateRange = isDateInAvailableRange(checkDate, interview.available_dates);
   if (!isInDateRange) {
     return false;
   }
 
-  // PRIORITY 3: Check if day has available times
+  // PRIORITY 2: Check if day has available times configured
   const hasTimesForDay = interview.available_times.some(time => time.day_id.toString() === dayId.toString());
   
   if (!hasTimesForDay) {
     return false;
   }
 
-  // PRIORITY 4: Calculate effective available times
-  const effectiveAvailableTimes = calculateEffectiveAvailableTimes(date, interview.available_times, interview.disabled_times || [], interview);
+  // PRIORITY 3: Calculate effective available times after subtracting unavailable times
+  // This is the KEY - it will handle the comparison between available and unavailable times
+  const effectiveAvailableTimes = calculateEffectiveAvailableTimes(
+    date, 
+    interview.available_times, 
+    interview.disabled_times || [], 
+    interview
+  );
   
+  // If there are any effective available times, the date is available
   return effectiveAvailableTimes.length > 0;
 };
 
@@ -398,11 +397,14 @@ const isDateAvailable = (date, interview = interviewDetails) => {
     });
   };
 
- const fetchInterviewDetails = async (shareLink, staffResource = null) => {
+const fetchInterviewDetails = async (shareLink, staffResource = null, resource = null) => {
   setIsLoading(true);
   setError(null);
   
   try {
+    console.log('📦 Resources received in fetchInterviewDetails:', resource);
+    console.log('📦 Resources disabled_times:', resource?.disabled_times);
+    
     const response = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${shareLink}`);
     
     if (!response.ok) {
@@ -419,39 +421,48 @@ const isDateAvailable = (date, interview = interviewDetails) => {
     const dataSource = useStaffResource ? staffResource : interview;
     
     
-     if (dataSource) {
-  // ✅ دمج disabled_times من المصدرين
-  const combinedDisabledTimes = [
-    ...(interview?.disabled_times || []),
-    ...(dataSource?.disabled_times || [])
-  ];
+    if (dataSource) {
+      const combinedDisabledTimes = [
+        ...(interview?.disabled_times || []),
+      ];
 
-  const mergedInterview = {
-    ...interview,
-    available_dates: dataSource.available_dates || [],
-    available_times: dataSource.available_times || [],
-    disabled_times: combinedDisabledTimes,
-    un_available_dates: dataSource.un_available_dates || [],
-    un_available_times: dataSource.un_available_times || []
-  };
-  
-  setInterviewDetails(mergedInterview);
-  setAvailableDates(dataSource.available_dates || []);
-  setAvailableTimes(dataSource.available_times || []);
-  setUnavailableDates(dataSource.un_available_dates || []);
-  setUnavailableTimes(dataSource.un_available_times || []);
-  setDisabledTimes(combinedDisabledTimes); 
-  setRestTimes(interview?.rest_cycle || 0);
 
-  if (dataSource.available_dates && dataSource.available_dates.length > 0) {
-    const firstDate = new Date(dataSource.available_dates[0].from);
-    setCurrentMonth(firstDate);
-    
-    setTimeout(() => {
-      findFirstAvailableDateTime(mergedInterview);
-    }, 100);
-  }
-}else {
+      if (useStaffResource && staffResource?.disabled_times) {
+        combinedDisabledTimes.push(...staffResource.disabled_times);
+      }
+      if (!useStaffResource && resource && resource?.disabled_times && Array.isArray(resource.disabled_times)) {
+        console.log(' Adding disabled_times from resources:', resource.disabled_times);
+        combinedDisabledTimes.push(...resource.disabled_times);
+      }
+
+      console.log(' Final Combined disabled_times:', combinedDisabledTimes);
+
+      const mergedInterview = {
+        ...interview,
+        available_dates: dataSource.available_dates || [],
+        available_times: dataSource.available_times || [],
+        disabled_times: combinedDisabledTimes,
+        un_available_dates: dataSource.un_available_dates || [],
+        un_available_times: dataSource.un_available_times || []
+      };
+      
+      setInterviewDetails(mergedInterview);
+      setAvailableDates(dataSource.available_dates || []);
+      setAvailableTimes(dataSource.available_times || []);
+      setUnavailableDates(dataSource.un_available_dates || []);
+      setUnavailableTimes(dataSource.un_available_times || []);
+      setDisabledTimes(combinedDisabledTimes); 
+      setRestTimes(interview?.rest_cycle || 0);
+
+      if (dataSource.available_dates && dataSource.available_dates.length > 0) {
+        const firstDate = new Date(dataSource.available_dates[0].from);
+        setCurrentMonth(firstDate);
+        
+        setTimeout(() => {
+          findFirstAvailableDateTime(mergedInterview);
+        }, 100);
+      }
+    } else {
       throw new Error("Interview data not available");
     }
 
@@ -469,7 +480,7 @@ const findFirstAvailableDateTime = (interview) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // استخدم البيانات من interview مباشرة
+
   const tempUnavailableDates = interview.un_available_dates || [];
   const tempUnavailableTimes = interview.un_available_times || [];
 
@@ -511,11 +522,11 @@ const findFirstAvailableDateTime = (interview) => {
           
           if (isDayUnavailable) {
             currentDate.setDate(currentDate.getDate() + 1);
-            continue; // تخطى هذا اليوم
+            continue;
           }
         }
         
-        // استخدم isDateAvailable للفحص الكامل
+        
         if (isDateAvailable(currentDate, interview)) {
           const timeSlots = generateTimeSlots(currentDate, interview);
           if (timeSlots.length > 0) {
@@ -548,7 +559,7 @@ const findFirstAvailableDateTime = (interview) => {
 
 
  useEffect(() => {
-  console.log('🔵 useEffect FIRED!', { isOpen, id: appointmentData?.id, finalShareId });
+  console.log('🔵 useEffect FIRED!', { isOpen, id: appointmentData?.id });
   
   if (!isOpen) {
     console.log('⏸️ Sidebar not open, exiting useEffect');
@@ -560,10 +571,7 @@ const findFirstAvailableDateTime = (interview) => {
     return;
   }
   
-  if (!finalShareId) {
-    console.log('❌ No finalShareId, exiting useEffect');
-    return;
-  }
+ 
 
   let isMounted = true;
   let loadAttempts = 0;
@@ -571,7 +579,7 @@ const findFirstAvailableDateTime = (interview) => {
   
 
   const loadData = async () => {
-    if (!isOpen || !appointmentData?.id || !finalShareId) return;
+    if (!isOpen || !appointmentData?.id ) return;
     
     setIsLoading(true);
     setInterviewDetails(null);
@@ -582,7 +590,7 @@ const findFirstAvailableDateTime = (interview) => {
       const result = await dispatch(getAppointmentByIdPublic(appointmentData?.id));
       
 
-      const appointmentResult = result?.payload?.appointment || result?.appointment || result?.payload;
+      const appointmentResult = result?.data?.appointment;
       
       
       console.log('Appointment result:', appointmentResult);
@@ -601,7 +609,12 @@ const findFirstAvailableDateTime = (interview) => {
         setAppointmentApi(appointmentResult);
         
         const staffResource = appointmentResult?.staff_resource;
-        await fetchInterviewDetails(appointmentResult?.share_link, staffResource || null);
+        const resource = appointmentResult?.resource;
+        console.log(resource);
+        console.log(staffResource);
+        
+       await fetchInterviewDetails(appointmentResult?.share_link, staffResource, resource);
+
       } else {
         console.error('No appointment result found');
         setIsLoading(false);
@@ -621,7 +634,7 @@ const findFirstAvailableDateTime = (interview) => {
   return () => {
     isMounted = false;
   };
-}, [isOpen, appointmentData?.id, finalShareId]);
+}, [isOpen, appointmentData?.id]);
 
 useEffect(() => {
   const handleClickOutside = (event) => {
@@ -666,6 +679,26 @@ useEffect(() => {
       }
     }
   }, [selectedDate, interviewDetails]);
+
+  // Reset end time when date or start time changes
+useEffect(() => {
+  if (selectedDate && interviewDetails) {
+    const timeSlots = generateTimeSlots(selectedDate, interviewDetails);
+    
+    // Reset selected time if it's not available for the new date
+    if (selectedTime && !timeSlots.some(slot => slot.value === selectedTime)) {
+      setSelectedTime(timeSlots.length > 0 ? timeSlots[0].value : '');
+      setSelectedEndTime(''); // Reset end time too
+    }
+  }
+}, [selectedDate, interviewDetails]);
+
+// Reset end time when start time changes
+useEffect(() => {
+  if (interviewDetails?.type === "resource" && interviewDetails?.require_end_time === true) {
+    setSelectedEndTime(''); // Clear end time when start time changes
+  }
+}, [selectedTime]);
 
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -723,24 +756,37 @@ useEffect(() => {
 
   // Handle reschedule submission
   const handleReschedule = async () => {
-    if (!selectedDate || !selectedTime || !idAppointment) {
-      setError('Please select both date and time');
-      return;
-    }
+  const isResourceWithEndTime = interviewDetails?.type === "resource" && interviewDetails?.require_end_time === true;
+  
+  if (!selectedDate || !selectedTime || !idAppointment) {
+    setError('Please select both date and time');
+    return;
+  }
+  
+  if (isResourceWithEndTime && !selectedEndTime) {
+    setError('Please select end time');
+    return;
+  }
 
-    setIsRescheduling(true);
-    setError(null);
+  setIsRescheduling(true);
+  setError(null);
 
-    const formattedDate = selectedDate.toLocaleDateString('en-CA'); 
-    const formattedTime = selectedTime.includes(':') && selectedTime.split(':').length === 2 
+  const formattedDate = selectedDate.toLocaleDateString('en-CA'); 
+  const formattedTime = selectedTime.includes(':') && selectedTime.split(':').length === 2 
     ? `${selectedTime}:00` 
     : selectedTime;
-    try {
-      const rescheduleData = {
-        date: formattedDate,
-        time: formattedTime ,
-        time_zone: selectedTimezone,
-      };
+  
+  const formattedEndTime = selectedEndTime && selectedEndTime.includes(':') && selectedEndTime.split(':').length === 2
+    ? `${selectedEndTime}:00`
+    : selectedEndTime;
+    
+  try {
+    const rescheduleData = {
+      date: formattedDate,
+      time: formattedTime,
+      time_zone: selectedTimezone,
+      ...(isResourceWithEndTime && { end_time: formattedEndTime })
+    };
 
       const result = await dispatch(reschedulePublic(appointmentData?.id, rescheduleData));
 
@@ -874,7 +920,7 @@ useEffect(() => {
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium">{appointmentData?.title || interviewDetails?.name || 'Interview'}</h3>
+                      <h3 className="font-medium truncate  max-w-[150px]">{appointmentData?.title || interviewDetails?.name || 'Interview'}</h3>
                       {interviewDetails && (
                         <p className="text-sm text-gray-600">
                           Duration: {interviewDetails.duration_cycle} {interviewDetails.duration_period}
@@ -1005,30 +1051,148 @@ useEffect(() => {
               </div>
             )}
 
-            {/* Slot Availability */}
-            {!isLoading && selectedDate && availableTimeSlots.length > 0 && (
-              <div>
-                <h3 className="font-medium mb-4">Available Time Slots</h3>
-                
-                <div className="mb-4">
+           {/* Slot Availability */}
+{!isLoading && selectedDate && availableTimeSlots.length > 0 && (
+  <div>
+    {interviewDetails?.type === "resource" && interviewDetails?.require_end_time === true ? (
+      // Resource Mode with Start/End Time Tabs
+      <div className="space-y-4">
+        <h3 className="font-medium mb-4">Available Time Slots</h3>
+        
+        {/* Tab Buttons */}
+        <div className="flex gap-2 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('start')}
+            className={`flex-1 py-3 px-4 font-medium text-sm transition-all relative ${
+              activeTab === 'start'
+                ? 'text-indigo-600 border-b-2 border-indigo-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Start Time
+            {selectedTime && (
+              <span className="block text-xs font-normal text-gray-500 mt-0.5">
+                {availableTimeSlots.find(s => s.value === selectedTime)?.display}
+              </span>
+            )}
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('end')}
+            disabled={!selectedTime}
+            className={`flex-1 py-3 px-4 font-medium text-sm transition-all relative ${
+              !selectedTime
+                ? 'text-gray-300 cursor-not-allowed'
+                : activeTab === 'end'
+                ? 'text-indigo-600 border-b-2 border-indigo-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            End Time
+            {selectedEndTime ? (
+              <span className="block text-xs font-normal text-gray-500 mt-0.5">
+                {availableTimeSlots.find(s => s.value === selectedEndTime)?.display}
+              </span>
+            ) : !selectedTime ? (
+              <span className="block text-xs font-normal text-gray-400 mt-0.5">
+                Select start time first
+              </span>
+            ) : null}
+          </button>
+        </div>
+
+        {/* Time Slots Content */}
+        <div className="mb-4">
+          {activeTab === 'start' ? (
+            // Start Time Slots
+            <div className="grid grid-cols-3 gap-2">
+              {availableTimeSlots.map((timeSlot) => (
+                <button
+                  key={timeSlot.value}
+                  onClick={() => {
+                    setSelectedTime(timeSlot.value);
+                    setSelectedEndTime(''); // Reset end time when changing start time
+                    setActiveTab('end'); // Switch to end time tab
+                  }}
+                  className={`px-3 py-2 text-sm border rounded-md transition-colors ${
+                    selectedTime === timeSlot.value
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
+                  }`}
+                >
+                  {timeSlot.display}
+                </button>
+              ))}
+            </div>
+          ) : (
+            // End Time Slots
+            <div>
+              {!selectedTime ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-400">Please select a start time first</p>
+                </div>
+              ) : (() => {
+                // Filter end times to only show times after selected start time
+                const endTimeSlots = availableTimeSlots.filter(slot => {
+                  const [startHour, startMin] = selectedTime.split(':').map(Number);
+                  const [slotHour, slotMin] = slot.value.split(':').map(Number);
+                  const startMinutes = startHour * 60 + startMin;
+                  const slotMinutes = slotHour * 60 + slotMin;
+                  return slotMinutes > startMinutes;
+                });
+
+                return endTimeSlots.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-gray-500">No available end time slots after the selected start time</p>
+                  </div>
+                ) : (
                   <div className="grid grid-cols-3 gap-2">
-                    {availableTimeSlots.map((timeSlot) => (
+                    {endTimeSlots.map((timeSlot) => (
                       <button
                         key={timeSlot.value}
-                        onClick={() => setSelectedTime(timeSlot.value)}
+                        onClick={() => setSelectedEndTime(timeSlot.value)}
                         className={`px-3 py-2 text-sm border rounded-md transition-colors ${
-                          selectedTime === timeSlot.value
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300 hover:bg-blue-50'
+                          selectedEndTime === timeSlot.value
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
                         }`}
                       >
                         {timeSlot.display}
                       </button>
                     ))}
                   </div>
-                </div>
-              </div>
-            )}
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
+    ) : (
+      // Normal Mode (No End Time Required)
+      <div>
+        <h3 className="font-medium mb-4">Available Time Slots</h3>
+        
+        <div className="mb-4">
+          <div className="grid grid-cols-3 gap-2">
+            {availableTimeSlots.map((timeSlot) => (
+              <button
+                key={timeSlot.value}
+                onClick={() => setSelectedTime(timeSlot.value)}
+                className={`px-3 py-2 text-sm border rounded-md transition-colors ${
+                  selectedTime === timeSlot.value
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300 hover:bg-blue-50'
+                }`}
+              >
+                {timeSlot.display}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
             {/* No available slots message */}
             {!isLoading && selectedDate && availableTimeSlots.length === 0 && (

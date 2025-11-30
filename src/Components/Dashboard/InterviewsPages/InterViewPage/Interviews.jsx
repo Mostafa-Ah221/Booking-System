@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Share2, MoreVertical, Trash2, Copy, ExternalLink, Plus, Wifi, WifiOff } from 'lucide-react';
+import { Share2, MoreVertical, Trash2, Copy, ExternalLink, Plus, Wifi, WifiOff, User, Phone, Pencil } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchInterviews, deleteInterview,updateShareLinkIntreview } from '../../../../redux/apiCalls/interviewCallApi';
@@ -11,7 +11,7 @@ import { usePermission } from '../../../hooks/usePermission';
 
 const Interviews = () => {
   const dispatch = useDispatch();
-  const { interviews, loading = false, currentWorkspaceId } = useSelector(state => state.interview);
+  const { interviews, loading = false, currentWorkspaceId ,currentType} = useSelector(state => state.interview);
   const { profile: profileData } = useSelector(state => state.profileData);
   const { workspace } = useSelector(state => state.workspace);
   const workspaceId = workspace ? workspace.id : 0;
@@ -27,15 +27,19 @@ const Interviews = () => {
   const org_share_link = profileData?.user.share_link;
   const menuRef = useRef(null);
 
-  useEffect(() => {
-    if (currentWorkspaceId !== null && currentWorkspaceId !== workspaceId) {
-      dispatch(interviewAction.clearInterviews());
-    }
-    
-    if (workspaceId !== null && workspaceId !== undefined) {
-      dispatch(fetchInterviews({ work_space_id: workspaceId }));
-    }
-  }, [workspaceId, dispatch, currentWorkspaceId]);
+ useEffect(() => {
+  if (currentWorkspaceId !== null && currentWorkspaceId !== workspaceId) {
+    dispatch(interviewAction.clearInterviews());
+  }
+
+  if (currentType !== null) {
+    dispatch(interviewAction.clearInterviews());
+  }
+
+  if (workspaceId !== null && workspaceId !== undefined) {
+    dispatch(fetchInterviews({ work_space_id: workspaceId }));
+  }
+}, [workspaceId, dispatch, currentWorkspaceId, currentType]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -232,16 +236,25 @@ const handleUpdateShareLink = async (newShareLink,id) => {
                     </div>
                   </div>
                   <div className="flex justify-between items-center text-sm mt-auto">
-                    <div className={`flex items-center gap-2 ${
-                    interview.mode === 'online' ? 'text-green-600' : 'text-blue-600'
-                  }`}>
+                  <div
+                    className={`flex items-center gap-2 ${
+                      interview.mode === 'online'
+                        ? 'text-green-600'
+                        : interview.mode === 'phone'
+                        ? 'text-blue-600'
+                         : 'text-purple-600'
+                    }`}
+                  >
                     {interview.mode === 'online' ? (
                       <Wifi size={16} />
+                    ) : interview.mode === 'phone' ? (
+                      <Phone size={16} />
                     ) : (
-                      <WifiOff size={16} />
+                      <User size={16} />
                     )}
                     <span className="capitalize">{interview.mode}</span>
                   </div>
+
                     <button
                       onClick={(e) => handleShareClick(interview, e)}
                       className="flex text-sm items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all"
@@ -269,13 +282,13 @@ const handleUpdateShareLink = async (newShareLink,id) => {
                       <ExternalLink size={16} className="mr-2" />
                       Booking Page
                     </button>
-                    <button
-                      onClick={(e) => handleCopyClick(interview, e)}
+                    <Link
+                    to={`/interview-layout/${interview.id}`}
                       className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      <Copy size={16} className="mr-2" />
-                      Make a copy
-                    </button>
+                      <Pencil  size={16} className="mr-2" />
+                      Edit
+                    </Link>
                     <button
                       onClick={(e) => handleDeleteClick(interview, e)}
                       className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
@@ -299,7 +312,7 @@ const handleUpdateShareLink = async (newShareLink,id) => {
        <ShareBookingModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        shareLink={`service/${selectedInterview?.share_link}`}
+        shareLink={`service/${selectedInterview?.share_link.share_link}`}
         profile={selectedInterview}
         onUpdateLink={handleUpdateShareLink}
         loading={loading}
@@ -332,7 +345,7 @@ const handleUpdateShareLink = async (newShareLink,id) => {
                   )}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">{interviewToDelete?.name}</p>
+                  <p className="font-semibold text-gray-900 truncate  max-w-[150px]">{interviewToDelete?.name}</p>
                   <p className="text-sm text-gray-500">{interviewToDelete?.type} • {interviewToDelete?.mode}</p>
                 </div>
               </div>

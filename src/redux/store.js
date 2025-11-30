@@ -15,6 +15,9 @@ import analyticsReducer from "./slices/analyticsSlice";
 import { emailReducer } from './slices/EmailConfigSlice';
 import { staffReducer } from './slices/staffSlice';
 import { staffApisReducer } from './slices/StaffApisSlice/StaffApisSlice';
+import { notificationsReducer } from './slices/notificationsSlice';
+import { resourceReducer } from './slices/resourcesSlice';
+import { themeReducer } from "./slices/themeSlice";
 
 
 const store = configureStore({
@@ -34,7 +37,10 @@ const store = configureStore({
     permissions: permissionsReducer,
     emailConfig: emailReducer,
     staff: staffReducer,
-    staffApis: staffApisReducer
+    staffApis: staffApisReducer,
+    notifications: notificationsReducer,
+    resources: resourceReducer,
+    themes: themeReducer,
   },
 });
 

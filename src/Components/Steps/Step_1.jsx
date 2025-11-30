@@ -84,7 +84,7 @@ const Setup_1 = () => {
           <div className="mb-8">
             <h1 className="text-gray-700 mb-2">
               Welcome to Appoint Roll -{" "}
-              <span className="font-semibold text-purple-600">{profile?.user.name || "Workspace"}</span>
+              <span className="font-semibold text-purple-600 truncate  max-w-[150px]">{profile?.user.name || "Workspace"}</span>
             </h1>
             <h2 className="text-2xl font-bold mb-4">Let's get you meeting ready!</h2>
           </div>

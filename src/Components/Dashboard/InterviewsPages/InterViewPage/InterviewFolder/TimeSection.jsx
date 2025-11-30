@@ -20,7 +20,7 @@ const TimeSection = ({
   const [weekDays, setWeekDays] = useState(initialWeekDays);
   const [isEditMode, setIsEditMode] = useState(true);
   const [displayWeekDays, setDisplayWeekDays] = useState([]);
-  const [isSaving, setIsSaving] = useState(false); // ✅ إضافة state للحفظ
+  const [isSaving, setIsSaving] = useState(false); 
   console.log(getWorkspaceData);
   
   const { interview } = useSelector(state => state.interview);
@@ -125,7 +125,7 @@ const TimeSection = ({
           formData.un_available_times = available_times;
         }
         
-        console.log('FormData sent to handleSave:', formData); // لوج للتحقق
+        console.log('FormData sent to handleSave:', formData); 
         
         const result = await handleSave(formData);
         
@@ -230,7 +230,7 @@ const TimeSection = ({
             if (newToHour < 24) {
               currentSlot.to = `${newToHour.toString().padStart(2, '0')}:${newToMinute.toString().padStart(2, '0')}`;
             } else {
-              currentSlot.to = "23:59";
+              currentSlot.to = "24:00";
             }
           }
         } else {

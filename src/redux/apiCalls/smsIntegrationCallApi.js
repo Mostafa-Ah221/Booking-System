@@ -1,20 +1,11 @@
-import axios from "axios";
-import { smsActions } from '../slices/smsSlice'; 
-const BASE_URL = "https://backend-booking.appointroll.com/api/sms/settings";
-const GET_INTEGRATIONS_URL = "https://backend-booking.appointroll.com/api/sms/integrations";
-
+import axiosInstance from "../../Components/pages/axiosInstance";
+import { smsActions } from '../slices/smsSlice';
 
 export function fetchSmsIntegrations() {
   return async (dispatch) => {
     dispatch(smsActions.setLoading(true));
     try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await axios.get(GET_INTEGRATIONS_URL, {
-        headers: {
-          Authorization: token,
-        },
-      });
+      const response = await axiosInstance.get('/sms/integrations');
 
       if (response.data.status) {
         dispatch(smsActions.setIntegrations(response.data.data));
@@ -35,13 +26,7 @@ export function getSmsSettingsByIntegrationId(integration_id) {
   return async (dispatch) => {
     dispatch(smsActions.setLoading(true));
     try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await axios.get(`${BASE_URL}?integration_id=${integration_id}`, {
-        headers: {
-          Authorization: token,
-        },
-      });
+      const response = await axiosInstance.get(`/sms/settings?integration_id=${integration_id}`);
 
       if (response.data.status) {
         dispatch(smsActions.setSettings(response.data.data));
@@ -62,14 +47,7 @@ export function createOrUpdateSmsSettings(payload) {
   return async (dispatch) => {
     dispatch(smsActions.setLoading(true));
     try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await axios.post(`https://backend-booking.appointroll.com/api/sms/settings/store`, payload, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
+      const response = await axiosInstance.post('/sms/settings/store', payload);
 
       if (response.data.status) {
         dispatch(smsActions.setSuccess(response.data.message));
@@ -90,13 +68,7 @@ export function deleteSmsSettings(id) {
   return async (dispatch) => {
     dispatch(smsActions.setLoading(true));
     try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await axios.delete(`${BASE_URL}/${id}`, {
-        headers: {
-          Authorization: token,
-        },
-      });
+      const response = await axiosInstance.delete(`/sms/settings/${id}`);
 
       if (response.data.status) {
         dispatch(smsActions.setSuccess("SMS setting deleted"));
@@ -117,12 +89,7 @@ export function fetchSmsSettings(integrationId) {
   return async (dispatch) => {
     dispatch(smsActions.setLoading(true));
     try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await axios.get(`${BASE_URL}`, {
-        headers: {
-          Authorization: token,
-        },
+      const response = await axiosInstance.get('/sms/settings', {
         params: { integration_id: integrationId },
       });
 

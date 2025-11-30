@@ -16,7 +16,6 @@ const IntegrationCategory = ({ category, onConnectClick, onDeleteClick }) => {
                 <button
                   onClick={() => {
                     onConnectClick(item.name, item.id);
-                    console.log('Integration:', item.name, 'ID:', item.id, 'Connected:', item.connected);
                   }}
                   className={`text-xs px-3 py-1 rounded-md transition-colors ${
                     item.connected 
@@ -32,7 +31,6 @@ const IntegrationCategory = ({ category, onConnectClick, onDeleteClick }) => {
                   <button
                     onClick={() => {
                       onDeleteClick(item.id, item.name);
-                      console.log('Delete clicked for:', item.name, 'ID:', item.id);
                     }}
                     className="text-xs px-3 py-1 bg-red-500 text-white hover:bg-red-600 rounded-md transition-colors"
                     disabled={item.disabled}

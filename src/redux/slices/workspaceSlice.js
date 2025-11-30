@@ -5,6 +5,9 @@ const workspaceSlice = createSlice({
   initialState: {
     workspaces: null,
     allWorkspaces: null,
+    availableStForWorkS: null,
+    availableResourcesForWorkS: null,
+    availableInterviewsForWorkS: null,
     workspace: null,
     currentStaffId: null,
     loading: false,
@@ -29,11 +32,25 @@ const workspaceSlice = createSlice({
     setWorkspace(state, action) {
       state.workspace = action.payload;
     },
-    // ✅ Reducer جديد لتحديث workspace واحد
+    setAvailableStForWorkS(state, action) {
+      state.availableStForWorkS = action.payload;
+      state.loading = false;
+      state.error = null;
+    },
+    setAvailableResourcesForWorkS(state, action) {
+      state.availableResourcesForWorkS = action.payload;
+      state.loading = false;
+      state.error = null;
+    },
+    setAvailableInterviewsForWorkS(state, action) {
+      state.availableInterviewsForWorkS = action.payload;
+      state.loading = false;
+      state.error = null;
+    },
+
     updateWorkspaceInList(state, action) {
       const updatedWorkspace = action.payload;
       
-      // تحديث في allWorkspaces
       if (Array.isArray(state.allWorkspaces)) {
         const index = state.allWorkspaces.findIndex(
           ws => ws.id === updatedWorkspace.id

@@ -64,9 +64,7 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
         connected: isConnected
       };
     } catch (error) {
-      console.error(`Error checking settings for ${integration.name}:`, error);
       
-      // حفظ النتيجة السلبية في الـ cache
       settingsCache.current.set(integration.id, {
         connected: false,
         timestamp: Date.now()

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -12,14 +12,36 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   
   const [selectedService, setSelectedService] = useState('demo');
-  const [selectedTimezone, setSelectedTimezone] = useState('Africa/Cairo');
+  // في بداية useBookingLogic
+const getDefaultTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone; // زي "Africa/Cairo"
+  } catch {
+    return 'Africa/Cairo';
+  }
+};
+
+// وبعدين
+const [selectedTimezone, setSelectedTimezone] = useState(getDefaultTimezone());
+  // const [selectedTimezone, setSelectedTimezone] = useState('Africa/Cairo');
   const [selectedDate, setSelectedDate] = useState(''); 
   const [selectedTime, setSelectedTime] = useState(''); 
-  
+  const [selectedEndTime, setSelectedEndTime] = useState(''); 
+  const [requireEndTime, setRequireEndTime] = useState(false);
+
   const [availableStaff, setAvailableStaff] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState(null);
-  console.log(selectedStaff);
-  
+  // 
+  const [availableStaffGroups, setAvailableStaffGroups] = useState([]);
+  const [selectedStaffGroup, setSelectedStaffGroup] = useState(null);
+
+  const [availableResources, setAvailableResources] = useState([]);
+  const [selectedResource, setSelectedResource] = useState(null);
+  const [selectedType, setSelectedType] = useState('');
+
+  const [totalPrice, setTotalPrice] = useState(0);
+const [numberOfSlots, setNumberOfSlots] = useState(0);
+const lastResourceIdRef = useRef(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -32,19 +54,17 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
   const [bookingData, setBookingData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+const WORKSPACE_TIMEZONE = 'Africa/Cairo';
  
  const getNavigationPath = () => {
   const pathname = location.pathname;
 
-  // مثال: /@KXPF/w/hr-department
-  // نطلع أول جزء اللي بعد /
-  const pathParts = pathname.split("/").filter(Boolean); // => ["@KXPF", "w", "hr-department"]
-  const orgBase = pathParts[0]; // => "@KXPF"
+  const pathParts = pathname.split("/").filter(Boolean);
+  const orgBase = pathParts[0]; 
 
   if (pathname.includes("/w/")) {
     // Workspace
-    const workspaceSlug = pathParts[2]; // hr-department
+    const workspaceSlug = pathParts[2]; 
     return `/${orgBase}/w/${workspaceSlug}/appointmentConfirmation`;
   } 
   else if (pathname.includes("/s/")) {
@@ -63,7 +83,76 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
   }
 };
 
+const convertTimeWithTimezone = (timeStr, dateStr, fromTimezone, toTimezone) => {
+  try {
+    const isoDate = convertDateToISO(dateStr);
+    if (!isoDate) return timeStr;
 
+    // نبني تاريخ كامل بالوقت الأصلي + توقيت الـ workspace
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const dateTimeStr = `${isoDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+
+    // نحول التاريخ ده للـ timezone المطلوب
+    const dateInTargetTz = new Date(dateTimeStr);
+    const options = {
+      timeZone: toTimezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    };
+
+    const formatter = new Intl.DateTimeFormat('en-CA', options);
+    const parts = formatter.formatToParts(dateInTargetTz);
+    
+    const hour = parts.find(p => p.type === 'hour')?.value || '00';
+    const minute = parts.find(p => p.type === 'minute')?.value || '00';
+
+    return `${hour}:${minute}`;
+  } catch (err) {
+    console.warn('Timezone conversion failed:', err);
+    return timeStr;
+  }
+};
+const convertDateTimeWithTimezone = (dateStr, timeStr, fromTimezone, toTimezone) => {
+  try {
+    const isoDate = convertDateToISO(dateStr);
+    if (!isoDate) return { date: dateStr, time: timeStr };
+
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const dateTimeStr = `${isoDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+
+    // نحول للـ UTC أولاً من الـ workspace timezone
+    const dateInWorkspaceTz = new Date(dateTimeStr);
+    
+    // نحول للـ target timezone
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: toTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(dateInWorkspaceTz);
+    
+    const year = parts.find(p => p.type === 'year')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+    const hour = parts.find(p => p.type === 'hour')?.value || '00';
+    const minute = parts.find(p => p.type === 'minute')?.value || '00';
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const newDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
+    const newTime = `${hour}:${minute}`;
+
+    return { date: newDate, time: newTime };
+  } catch (err) {
+    console.warn('DateTime conversion failed:', err);
+    return { date: dateStr, time: timeStr };
+  }
+};
   const convertDateToISO = (dateStr) => {
     try {
       if (typeof dateStr === 'string' && dateStr.includes(' ')) {
@@ -104,160 +193,135 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
     }
   };
 
-  const generateTimeSlots = (
-    availableTimes,
-    durationCycle = 15,
-    durationPeriod = "minutes",
-    selectedDate = null,
-    disabledTimes = [],
-    unavailableTimes = [],
-    unavailableDates = [],
-    restCycle = 0 
-  ) => {
-    if (!availableTimes || !Array.isArray(availableTimes) || !selectedDate) {
-      console.warn('Missing required data for time slot generation');
-      return [];
-    }
+const generateTimeSlots = (
+  availableTimes,
+  durationCycle = 15,
+  durationPeriod = "minutes",
+  selectedDate = null,
+  disabledTimes = [],
+  unavailableTimes = [],
+  unavailableDates = [],
+  restCycle = 0,
+  timezone = 'Africa/Cairo'
+) => {
+  if (!availableTimes || !Array.isArray(availableTimes) || !selectedDate) {
+    console.warn('Missing required data for time slot generation');
+    return [];
+  }
 
-    const formattedDate = convertDateToISO(selectedDate);
-    if (!formattedDate) {
-      console.error('Failed to format date:', selectedDate);
-      return [];
-    }
+  const WORKSPACE_TIMEZONE = 'Africa/Cairo';
+  const formattedDate = convertDateToISO(selectedDate);
+  if (!formattedDate) {
+    console.error('Failed to format date:', selectedDate);
+    return [];
+  }
 
-    const getDayOfWeekFromDate = (dateString) => {
-      try {
-        const date = new Date(dateString + 'T00:00:00.000Z');
-        if (isNaN(date.getTime())) return null;
-        
-        const dayOfWeek = date.getUTCDay();
-        return dayOfWeek === 0 ? 1 : dayOfWeek + 1; 
-      } catch (error) {
-        console.error('Error getting day of week:', error);
-        return null;
-      }
-    };
-
-    const targetDayId = getDayOfWeekFromDate(formattedDate);
-
-    if (!targetDayId) {
-      console.error('Could not determine day ID for date:', formattedDate);
-      return [];
-    }
-
-    const timeRangesForSelectedDay = availableTimes.filter(timeRange => 
-      timeRange && Number(timeRange.day_id) === Number(targetDayId)
-    );
-
-    if (timeRangesForSelectedDay.length === 0) {
-      console.warn('No time ranges found for day ID:', targetDayId);
-      return [];
-    }
-
-    const isDateInUnavailableRange = unavailableDates?.some(dateRange => {
-      try {
-        if (!dateRange || !dateRange.from) {
-          return false;
-        }
-
-        let fromDateStr = dateRange.from.includes(' ') ? dateRange.from.split(' ')[0] : dateRange.from;
-        fromDateStr = fromDateStr.replace(/\//g, '-');
-
-        let fromParts = fromDateStr.split('-');
-        if (fromParts.length === 3 && parseInt(fromParts[0], 10) <= 31) {
-          fromDateStr = `${fromParts[2]}-${fromParts[1]}-${fromParts[0]}`;
-        }
-
-        const fromDate = new Date(fromDateStr + 'T00:00:00.000Z');
-        const checkDate = new Date(formattedDate + 'T00:00:00.000Z');
-
-        if (isNaN(fromDate.getTime())) {
-          return false;
-        }
-
-        if (dateRange.to === null || dateRange.to === undefined) {
-          return checkDate >= fromDate;
-        }
-
-        let toDateStr = dateRange.to.includes(' ') ? dateRange.to.split(' ')[0] : dateRange.to;
-        toDateStr = toDateStr.replace(/\//g, '-');
-
-        let toParts = toDateStr.split('-');
-        if (toParts.length === 3 && parseInt(toParts[0], 10) <= 31) {
-          toDateStr = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
-        }
-
-        const toDate = new Date(toDateStr + 'T00:00:00.000Z');
-
-        if (isNaN(toDate.getTime())) {
-          return false;
-        }
-
-        return checkDate >= fromDate && checkDate <= toDate;
-      } catch (error) {
-        return false;
-      }
-    }) || false;
-
-    const timeSlots = [];
-    const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
-    const restInMinutes = restCycle; 
-
-    timeRangesForSelectedDay.forEach((timeRange) => {
-      if (!timeRange || !timeRange.from || !timeRange.to) return;
-
-      const [fromHour, fromMinute] = timeRange.from.split(":").map(Number);
-      const [toHour, toMinute] = timeRange.to.split(":").map(Number);
-
-      if (isNaN(fromHour) || isNaN(fromMinute) || isNaN(toHour) || isNaN(toMinute)) return;
-
-      const start = new Date();
-      start.setHours(fromHour, fromMinute, 0, 0);
-
-      const end = new Date();
-      end.setHours(toHour, toMinute, 0, 0);
-
-      const current = new Date(start);
-
-      while (current < end) {
-        const hours = current.getHours().toString().padStart(2, "0");
-        const minutes = current.getMinutes().toString().padStart(2, "0");
-        const formattedTime = `${hours}:${minutes}`;
-
-        const isDisabled = disabledTimes?.some(disabled => {
-          return disabled.date === formattedDate && disabled.time.startsWith(formattedTime);
-        }) || false;
-
-        const isUnavailable = isDateInUnavailableRange && unavailableTimes?.some(unavailableTime => {
-          if (!unavailableTime.day_id || !unavailableTime.from || !unavailableTime.to) return false;
-          if (Number(unavailableTime.day_id) !== Number(targetDayId)) return false;
-
-          const timeToMinutes = (timeStr) => {
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            return hours * 60 + minutes;
-          };
-
-          const timeMinutes = timeToMinutes(formattedTime);
-          const fromMinutes = timeToMinutes(unavailableTime.from.substring(0, 5));
-          const toMinutes = timeToMinutes(unavailableTime.to.substring(0, 5));
-
-          return timeMinutes >= fromMinutes && timeMinutes <= toMinutes;
-        }) || false;
-
-        const isPast = isTimePast(selectedDate, formattedTime);
-
-        if (!isDisabled && !isUnavailable && !isPast) {
-          timeSlots.push(formattedTime);
-        }
-
-        current.setMinutes(current.getMinutes() + durationInMinutes + restInMinutes);
-      }
-    });
-
-    const uniqueSlots = [...new Set(timeSlots)].sort();
-    
-    return uniqueSlots;
+  const getDayOfWeekFromDate = (dateString) => {
+    const date = new Date(dateString + 'T00:00:00.000Z');
+    if (isNaN(date.getTime())) return null;
+    const dayOfWeek = date.getUTCDay();
+    return dayOfWeek === 0 ? 1 : dayOfWeek + 1;
   };
+
+  const targetDayId = getDayOfWeekFromDate(formattedDate);
+  if (!targetDayId) return [];
+
+  const timeRangesForSelectedDay = availableTimes.filter(
+    tr => tr && Number(tr.day_id) === Number(targetDayId)
+  );
+
+  // ── اليوم السابق (للـ timezone المختلف) ─────────────────────────────────────
+  let previousDaySlots = [];
+
+  if (timezone !== WORKSPACE_TIMEZONE) {
+    const prevDate = new Date(formattedDate + 'T00:00:00.000Z');
+    prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+    const prevDateISO = prevDate.toISOString().split('T')[0];
+    const prevDayId = getDayOfWeekFromDate(prevDateISO);
+
+    if (prevDayId) {
+      const prevRanges = availableTimes.filter(
+        tr => tr && Number(tr.day_id) === Number(prevDayId)
+      );
+
+      if (prevRanges.length > 0) {
+        const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
+        const restInMinutes = restCycle;
+
+        const prevSlots = [];
+        prevRanges.forEach(range => {
+          const [fromH, fromM] = range.from.split(':').map(Number);
+          const [toH, toM] = range.to.split(':').map(Number);
+          const start = new Date(); start.setHours(fromH, fromM, 0, 0);
+          const end = new Date(); end.setHours(toH, toM, 0, 0);
+          let current = new Date(start);
+
+          while (current < end) {
+            const timeStr = `${current.getHours().toString().padStart(2, '0')}:${current.getMinutes().toString().padStart(2, '0')}`;
+            const endApp = new Date(current);
+            endApp.setMinutes(endApp.getMinutes() + durationInMinutes);
+            if (endApp <= end) prevSlots.push(timeStr);
+            current.setMinutes(current.getMinutes() + durationInMinutes + restInMinutes);
+          }
+        });
+
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const prevDay = prevDate.getUTCDate().toString().padStart(2, '0');
+        const prevMonth = monthNames[prevDate.getUTCMonth()];
+        const prevYear = prevDate.getUTCFullYear();
+        const prevDateStr = `${prevDay} ${prevMonth} ${prevYear}`;
+
+        prevSlots.forEach(time => {
+          const converted = convertDateTimeWithTimezone(prevDateStr, time, WORKSPACE_TIMEZONE, timezone);
+          if (converted.date === selectedDate) {
+            const iso = convertDateToISO(converted.date);
+            const disabled = disabledTimes.some(d => d.date === iso && d.time.startsWith(converted.time));
+            if (!disabled) previousDaySlots.push(converted.time);
+          }
+        });
+      }
+    }
+  }
+
+  // ── الأوقات العادية لليوم الحالي ─────────────────────────────────────
+  const timeSlots = [];
+  const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
+  const restInMinutes = restCycle;
+
+  timeRangesForSelectedDay.forEach(range => {
+    if (!range?.from || !range?.to) return;
+    const [fromH, fromM] = range.from.split(':').map(Number);
+    const [toH, toM] = range.to.split(':').map(Number);
+    const start = new Date(); start.setHours(fromH, fromM, 0, 0);
+    const end = new Date(); end.setHours(toH, toM, 0, 0);
+    let current = new Date(start);
+
+    while (current < end) {
+      const timeStr = `${current.getHours().toString().padStart(2, '0')}:${current.getMinutes().toString().padStart(2, '0')}`;
+      const endApp = new Date(current);
+      endApp.setMinutes(endApp.getMinutes() + durationInMinutes);
+      if (endApp > end) break;
+
+      const disabled = disabledTimes.some(d => d.date === formattedDate && d.time.startsWith(timeStr));
+      const past = isTimePast(selectedDate, timeStr);
+
+      if (!disabled && !past) {
+        timeSlots.push(timeStr);
+      }
+
+      current.setMinutes(current.getMinutes() + durationInMinutes + restInMinutes);
+    }
+  });
+
+  const all = [...previousDaySlots, ...timeSlots];
+  const unique = [...new Set(all)].sort((a, b) => {
+    const [ha, ma] = a.split(':').map(Number);
+    const [hb, mb] = b.split(':').map(Number);
+    return ha * 60 + ma - hb * 60 - mb;
+  });
+
+  return unique;
+};
 
  const isDateUnavailable = (day, month, year, unavailableDates) => {
     if (!unavailableDates || !Array.isArray(unavailableDates) || unavailableDates.length === 0) {
@@ -331,7 +395,163 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
     }
   };
 
-  const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavailableTimes = [], unavailableDates = []) => {
+
+useEffect(() => {
+  if (!selectedDate || !bookingData?.raw_available_times) return;
+
+  const isoDate = convertDateToISO(selectedDate);
+  if (!isoDate) return;
+
+  const wsTimezone = WORKSPACE_TIMEZONE;
+  const userTimezone = selectedTimezone || wsTimezone;
+
+  let allAvailableTimes = [];
+
+  // ────────────────────────────────
+  // 1. أوقات اليوم الحالي
+  // ────────────────────────────────
+  const currentDayTimes = generateTimeSlots(
+    bookingData.raw_available_times,
+    parseInt(bookingData.duration_cycle),
+    bookingData.duration_period || 'minutes',
+    isoDate,
+    bookingData.disabled_times || [],
+    bookingData.unavailable_times || [],
+    bookingData.unavailable_dates || [],
+    parseInt(bookingData.rest_cycle || '0'),
+    wsTimezone
+  );
+
+  currentDayTimes.forEach(time => {
+    const converted = convertDateTimeWithTimezone(selectedDate, time, wsTimezone, userTimezone);
+    if (converted.date === selectedDate) {
+      const isDisabled = bookingData.disabled_times?.some(d =>
+        d.date === isoDate && d.time.startsWith(converted.time)
+      );
+      const isPast = isTimePast(selectedDate, converted.time);
+
+      if (!isDisabled && !isPast) {
+        allAvailableTimes.push(converted.time);
+      }
+    }
+  });
+
+  // ────────────────────────────────
+  // 2. أوقات من اليوم السابق (للـ timezones القدام زي Auckland)
+  // ────────────────────────────────
+  if (userTimezone !== wsTimezone) {
+    const prevDate = new Date(isoDate + 'T00:00:00.000Z');
+    prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+    const prevDateISO = prevDate.toISOString().split('T')[0];
+
+    const prevDayTimes = generateTimeSlots(
+      bookingData.raw_available_times,
+      parseInt(bookingData.duration_cycle),
+      bookingData.duration_period || 'minutes',
+      prevDateISO,
+      bookingData.disabled_times || [],
+      bookingData.unavailable_times || [],
+      bookingData.unavailable_dates || [],
+      parseInt(bookingData.rest_cycle || '0'),
+      wsTimezone
+    );
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const prevDay = prevDate.getUTCDate();
+    const prevMonth = monthNames[prevDate.getUTCMonth()];
+    const prevYear = prevDate.getUTCFullYear();
+    const prevDateStr = `${String(prevDay).padStart(2, '0')} ${prevMonth} ${prevYear}`;
+
+    prevDayTimes.forEach(time => {
+      const converted = convertDateTimeWithTimezone(prevDateStr, time, wsTimezone, userTimezone);
+      if (converted.date === selectedDate) {
+        const isDisabled = bookingData.disabled_times?.some(d =>
+          d.date === isoDate && d.time.startsWith(converted.time)
+        );
+        const isPast = isTimePast(selectedDate, converted.time);
+
+        if (!isDisabled && !isPast) {
+          allAvailableTimes.push(converted.time);
+        }
+      }
+    });
+  }
+
+  // ────────────────────────────────
+  // 3. أوقات من اليوم التالي (للـ timezones الورا زي Hawaii)
+  // ────────────────────────────────
+  if (userTimezone !== wsTimezone) {
+    const nextDate = new Date(isoDate + 'T00:00:00.000Z');
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+    const nextDateISO = nextDate.toISOString().split('T')[0];
+
+    const nextDayTimes = generateTimeSlots(
+      bookingData.raw_available_times,
+      parseInt(bookingData.duration_cycle),
+      bookingData.duration_period || 'minutes',
+      nextDateISO,
+      bookingData.disabled_times || [],
+      bookingData.unavailable_times || [],
+      bookingData.unavailable_dates || [],
+      parseInt(bookingData.rest_cycle || '0'),
+      wsTimezone
+    );
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const nextDay = nextDate.getUTCDate();
+    const nextMonth = monthNames[nextDate.getUTCMonth()];
+    const nextYear = nextDate.getUTCFullYear();
+    const nextDateStr = `${String(nextDay).padStart(2, '0')} ${nextMonth} ${nextYear}`;
+
+    nextDayTimes.forEach(time => {
+      const converted = convertDateTimeWithTimezone(nextDateStr, time, wsTimezone, userTimezone);
+      if (converted.date === selectedDate) {
+        const isDisabled = bookingData.disabled_times?.some(d =>
+          d.date === isoDate && d.time.startsWith(converted.time)
+        );
+        const isPast = isTimePast(selectedDate, converted.time);
+
+        if (!isDisabled && !isPast) {
+          allAvailableTimes.push(converted.time);
+        }
+      }
+    });
+  }
+
+  // ترتيب وإزالة التكرار
+  const uniqueTimes = [...new Set(allAvailableTimes)].sort((a, b) => {
+    const [ha, ma] = a.split(':').map(Number);
+    const [hb, mb] = b.split(':').map(Number);
+    return ha * 60 + ma - (hb * 60 + mb);
+  });
+
+  console.log('📅 Final Times for', selectedDate, ':', uniqueTimes);
+
+  setBookingData(prev => ({
+    ...prev,
+    available_times: uniqueTimes.map(t => ({ time: t }))
+  }));
+
+  if (uniqueTimes.length > 0) {
+    setSelectedTime(uniqueTimes[0]);
+  } else {
+    setSelectedTime('');
+  }
+
+}, [
+  selectedDate,
+  selectedTimezone,
+  bookingData?.raw_available_times,
+  bookingData?.disabled_times,
+  bookingData?.unavailable_times,
+  bookingData?.unavailable_dates,
+  bookingData?.duration_cycle,
+  bookingData?.duration_period,
+  bookingData?.rest_cycle
+]);
+
+
+const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavailableTimes = [], unavailableDates = []) => {
     if (!date || !availableTimes || !Array.isArray(availableTimes)) {
       return null;
     }
@@ -349,78 +569,147 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
     return availableTime ? (typeof availableTime === 'string' ? availableTime : availableTime.time) : null;
   };
 
-  const fetchInterviewData = async (interviewId) => {
-    const response = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}`);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const apiData = await response.json();
-    console.log(apiData);
-    
-    
-    if (!apiData.data || !apiData.data.interview) {
-      throw new Error('Invalid API response structure');
-    }
-    
-    const interview = apiData.data.interview;
-    
-    if (interview.staff && Array.isArray(interview.staff) && interview.staff.length > 0) {
-      setAvailableStaff(interview.staff);
-      
-      if (isStaff && share_link) {
-        const staffMember = interview.staff.find(staff => staff.share_link === share_link);
-        
-        if (staffMember) {
-          setSelectedStaff(staffMember);
-          setAvailableStaff([]); 
-        } else {
-          setSelectedStaff(null);
-        }
-      } else {
-        setSelectedStaff(null);
-      }
-    } else {
-      setAvailableStaff([]);
-      setSelectedStaff(null);
-    }
-    
-    localStorage.setItem('double_book', interview.double_book);
-    localStorage.setItem('approve_appo', interview.approve_appointment);
-    
-    return interview;
-  };
+ const fetchInterviewData = async (interviewId) => {
+  const response = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}`);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  const apiData = await response.json();
+  console.log(apiData);
+  
+  if (!apiData.data || !apiData.data.interview) {
+    throw new Error('Invalid API response structure');
+  }
+  
+  const interview = apiData.data.interview;
+  setRequireEndTime(interview.require_end_time === "1" || interview.require_end_time === 1 || interview.require_end_time === true);
 
-  const transformInterviewData = (interview) => {
-    const sourceData = selectedStaff || interview;
+  if (interview.staff_group && Array.isArray(interview.staff_group) && interview.staff_group.length > 0) {
+   
+    setAvailableStaffGroups(prev => {
+      const prevIds = prev.map(g => g.group_id).sort().join(',');
+      const newIds = interview.staff_group.map(g => g.group_id).sort().join(',');
+      return prevIds !== newIds ? interview.staff_group : prev;
+    });
+  } else {
+    setAvailableStaffGroups([]);
+  }
+
+  if (interview.resources && Array.isArray(interview.resources) && interview.resources.length > 0) {
+    setAvailableResources(prev => {
+      const prevIds = prev.map(r => r.id).sort().join(',');
+      const newIds = interview.resources.map(r => r.id).sort().join(',');
+      return prevIds !== newIds ? interview.resources : prev;
+    });
+  } else {
+    setAvailableResources([]);
+  }
+
+  if (interview.staff && Array.isArray(interview.staff) && interview.staff.length > 0) {
+    setAvailableStaff(prev => {
+      const prevIds = prev.map(s => s.id).sort().join(',');
+      const newIds = interview.staff.map(s => s.id).sort().join(',');
+      return prevIds !== newIds ? interview.staff : prev;
+    });
     
-    return {
-      available_dates: sourceData.available_dates || [],
-      unavailable_dates: sourceData.un_available_dates || [],
-      unavailable_times: sourceData.un_available_times || [],
-      available_times: sourceData.available_times || [], 
-      name: interview.name || 'Interview',
-      customer_id: interview.customer_id,
-      id: interview.id,
-      service_name: interview.name || 'Interview Session',
-      provider_name: interview.customer_name,
-      duration: `${interview.duration_cycle}${interview.duration_period}`,
-      work_space_id: interview.work_space_id,
-      photo: interview.photo,
-      disabled_times: sourceData.disabled_times || [],
-      created_at: interview.created_at,
-      raw_available_times: sourceData.available_times,
-      duration_cycle: interview.duration_cycle,
-      duration_period: interview.duration_period,
-      rest_cycle: interview.rest_cycle || '0',
-      price: interview.price || '0',
-      offline_mode: interview.offline_mode,
-      currency: interview.currency,
-      has_staff: availableStaff.length > 0,
-      staff: availableStaff
+    if (isStaff && share_link) {
+      const staffMember = interview.staff.find(staff => staff.share_link === share_link);
+      
+      if (staffMember) {
+        setSelectedStaff(staffMember);
+        setAvailableStaff([]); 
+      }
+    }
+  } else {
+    setAvailableStaff([]);
+  }
+  
+  localStorage.setItem('double_book', interview.double_book);
+  localStorage.setItem('approve_appo', interview.approve_appointment);
+  
+  return interview;
+};
+
+ const calculateEndTime = (startTime, durationCycle, durationPeriod, restCycle = 0) => {
+  if (!startTime) return '';
+  
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const startMinutes = hours * 60 + minutes;
+  
+  const durationInMinutes = durationPeriod === "hours" 
+    ? durationCycle * 60 
+    : durationCycle;
+  
+  // إضافة rest_cycle للـ duration
+  const totalMinutes = durationInMinutes + restCycle;
+  
+  const endMinutes = startMinutes + totalMinutes;
+  const endHours = Math.floor(endMinutes / 60) % 24;
+  const endMins = endMinutes % 60;
+  
+  return `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+};
+
+ const transformInterviewData = (interview) => {
+  let sourceData;
+  
+  if (selectedResource) {
+    sourceData = {
+      available_dates: interview.available_dates || [],
+      unavailable_dates: interview.un_available_dates || [],
+      unavailable_times: interview.un_available_times || [],
+      available_times: interview.available_times || [],
+      disabled_times: selectedResource.disabled_times || [] 
     };
+  } else if (selectedStaffGroup) {
+    sourceData = {
+      available_dates: selectedStaffGroup.collective_available_dates || [],
+      unavailable_dates:selectedStaffGroup.collective_unavailable_dates || [],
+      unavailable_times:selectedStaffGroup.collective_unavailable_times || [],
+      available_times: selectedStaffGroup.collective_available_times || [],
+      disabled_times: selectedStaffGroup.disabled_times || []
+    };
+  } else if (selectedStaff) {
+    sourceData = selectedStaff;
+  } else {
+    sourceData = interview;
+  }
+  
+  return {
+    available_dates: sourceData.available_dates || [],
+    unavailable_dates: sourceData.un_available_dates || [],
+    unavailable_times: sourceData.un_available_times || [],
+    available_times: sourceData.available_times || [], 
+    name: interview.name || 'Interview',
+    customer_id: interview.customer_id,
+    id: interview.id,
+    service_name: interview.name || 'Interview Session',
+    provider_name: interview.customer_name,
+    duration: `${interview.duration_cycle}${interview.duration_period}`,
+    work_space_id: interview.work_space_id,
+    photo: interview.photo,
+    disabled_times: sourceData.disabled_times || [], 
+    created_at: interview.created_at,
+    raw_available_times: sourceData.available_times,
+    duration_cycle: interview.duration_cycle,
+    duration_period: interview.duration_period,
+    rest_cycle: interview.rest_cycle || '0',
+    status_of_pay: interview.status_of_pay,
+    price: interview.price || '0',
+    mode: interview.mode,
+    inperson_mode: interview.inperson_mode,
+    currency: interview.currency,
+    has_staff: availableStaff.length > 0,
+    has_staff_groups: availableStaffGroups.length > 0,
+    staff: availableStaff,
+    require_end_time: interview.require_end_time,
+    staff_groups: availableStaffGroups,
+    has_resources: availableResources.length > 0,
+    resources: availableResources
   };
+};
 
   const findDefaultDateTime = (transformedData, interview) => {
     let defaultDate = null;
@@ -588,17 +877,21 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
       }
 
       const appointmentData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        date: formattedDate,
-        time: selectedTime,
-        time_zone: selectedTimezone,
-        code_phone: formData.code_phone,
-        address: formData.address || '',
-        ...(isInterviewMode && interviewId ? { interview_id: interviewId } : {}),
-        ...(selectedStaff ? { staff_id: selectedStaff.id } : {})
-      };
+  name: formData.name,
+  email: formData.email,
+  phone: formData.phone,
+  date: formattedDate,
+  time: selectedTime,
+  end_time: selectedEndTime,
+  time_zone: selectedTimezone,
+  code_phone: formData.code_phone,
+  address: formData.address || '',
+  type: selectedType,
+  ...(isInterviewMode && interviewId ? { interview_id: interviewId } : {}),
+  ...(selectedStaff ? { staff_id: selectedStaff.id } : {}),
+  ...(selectedStaffGroup ? { group_id: selectedStaffGroup.group_id} : {}),
+  ...(selectedResource ? { resource_id: selectedResource.id } : {})
+};
 
       const apiEndpoint = `https://backend-booking.appointroll.com/api/public/interview/${bookingData?.id}/book`;
 
@@ -629,7 +922,7 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
 
       const approve_appo = localStorage.getItem('approve_appo');
       toast.success(
-        approve_appo == 1 ? 'Appointment Created Successfully' : "Appointment Created Successfully, but is pending approval",
+        approve_appo == 1 ? 'Appointment Created Successfully, but is pending approval' : "Appointment Created Successfully",
         {
           position: 'top-center',
           duration: 5000,
@@ -672,6 +965,8 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
 
     } catch (error) {
       if (error.errors) {
+        console.log(error);
+        
         Object.values(error.errors).flat().forEach(errMsg => {
           toast.error(errMsg, {
             position: 'top-center',
@@ -691,6 +986,55 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
       setIsBooking(false);
     }
   };
+const calculatePriceBasedOnTime = (startTime, endTime, durationCycle, durationPeriod, restCycle, price) => {
+  if (!startTime || !endTime || !price) return { slots: 0, total: 0 };
+  
+  // تحويل الأوقات إلى دقائق
+  const [startHours, startMinutes] = startTime.split(':').map(Number);
+  const [endHours, endMinutes] = endTime.split(':').map(Number);
+  
+  const startInMinutes = startHours * 60 + startMinutes;
+  const endInMinutes = endHours * 60 + endMinutes;
+  
+  // حساب الفرق بالدقائق
+  const diffInMinutes = endInMinutes - startInMinutes;
+  
+  // تحويل مدة الفترة إلى دقائق
+  const slotDurationInMinutes = durationPeriod === "hours" 
+    ? durationCycle * 60 
+    : durationCycle;
+  
+  // إضافة rest_cycle لكل فترة
+  const restInMinutes = parseInt(restCycle) || 0;
+  const totalSlotDuration = slotDurationInMinutes + restInMinutes; // duration + rest
+  
+  // حساب عدد الفترات
+  // نستخدم slotDurationInMinutes فقط (بدون rest) لآخر فترة
+  const slots = Math.ceil((diffInMinutes - restInMinutes) / totalSlotDuration);
+  
+  // حساب السعر الإجمالي
+  const total = slots * parseFloat(price);
+  
+  return { slots, total, totalSlotDuration };
+};
+useEffect(() => {
+  if (requireEndTime && selectedTime && selectedEndTime && bookingData?.price) {
+    const { slots, total } = calculatePriceBasedOnTime(
+      selectedTime,
+      selectedEndTime,
+      parseInt(bookingData.duration_cycle),
+      bookingData.duration_period,
+      parseInt(bookingData.rest_cycle || '0'),
+      bookingData.price
+    );
+    
+    setNumberOfSlots(slots);
+    setTotalPrice(total);
+  } else {
+    setNumberOfSlots(0);
+    setTotalPrice(0);
+  }
+}, [selectedTime, selectedEndTime, requireEndTime, bookingData]);
 
   // useEffect hooks
   useEffect(() => {
@@ -746,7 +1090,6 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
 
     setBookingData(updatedData);
 
-    // إعادة حساب التاريخ والوقت بناءً على بيانات الـ Staff
     const { defaultDate, defaultTime } = findDefaultDateTime(updatedData, sourceData);
     
     if (defaultDate) {
@@ -755,29 +1098,93 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
         setSelectedTime(defaultTime);
       }
     } else {
-      // إذا لم يكن هناك تاريخ متاح، قم بإعادة تعيين القيم
       setSelectedDate('');
       setSelectedTime('');
     }
   }, [selectedStaff]);
 
-  useEffect(() => {
-    if (!bookingData || !selectedDate || !bookingData.raw_available_times) {
-      return;
-    }
+useEffect(() => {
+  if (!selectedStaffGroup) return;
 
+  const updatedData = {
+    ...bookingData,
+    available_dates: selectedStaffGroup.collective_available_dates || [],
+    unavailable_dates: selectedStaffGroup.collective_unavailable_dates || [], // ✅ أضفها
+    unavailable_times: selectedStaffGroup.collective_unavailable_times || [],
+    available_times: selectedStaffGroup.collective_available_times || [],
+    disabled_times: selectedStaffGroup.disabled_times || [],
+    raw_available_times: selectedStaffGroup.collective_available_times || [],
+    duration_cycle: bookingData?.duration_cycle,
+    duration_period: bookingData?.duration_period,
+    rest_cycle: bookingData?.rest_cycle || '0',
+  };
+
+  setBookingData(updatedData);
+
+  const { defaultDate, defaultTime } = findDefaultDateTime(updatedData, selectedStaffGroup);
+  
+  if (defaultDate) {
+    setSelectedDate(defaultDate);
+    if (defaultTime) {
+      setSelectedTime(defaultTime);
+    }
+  } else {
+    setSelectedDate('');
+    setSelectedTime('');
+  }
+}, [selectedStaffGroup]);
+useEffect(() => {
+  if (requireEndTime && selectedTime && bookingData) {
+    const calculatedEndTime = calculateEndTime(
+      selectedTime,
+      parseInt(bookingData.duration_cycle),
+      bookingData.duration_period,
+      parseInt(bookingData.rest_cycle || 0) 
+    );
+    setSelectedEndTime(calculatedEndTime);
+  }
+}, [selectedTime, requireEndTime, bookingData]);
+
+useEffect(() => {
+  if (!selectedResource) {
+    lastResourceIdRef.current = null;
+    return;
+  }
+
+  if (lastResourceIdRef.current === selectedResource.id) {
+    return; 
+  }
+
+  lastResourceIdRef.current = selectedResource.id;
+
+  const sourceData = {
+    available_dates: bookingData?.available_dates || [],
+    unavailable_dates: bookingData?.unavailable_dates || [],
+    unavailable_times: bookingData?.unavailable_times || [],
+    available_times: bookingData?.available_times || [],
+    disabled_times: selectedResource.disabled_times || [] 
+  };
+  
+  const updatedData = {
+    ...bookingData,
+    disabled_times: sourceData.disabled_times,
+    raw_available_times: bookingData?.raw_available_times,
+    duration_cycle: bookingData?.duration_cycle,
+    duration_period: bookingData?.duration_period,
+    rest_cycle: bookingData?.rest_cycle || '0',
+  };
+
+  setBookingData(updatedData);
+
+  if (selectedDate && bookingData?.raw_available_times) {
     const formattedDate = convertDateToISO(selectedDate);
-    if (!formattedDate) {
-      console.error('Failed to convert date:', selectedDate);
-      return;
-    }
-
+    
     const availableTimesForDate = generateTimeSlots(
       bookingData.raw_available_times,
       parseInt(bookingData.duration_cycle),
       bookingData.duration_period || 'minutes',
       formattedDate,
-      bookingData.disabled_times || [],
+      sourceData.disabled_times,
       bookingData.unavailable_times || [],
       bookingData.unavailable_dates || [],
       parseInt(bookingData.rest_cycle || '0')
@@ -785,13 +1192,14 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
 
     setBookingData(prev => ({
       ...prev,
-      available_times: availableTimesForDate.map(time => ({ time }))
+      available_times: availableTimesForDate.map(time => ({ time })),
+      disabled_times: sourceData.disabled_times
     }));
 
     const firstAvailableTime = getFirstAvailableTime(
       selectedDate,
       availableTimesForDate.map(time => ({ time })),
-      bookingData.disabled_times || [],
+      sourceData.disabled_times,
       bookingData.unavailable_times || [],
       bookingData.unavailable_dates || []
     );
@@ -801,7 +1209,10 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
     } else {
       setSelectedTime('');
     }
-  }, [selectedDate, bookingData?.disabled_times]);
+  }
+}, [selectedResource, selectedDate, bookingData?.raw_available_times]);
+
+
 
   useEffect(() => {
     if (!id || !bookingData) return;
@@ -870,6 +1281,21 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
     availableStaff,
     selectedStaff,
     setSelectedStaff,
+    availableStaffGroups,
+  selectedStaffGroup,
+  setSelectedStaffGroup,
+    requireEndTime,
+  selectedEndTime,
+  setSelectedEndTime,
+  calculateEndTime,
+  availableResources,
+  selectedResource,
+  setSelectedResource,
+   selectedType,  
+  setSelectedType,
+   totalPrice,
+  numberOfSlots,
+  calculatePriceBasedOnTime,
   };
 };
 

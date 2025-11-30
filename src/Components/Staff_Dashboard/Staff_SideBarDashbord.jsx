@@ -157,7 +157,7 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
               onClick={toggleWorkspaceDropdown}
               className="bg-purple-100 w-full p-2 text-left rounded hover:bg-gray-100 flex items-center gap-2 justify-between"
             >
-              <span className="text-purple-600 text-sm font-semibold">
+              <span className="text-purple-600 text-sm font-semibold truncate  max-w-[150px]">
                 {workspace ? workspace.name : "My Space"}
               </span>
               {isWorkspaceOpen ? <ChevronUp className="text-purple-600" /> : <ChevronDown className="text-purple-600" />}
@@ -228,6 +228,7 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
                               <div className="w-6 h-6 bg-pink-200 rounded-full flex items-center justify-center text-pink-600 font-bold">
                                 {workspaceItem.name?.slice(0, 1).toUpperCase()}
                               </div>
+                              <div className="truncate  max-w-[150px]">
                               <span className="text-sm text-gray-800">
                                 {searchQuery ? (
                                   <span dangerouslySetInnerHTML={{
@@ -240,6 +241,8 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
                                   workspaceItem.name
                                 )}
                               </span>
+
+                              </div>
                             </div>
                           </div>
                           <div className="flex gap-2 items-center relative">
@@ -281,7 +284,7 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
                 <span className={`${active === item.path ? "text-white" : "text-gray-500"}`}>
                   {item.icon}
                 </span>
-                <span className="text-sm">{item.name}</span>
+                <span className="text-sm truncate  max-w-[150px]">{item.name}</span>
               </Link>
             ))}
           </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import SliderInterviewPages from './SliderInterviewPages';
 import { Outlet, useParams } from 'react-router-dom';
 import NavInterview from './NavInterview';

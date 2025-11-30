@@ -26,12 +26,13 @@ const DateTimeSelector = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+
   const formatDateToYMD = (date) => {
     if (!date) return null;
     const d = new Date(date);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
-
+console.log('isLoading:', isLoading);
   const getDayId = (date) => {
     const dayOfWeek = date.getDay();
     return dayOfWeek === 0 ? 1 : dayOfWeek + 1;
@@ -60,7 +61,6 @@ const DateTimeSelector = ({
         const disabledTimeFormatted = normalizeTimeFormat(disabledTime.time);
         
         const match = disabledDate === formattedDate && disabledTimeFormatted === normalizedTime;
-        console.log(`isTimeDisabled: Checking date=${formattedDate}, time=${normalizedTime}, disabledDate=${disabledDate}, disabledTime=${disabledTimeFormatted}, match=${match}`);
         return match;
       });
       
@@ -560,7 +560,7 @@ const DateTimeSelector = ({
     return null;
   };
 
-  const fetchInterviewDetails = async (shareLink) => {
+ const fetchInterviewDetails = async (shareLink) => {
     setIsLoading(true);
     setError(null);
 
@@ -576,15 +576,26 @@ const DateTimeSelector = ({
       const data = await response.json();
       const interviewData = data?.data?.interview;
       const isStaffs = interviewData?.staff;
+      
       if (isStaffs && isStaffs.length > 0) {
         setStaffInterview(interviewData.staff);
       }
+      
+      console.log(interviewData);
 
       const useStaffResource = appointment?.staff_resource && 
             typeof appointment.staff_resource === 'object' && 
             Object.keys(appointment.staff_resource).length > 0;
 
-      const dataSource = useStaffResource ? appointment.staff_resource : interviewData;
+      // ✅ التعديل: اجعل interviewData هو الـ default
+      let dataSource = interviewData; // القيمة الافتراضية
+      
+      if (useStaffResource) {
+        dataSource = appointment.staff_resource;
+      } else if (isStaffs && isStaffs.length > 0) {
+        dataSource = isStaffs[0];
+      }
+      // لو مفيش الاتنين، هيستخدم interviewData اللي محدد من فوق
 
       if (dataSource) {
         setInterviewDetails(interviewData);
@@ -702,6 +713,7 @@ const DateTimeSelector = ({
       setShowTimeSlots(true);
     }
   };
+console.log(mode);
 
   const getAvailableTimeSlots = () => {
     if (!selectedDate || !interviewDetails) return [];
@@ -792,7 +804,7 @@ const DateTimeSelector = ({
                       </span>
                     </div>
                     <div className="text-left">
-                      <div className="font-medium">{selectedStaff.name}</div>
+                      <div className="font-medium truncate  max-w-[150px]">{selectedStaff.name}</div>
                     </div>
                   </>
                 ) : (
@@ -817,7 +829,7 @@ const DateTimeSelector = ({
                         </span>
                       </div>
                       <div className="text-left">
-                        <div className="font-medium">{staff.name}</div>
+                        <div className="font-medium truncate block max-w-[150px]">{staff.name}</div>
                       </div>
                     </button>
                   ))
@@ -854,7 +866,7 @@ const DateTimeSelector = ({
         </div>
       )}
 
-      {!isLoading && (
+      {(mode === 'reschedule' || !isLoading) && (
         <>
           <button
             onClick={() => setShowTimeSlots(!showTimeSlots)}
@@ -917,7 +929,7 @@ const DateTimeSelector = ({
                 {selectedDate && getAvailableTimeSlots().length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium mb-3">Available Slots</h4>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
                       {getAvailableTimeSlots().map((slot, index) => (
                         <button
                           key={index}

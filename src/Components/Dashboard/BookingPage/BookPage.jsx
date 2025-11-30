@@ -2,47 +2,51 @@ import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Search, Layout,  Settings, Trash2, Share2 } from 'lucide-react';
 import { CgProfile } from 'react-icons/cg';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { usePermission } from "../../hooks/usePermission";
 import { deleteInterview, fetchAllInterviews,updateShareLinkIntreview } from '../../../redux/apiCalls/interviewCallApi';
- 
-import { getRecruiters } from '../../../redux/apiCalls/RecruiterCallApi';
-import ShareBookingModal from '../Profile_Page/ShareModalPrpfile';
+ import ShareBookingModal from '../Profile_Page/ShareModalPrpfile';
 import {  updateShareLinkWorkspace,getAllWorkspaces } from '../../../redux/apiCalls/workspaceCallApi';
+import { workspaceAction } from '../../../redux/slices/workspaceSlice';
+import { getStaff, updateShareLinkStaff } from '../../../redux/apiCalls/StaffCallApi';
+import { IoColorPaletteOutline } from 'react-icons/io5';
 
 const BookPage = () => {
   const [activeTab, setActiveTab] = useState('interviews');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState(null);
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
+  const [selectedStaff, setSelectedStaff] = useState(null);
   const [isWorkspaceShareModalOpen, setIsWorkspaceShareModalOpen] = useState(false);
+  const [isStaffShareModalOpen, setIsStaffShareModalOpen] = useState(false);
   const [isCompactView, setIsCompactView] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [recruiterSearchTerm, setRecruiterSearchTerm] = useState('');
   const [workspaceSearchTerm, setWorkspaceSearchTerm] = useState('');
-
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const {allInterviews, loading = false } = useSelector(state => state.interview);
-  const { recruiters, recruiter } = useSelector(state => state.recruiters);
   const { profile } = useSelector(state => state.profileData);
   const { workspace,allWorkspaces } = useSelector(state => state.workspace);
-  
+    const { staffs } = useSelector(state => state.staff);
+
   const workspaceId = workspace ? workspace.id : 0;
   const profileData = profile?.user;
-  const recruitersList = recruiters?.customers || [];
+  const recruitersList = staffs || [];
 
   const canViewInterviews = usePermission('view interview');
   const canViewRecruiters = usePermission('view staff');
+  const canEditStaff = usePermission('edit staff');
 
   const tabs = [
     ...(canViewInterviews ? [{ id: 'interviews', label: 'Interviews' }] : []),
-    ...(canViewRecruiters ? [{ id: 'users', label: 'Users' }] : []),
+    ...(canViewRecruiters ? [{ id: 'users', label: 'Recruiter' }] : []),
     { id: 'workspace', label: 'Workspace' },
   ];
 
   // Fetch recruiters on component mount
   useEffect(() => {
-    dispatch(getRecruiters());
+    dispatch(getStaff());
 
   }, [dispatch]);
 
@@ -68,6 +72,17 @@ const BookPage = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
+const handleWorkspaceSettingsClick = useCallback((ws, e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  // Set the selected workspace in Redux
+  dispatch(workspaceAction.setWorkspace(ws));
+  
+  // Navigate to WorkspaceAvailability (same as sidebar)
+  navigate('/layoutDashboard/WorkspaceAvailability');
+}, [dispatch, navigate]);
+
   const handleShareClick = useCallback((interview, e) => {
     e?.preventDefault();
     setSelectedInterview(interview);
@@ -83,9 +98,17 @@ const BookPage = () => {
     setIsWorkspaceShareModalOpen(true);
   }, []);
 
+  const handleStaffShareClick = useCallback((staff, e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    setSelectedStaff(staff);
+    setIsStaffShareModalOpen(true);
+  }, []);
+
   const handleCloseModal = useCallback(() => {
     setIsShareModalOpen(false);
   }, []);
+
 const handleUpdateInterviewShareLink = async (newShareLink,id) => {
     try {
       await dispatch(updateShareLinkIntreview(newShareLink,id));
@@ -94,9 +117,15 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
       console.error('Error updating share link:', error);
     }
   };
+
   const handleCloseWorkspaceShareModal = useCallback(() => {
     setIsWorkspaceShareModalOpen(false);
     setSelectedWorkspace(null);
+  }, []);
+
+  const handleCloseStaffShareModal = useCallback(() => {
+    setIsStaffShareModalOpen(false);
+    setSelectedStaff(null);
   }, []);
 
   const handleUpdateShareLink = async (newShareLink, id) => {
@@ -110,12 +139,16 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
     }
   };
 
-  const handleDeleteInterview = useCallback(async (interviewId) => {
-    if (window.confirm('Are you sure you want to delete this interview?')) {
-      await dispatch(deleteInterview(interviewId));
-      dispatch(fetchAllInterviews());
+  const handleUpdateStaffShareLink = async (newShareLink, id) => {
+    try {
+      await dispatch(updateShareLinkStaff(newShareLink, id));
+      await dispatch(getStaff());
+      setIsStaffShareModalOpen(false);
+      setSelectedStaff(null);
+    } catch (error) {
+      console.error('Error updating share link:', error);
     }
-  }, [dispatch, workspaceId]);
+  };
 
   // Filter interviews based on search term
   const filteredInterviews = allInterviews?.filter(interview =>
@@ -241,7 +274,7 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
                 placeholder="Search workspaces"
                 value={workspaceSearchTerm}
                 onChange={(e) => setWorkspaceSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                className="w-full lg:w-1/3 pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent text-sm"
               />
             </div>
             
@@ -254,14 +287,18 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
                     className="flex items-center justify-between p-3 lg:p-4 rounded-xl bg-white shadow-sm border hover:shadow-md hover:border-gray-300 transition duration-200"
                   >
                     {/* Left side - Icon + Name */}
-                    <Link
-                      to="/bookPage/workspace-themes"
-                      className="flex items-center gap-3 flex-1"
-                    >
+                   <Link
+                    to="/bookPage/workspace-themes"
+                    state={{ workspaceId: ws.id,
+                      workspaceTheme:ws.theme
+                     }}
+                    className="flex items-center gap-3 flex-1"
+                  >
+
                       <div className="w-6 h-6 lg:w-8 lg:h-8 bg-gradient-to-br from-pink-400 to-pink-500 rounded-lg flex items-center justify-center text-white font-semibold shadow-md">
                         <span className="text-sm">{ws?.name?.charAt(0)?.toUpperCase() || 'W'}</span>
                       </div>
-                      <span className="font-medium text-sm text-gray-800">
+                      <span className="font-medium text-sm text-gray-800 truncate  max-w-[150px]">
                         {ws?.name}
                       </span>
                     </Link>
@@ -274,12 +311,12 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
                       >
                         <Share2 size={isCompactView ? 14 : 16} />
                       </button>
-                      <Link 
-                        to='/layoutDashboard/setting/workspaces' 
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition"
-                      >
-                        <Settings size={isCompactView ? 14 : 16} />
-                      </Link>
+                      <button 
+                      onClick={(e) => handleWorkspaceSettingsClick(ws, e)}
+                      className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition"
+                    >
+                      <Settings size={isCompactView ? 14 : 16} />
+                    </button>
                     </div>
                   </div>
                 ))
@@ -313,7 +350,7 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
                   placeholder="Search interviews"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                  className="w-full lg:w-1/3 pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent text-sm"
                 />
               </div>
             </div>
@@ -334,14 +371,16 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
               ) : (
                 <div className="space-y-3">
                   {filteredInterviews.map((interview, index) => (
-                    <div 
+                    <Link  to={`/interview-layout/${interview.id}`}
+
                       key={interview.id} 
                       className="flex items-center gap-3 lg:gap-4 p-3 lg:p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group"
-                    >
+                       onClick={(e) => e.stopPropagation()}
+                   >
                       <InterviewAvatar interview={interview} index={index} />
                       
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm lg:text-base truncate">
+                        <h3 className="font-medium text-sm lg:text-base truncate  max-w-[150px]">
                           {interview.name || 'Untitled Interview'}
                         </h3>
                         <div className="flex items-center gap-2 text-xs lg:text-sm text-gray-600">
@@ -365,7 +404,7 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
                         >
                           <Share2 size={isCompactView ? 16 : 18} />
                         </button>
-                       
+                                 
                         <Link
                           to={`/interview-layout/${interview.id}`}
                           className="p-1 lg:p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700"
@@ -373,9 +412,9 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
                         >
                           <Settings size={isCompactView ? 16 : 18} />
                         </Link>
-                       
+
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -383,43 +422,78 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
           </>
         );
       
-      case 'users':
-        return (
-          <div className="p-4 lg:p-6">
-            {/* Search bar */}
-            <div className="relative mb-4 lg:mb-6">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search users"
-                value={recruiterSearchTerm}
-                onChange={(e) => setRecruiterSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
-              />
-            </div>
+     case 'users':
+  return (
+    <div className="p-4 lg:p-6">
+      {/* Search bar */}
+      <div className="relative mb-4 lg:mb-6">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+        <input
+          type="text"
+          placeholder="Search Recruiter"
+          value={recruiterSearchTerm}
+          onChange={(e) => setRecruiterSearchTerm(e.target.value)}
+          className="w-full lg:w-1/3 pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent text-sm"
+        />
+      </div>
 
-            {/* Recruiters list */}
-            {filteredRecruiters.length > 0 ? (
-              <div className="space-y-2">
-                {filteredRecruiters.map((user) => (
-                  <div key={user.id} className="flex items-center border-b py-3 hover:bg-gray-50 rounded-lg px-2 transition-colors">
-                    <RecruiterAvatar user={user} />
-                    <div className="flex-1 ml-3">
-                      <div className="text-sm font-medium text-gray-900">
-                        {user.name}
-                      </div>
-                      <div className="text-xs text-gray-500">{user.email}</div>
-                    </div>
-                  </div>
-                ))}
+      {/* Recruiters list */}
+      {filteredRecruiters.length > 0 ? (
+        <div className="space-y-2">
+          {filteredRecruiters.map((user) => (
+            <Link
+            to={`/layoutDashboard/setting/recruiterPage/${user.id}`}
+              key={user.id} 
+              className="flex items-center border-b py-3 hover:bg-gray-50 rounded-lg px-2 transition-colors group"
+            >
+              <RecruiterAvatar user={user} />
+              <div className="flex-1 ml-3 min-w-0">
+                <div className="text-sm font-medium text-gray-900 truncate  max-w-[150px]">
+                  {user.name}
+                </div>
+                <div className="text-xs text-gray-500 truncate">{user.email}</div>
               </div>
-            ) : (
-              <div className="py-8 text-center text-gray-500">
-                {recruiterSearchTerm ? 'No users match your search' : 'No users found'}
+
+              {/* Action buttons - shown on hover */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => handleStaffShareClick(user, e)}
+                  className="p-1 lg:p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                  title="Share"
+                >
+                  <Share2 size={isCompactView ? 16 : 18} />
+                </button>
+                
+                <Link
+                  to={`/layoutDashboard/setting/recruiterPage/${user.id}`}
+                  className="p-1 lg:p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700"
+                  onClick={(e) => {
+                    e.stopPropagation();}}
+                  title="Settings"
+                >
+                  <Settings size={isCompactView ? 16 : 18} />
+                </Link>
               </div>
-            )}
-          </div>
-        );
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="py-8 text-center text-gray-500">
+          {recruiterSearchTerm ? 'No users match your search' : 'No users found'}
+        </div>
+      )}
+
+      {/* Share Booking Modal for Staff */}
+      <ShareBookingModal
+        isOpen={isStaffShareModalOpen} 
+        onClose={handleCloseStaffShareModal} 
+        shareLink={selectedStaff ? `s/${selectedStaff?.share_link}` : ''}
+        profile={selectedStaff}
+        onUpdateLink={handleUpdateStaffShareLink}
+        canShowEdit={canEditStaff}
+      />
+    </div>
+  );
       
       default:
         return null;
@@ -444,7 +518,7 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
                 </div>
 
                 <div>
-                  <h2 className="text-base lg:text-lg font-medium">
+                  <h2 className="text-base lg:text-lg font-medium truncate  max-w-[150px]">
                     {profileData?.name || 'User Name'}
                   </h2>
                   <p className="text-gray-600 text-xs lg:text-sm">
@@ -456,10 +530,10 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-2 sm:mt-0">
                 <Link 
                   to="/bookPage/themes-and-layout" 
-                  className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex-1 sm:flex-none justify-center text-sm lg:text-base transition-colors"
+                  className="flex items-center gap-2 px-3 lg:px-4 py-2 text-black border border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-md duration-300 flex-1 sm:flex-none justify-center text-sm lg:text-base transition-colors"
                 >
-                  <Layout size={isCompactView ? 16 : 18} />
-                  <span>Themes and Layouts</span>
+                  <IoColorPaletteOutline size={isCompactView ? 15 : 17} />
+                  <span className="text-sm">Themes and Layouts</span>
                 </Link>
               </div>
             </div>
@@ -486,7 +560,7 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
             {tabs.map(tab => (
               <button
                 key={tab.id}
-                className={`py-3 lg:py-4 px-1 border-b-2 transition-colors text-sm lg:text-base whitespace-nowrap ${
+                className={`py-3 lg:py-4 px-1 border-b-2 transition-colors text-sm  whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'border-indigo-600 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'

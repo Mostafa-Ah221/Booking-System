@@ -1,6 +1,7 @@
-import axios from "axios";
+import axiosInstance from "../../Components/pages/axiosInstance";
 import { appointmentActions } from "../slices/appointmentsSlice";
 import toast from "react-hot-toast";
+import axios from "axios";
 
 export function fetchAppointments(queryParams = {}, force = false) {
   return async (dispatch, getState) => {
@@ -12,10 +13,6 @@ export function fetchAppointments(queryParams = {}, force = false) {
 
     dispatch(appointmentActions.setLoading(true));
     try {
-      const token = localStorage.getItem("access_token");
-
-      let url = "https://backend-booking.appointroll.com/api/customer/appointments";
-
       const searchParams = new URLSearchParams();
       Object.keys(queryParams).forEach((key) => {
         if (
@@ -27,16 +24,10 @@ export function fetchAppointments(queryParams = {}, force = false) {
         }
       });
 
-      if (searchParams.toString()) {
-        url += `?${searchParams.toString()}`;
-      }
+      const queryString = searchParams.toString();
+      const url = queryString ? `/customer/appointments?${queryString}` : '/customer/appointments';
 
-      const response = await axios.get(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-      });
+      const response = await axiosInstance.get(url);
 
       if (response.data) {
         dispatch(appointmentActions.setAppointments(response.data.data));
@@ -45,7 +36,7 @@ export function fetchAppointments(queryParams = {}, force = false) {
     } catch (err) {
       console.error("Failed to fetch appointments:", err);
       dispatch(
-        appointmentActions.setError("فشل في تحميل المواعيد")
+        appointmentActions.setError("Failed to fetch appointments")
       );
     } finally {
       dispatch(appointmentActions.setLoading(false));
@@ -54,34 +45,37 @@ export function fetchAppointments(queryParams = {}, force = false) {
 }
 
 export function getAppointmentById(id) {
-    return async (dispatch) => {
-      dispatch(appointmentActions.setLoading(true));
-      try {
-        const token = localStorage.getItem("access_token");
-  
-        const response = await axios.get(
-          `https://backend-booking.appointroll.com/api/customer/appointments/${id}`,
-          {
-            headers: {
-                "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        );
+  return async (dispatch) => {
+    dispatch(appointmentActions.setLoading(true));
+    try {
+      const response = await axiosInstance.get(`/customer/appointments/${id}`);
+      
+      if (response.data) {
+        dispatch(appointmentActions.setAppointment(response.data.data));
+        dispatch(appointmentActions.setError(null));
         
-        if (response.data) {
-          dispatch(appointmentActions.setAppointment(response.data.data));
-          dispatch(appointmentActions.setError(null));
-          
-        }
-      } catch (err) {
-        // console.log(id);
-        console.error("Failed to fetch appointment:", err);
-      } finally {
-        dispatch(appointmentActions.setLoading(false));
+        return {
+          success: true,
+          data: response.data
+        };
       }
-    };
-  }
+      
+    } catch (err) {
+      console.error("Failed to fetch appointment:", err);
+      dispatch(appointmentActions.setError(err.message));
+      
+      return {
+        success: false,
+        message: err.response?.data?.message || err.message
+      };
+      
+    } finally {
+      dispatch(appointmentActions.setLoading(false));
+    }
+  };
+}
+
+
 export function getAppointmentByIdPublic(id) {
   return async (dispatch) => {
     dispatch(appointmentActions.setLoading(true));
@@ -96,193 +90,177 @@ export function getAppointmentByIdPublic(id) {
       );
       
       if (response.data) {
+        console.log(response.data);
+        
         dispatch(appointmentActions.setAppointment(response.data.data));
         dispatch(appointmentActions.setError(null));
         
-        // إرجاع البيانات للكومبوننت
-        return response.data.data; // 👈 المطلوب إضافته
+        return {
+          success: true,
+          data: response.data.data
+        };
       }
     } catch (err) {
       console.error("Failed to fetch appointment:", err);
-      throw err; // 👈 ورمي الخطأ للكومبوننت
+      dispatch(appointmentActions.setError(err.message));
+      
+      // ✅ إضافة return للفشل
+      return {
+        success: false,
+        message: err.response?.data?.message || err.message
+      };
+      
     } finally {
       dispatch(appointmentActions.setLoading(false));
     }
   };
 }
   
-
-  export function updateAppointmentStatus(id, statusData) {
-    return async (dispatch) => {
-      try {
-        const token = localStorage.getItem("access_token");
-  
-        const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/appointments/${id}/status`,
-          statusData,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        );
-  
-        if (response.data.status) {
-          dispatch(getAppointmentById(id)); 
-          toast.success(response?.data?.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
-            borderRadius: '8px',
-            background: '#333',
-            color: '#fff',
-            padding: '12px 16px',
-            fontWeight: '500',
-            },
-          });
-          return { success: true, message: response.data.message };
-        } else {
-          throw new Error(response.data.message );
-        }
-      } catch (error) {
-        console.error("Error updating appointment status:", error);
-        return { success: false, message: error.message };
-      }
-    };
-  }
-  
-
-  export function rescheduleAppointment(id, data) {
-    return async (dispatch) => {
-      try {
-        const token = localStorage.getItem("access_token");
-  
-        const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/customer/appointments/${id}/reschedule`,
-          data,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        );
-  
-        // console.log("🔄 Reschedule API Response:", response.data);
-  
-        if (response.data.status) {
-          toast.success(response?.data?.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
-            borderRadius: '8px',
-            background: '#333',
-            color: '#fff',
-            padding: '12px 16px',
-            fontWeight: '500',
-            },
-          });
-          return { 
-            success: true, 
-            message: response.data.message,
-            data: response.data.data // Include any returned data
-          };
-        } else {
-          throw new Error(response.data.message);
-        }
-      } catch (error) {
-        console.error("❌ Error rescheduling appointment:", error);
-        
-        // Better error handling
-        let errorMessage = "حدث خطأ أثناء إعادة الجدولة";
-        
-        if (error.response) {
-          errorMessage = error.response.data?.message || `خطأ من الخادم: ${error.response.status}`;
-         } else {
-          // Other error
-          errorMessage = error.message;
-        }
-        
-        return { success: false, message: errorMessage };
-      }
-    };
-  }
-  export function reschedulePublic(id, data) {
-    return async (dispatch) => {
-      try {
-        // const token = localStorage.getItem("access_token");
-  
-        const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/appointments/${id}/reschedule`,
-          data,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              // Authorization: token,
-            },
-          }
-        );
-  
-  
-        if (response.data.status) {
-          toast.success(response?.data?.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
-            borderRadius: '8px',
-            background: '#333',
-            color: '#fff',
-            padding: '12px 16px',
-            fontWeight: '500',
-            },
-          });
-          return { 
-            success: true, 
-            message: response.data.message,
-            data: response.data.data // Include any returned data
-          };
-        } else {
-          throw new Error(response.data.message);
-        }
-      } catch (error) {
-        console.error("❌ Error rescheduling appointment:", error);
-        
-        // Better error handling
-        let errorMessage = "حدث خطأ أثناء إعادة الجدولة";
-        
-        if (error.response) {
-          errorMessage = error.response.data?.message || `خطأ من الخادم: ${error.response.status}`;
-         } else {
-          // Other error
-          errorMessage = error.message;
-        }
-        
-        return { success: false, message: errorMessage };
-      }
-    };
-  }
-  export function createAppointment(id, data) {
+export function updateAppointmentStatus(id, statusData) {
   return async (dispatch) => {
     try {
-      const token = localStorage.getItem("access_token");
+      const response = await axiosInstance.post(
+        `/appointments/${id}/status`,
+        statusData
+      );
 
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/client/assign-appointment/${id}`,
+      if (response.data.status) {
+        dispatch(getAppointmentById(id)); 
+        if (response.data.data) {
+          dispatch(appointmentActions.setAppointment(response.data.data));
+        } else {
+          dispatch(getAppointmentByIdPublic(id));
+        }
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
+          },
+        });
+        return { success: true, message: response.data.message };
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (error) {
+      console.error("Error updating appointment status:", error);
+      return { success: false, message: error.message };
+    }
+  };
+}
+
+export function rescheduleAppointment(id, data) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.post(
+        `/customer/appointments/${id}/reschedule`,
+        data
+      );
+
+      if (response.data.status) {
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
+          },
+        });
+        return { 
+          success: true, 
+          message: response.data.message,
+          data: response.data.data
+        };
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (error) {
+      console.error("❌ Error rescheduling appointment:", error);
+      
+      let errorMessage = "حدث خطأ أثناء إعادة الجدولة";
+      
+      if (error.response) {
+        errorMessage = error.response.data?.message || `خطأ من الخادم: ${error.response.status}`;
+      } else {
+        errorMessage = error.message;
+      }
+      
+      return { success: false, message: errorMessage };
+    }
+  };
+}
+
+export function reschedulePublic(id, data) {
+  return async (dispatch) => {
+    try {
+      console.log(data);
+       const response = await axiosInstance.post(
+        `/appointments/${id}/reschedule`,
         data,
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: token,
           },
         }
       );
 
       if (response.data.status) {
-        // Dispatch addAppointment to update the state with the new appointment
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
+          },
+        });
+        return { 
+          success: true, 
+          message: response.data.message,
+          data: response.data.data
+        };
+      } else {
+        console.log(response.data);
+        
+        throw new Error(response.data.message);
+      }
+    } catch (error) {
+      console.error("❌ Error rescheduling appointment:", error);
+      
+      // let errorMessage = "حدث خطأ أثناء إعادة الجدولة";
+      
+      if (error.response) {
+        errorMessage = error.response.data?.message || `  : ${error.response.status}`;
+      } else {
+        errorMessage = error.message;
+      }
+      logger.error(errorMessage);
+      return { success: false, message: errorMessage };
+    }
+  };
+}
+
+export function createAppointment(id, data) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.post(
+        `/client/assign-appointment/${id}`,
+        data
+      );
+
+      if (response.data.status) {
         dispatch(appointmentActions.addAppointment(response.data.data));
 
         toast.success(response?.data?.message, {
@@ -301,100 +279,103 @@ export function getAppointmentByIdPublic(id) {
         return {
           success: true,
           message: response.data.message,
-          data: response.data.data, // Include the new appointment data
+          data: response.data.data,
         };
       } else {
-        throw new Error(response.data.message || "فشل في إنشاء الموعد");
+        throw new Error(response.data.message );
       }
-    } catch (error) {
-      console.error("❌ Error creating appointment:", error);
+   } catch (error) {
+  console.error("❌ Error creating appointment:", error);
 
-      let errorMessage = "حدث خطأ أثناء إنشاء الموعد";
+  if (error.response?.data?.errors) {
+    const errors = error.response.data.errors;
 
-      if (error.response) {
-        errorMessage = error.response.data?.message || `خطأ من الخادم: ${error.response.status}`;
-      } else {
-        errorMessage = error.message;
-      }
+    Object.keys(errors).forEach((field) => {
+      const msg = Array.isArray(errors[field])
+        ? errors[field].join(", ")
+        : errors[field];
 
-      return { success: false, message: errorMessage };
-    }
+      toast.error(msg, {
+        position: "top-center",
+        duration: 4000,
+      });
+    });
+
+    return { success: false, message: "Validation failed", errors };
+  }
+
+  const errorMessage =
+    error.response?.data?.message ||
+    error.message;
+
+  toast.error(errorMessage, {
+    position: "top-center",
+    duration: 4000,
+  });
+
+  return { success: false, message: errorMessage };
+}
+
   };
 }
   
-  export function statusAppointment(id, data) {
-    return async (dispatch) => {
-      try {
-        const token = localStorage.getItem("access_token");
+export function statusAppointment(id, data) {
+  return async (dispatch) => {
+    try {
+      const response = await axios.post(
+        `https://backend-booking.appointroll.com/api/appointments/${id}/status`,
+        data
+      );
       
-  
-        const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/appointments/${id}/status`,
-          data,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        );
-        
-        // console.log("🔄 Status Update API Response:", response.data);
-        
-        if (response.data.status) {
-          toast.success(response?.data?.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
+      if (response.data.status) {
+        dispatch(appointmentActions.updateAppointment(response.data.data));
+        await dispatch(getAppointmentByIdPublic(id));
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
             borderRadius: '8px',
             background: '#333',
             color: '#fff',
             padding: '12px 16px',
             fontWeight: '500',
-            },
-          });
-          return { 
-            success: true, 
-            message: response.data.message,
-            data: response.data.data 
-          };
-        } else {
-          throw new Error(response.data.message );
-        }
-      } catch (error) {
-        console.error("❌ Error updating appointment status:", error);
-        
-        let errorMessage = "حدث خطأ غير متوقع";
-        
-        if (error.response) {
-          errorMessage = error.response.data?.message || `خطأ من الخادم: ${error.response.status}`;
-          
-          if (error.response.status === 401) {
-            errorMessage = "انتهت صلاحية جلسة العمل. يرجى تسجيل الدخول مرة أخرى.";
-          } 
-        } else {
-          errorMessage = error.message;
-        }
-        
-        return { success: false, message: errorMessage };
+          },
+        });
+        return { 
+          success: true, 
+          message: response.data.message,
+          data: response.data.data 
+        };
+      } else {
+        throw new Error(response.data.message);
       }
-    };
-  }
- export function approveAppointment(id, data) {
+    } catch (error) {
+      console.error("❌ Error updating appointment status:", error);
+      
+      let errorMessage = "حدث خطأ غير متوقع";
+      
+      if (error.response) {
+        errorMessage = error.response.data?.message || `خطأ من الخادم: ${error.response.status}`;
+        
+        if (error.response.status === 401) {
+          errorMessage = "انتهت صلاحية جلسة العمل. يرجى تسجيل الدخول مرة أخرى.";
+        } 
+      } else {
+        errorMessage = error.message;
+      }
+      
+      return { success: false, message: errorMessage };
+    }
+  };
+}
+
+export function approveAppointment(id, data) {
   return async (dispatch) => {
     try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/customer/appointments/${id}/approve`,
-        data,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token,
-          },
-        }
+      const response = await axiosInstance.post(
+        `/customer/appointments/${id}/approve`,
+        data
       );
       
       if (response.data.status) {
@@ -411,16 +392,14 @@ export function getAppointmentByIdPublic(id) {
           },
         });
 
-        // ✅ تحديث الـ appointment مباشرة في Redux
         if (response.data.data) {
           dispatch(appointmentActions.updateAppointment({
             id: id,
-            approve_status: data.approved, // أو response.data.data.approve_status
-            ...response.data.data // إذا كان الـ API بيرجع بيانات كاملة
+            approve_status: data.approved,
+            ...response.data.data
           }));
         }
 
-        // ✅ اختياري: جلب البيانات المحدثة من الـ API
         dispatch(getAppointmentById(id));
         
         return { 
@@ -447,45 +426,34 @@ export function getAppointmentByIdPublic(id) {
   };
 }
   
-  
-  
-  export function deleteAppointment(id) {
-    return async (dispatch) => {
-      try {
-        const token = localStorage.getItem("access_token");
-  
-        const response = await axios.delete(
-          `https://backend-booking.appointroll.com/api/customer/appointments/${id}`,
-          {
-            headers: {
-                "Content-Type": "application/json",
-              Authorization: token,
-            },
-          }
-        );
-  
-        if (response.data.status) {
-          toast.success(response?.data?.message, {
-            position: 'top-center',         
-            duration: 5000,
-            icon: '✅',
-            style: {
+export function deleteAppointment(id) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.delete(
+        `/customer/appointments/${id}`
+      );
+
+      if (response.data.status) {
+        toast.success(response?.data?.message, {
+          position: 'top-center',         
+          duration: 5000,
+          icon: '✅',
+          style: {
             borderRadius: '8px',
             background: '#333',
             color: '#fff',
             padding: '12px 16px',
             fontWeight: '500',
-            },
-          });
-          dispatch(appointmentActions.removeAppointment(id));
-          return { success: true, message: response.data.message };
-        } else {
-          throw new Error(response.data.message || "فشل في حذف الموعد");
-        }
-      } catch (error) {
-        console.error("Error deleting appointment:", error);
-        return { success: false, message: error.message };
+          },
+        });
+        dispatch(appointmentActions.removeAppointment(id));
+        return { success: true, message: response.data.message };
+      } else {
+        throw new Error(response.data.message || "فشل في حذف الموعد");
       }
-    };
-  }
-  
+    } catch (error) {
+      console.error("Error deleting appointment:", error);
+      return { success: false, message: error.message };
+    }
+  };
+}
