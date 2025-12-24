@@ -2,8 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import toast from "react-hot-toast";
 import ReadOnlyView from './ReadOnlyView';
-
-import {  updateAvailabil_DashboardStaff, updateUnAvailabil_DashboardStaff, getDetailsStaff } from '../../../redux/apiCalls/StaffapiCalls/StaffapiCalls';
+import { updateAvailabil_DashboardStaff, updateUnAvailabil_DashboardStaff, getDetailsStaff } from '../../../redux/apiCalls/StaffapiCalls/StaffapiCalls';
 import { useParams } from 'react-router-dom';
 
 const StaffAvailability = () => {
@@ -11,7 +10,13 @@ const StaffAvailability = () => {
   const [activeTab, setActiveTab] = useState('available-times');
   const [availabilityMode, setAvailabilityMode] = useState('available');
   const [activeSection, setActiveSection] = useState(null);
-  const [timeZone] = useState('Africa/Cairo - EET (+02:00)');
+  
+  // ✅ تغيير timeZone من string إلى object
+  const [timeZone, setTimeZone] = useState({
+    value: 'Africa/Cairo',
+    label: '(GMT+2:00) Cairo'
+  });
+  
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isTimeSectionDisabled, setIsTimeSectionDisabled] = useState(true);
   
@@ -26,18 +31,21 @@ const StaffAvailability = () => {
   
   const [weekDays, setWeekDays] = useState([]);
 
-  // ✅ استدعاء الدالة عند تحميل الـ component
   useEffect(() => {
     dispatch(getDetailsStaff());
   }, [dispatch]);
 
-  // ✅ logging عند تغير staffData
   useEffect(() => {
     console.log("Staff Data Updated:", staffData);
     if (staffData) {
       console.log("Staff Details:", staffData);
     }
   }, [staffData]);
+
+  // ✅ إضافة handleTimeZoneChange
+  const handleTimeZoneChange = useCallback((selectedTimezone) => {
+    setTimeZone(selectedTimezone);
+  }, []);
 
   const formatDate = useCallback((date) => date.toISOString().split('T')[0], []);
 
@@ -86,47 +94,82 @@ const StaffAvailability = () => {
 
   const handleSaveAvailableTimes = useCallback(async (formData) => {
     try {
+      console.log('FormData received:', formData);
+      
       const availableTimesData = formData?.available_times;
       
       if (!availableTimesData || !Array.isArray(availableTimesData) || availableTimesData.length === 0) {
         throw new Error('No available times provided');
       }
       
-      const payload = { available_times: availableTimesData };
+      // ✅ استخراج string value من timezone
+      let timezoneValue = formData?.time_zone || timeZone;
+      
+      // التأكد من أنه string وليس object
+      if (typeof timezoneValue === 'object' && timezoneValue?.value) {
+        timezoneValue = timezoneValue.value;
+      }
+      
+      const payload = { 
+        available_times: availableTimesData,
+        available_dates: staffData?.staff?.available_dates || [],
+        time_zone: timezoneValue // ✅ الآن string بالتأكيد
+      };
+      
+      console.log('Payload sent to API:', payload);
+      
       const result = await dispatch(updateAvailabil_DashboardStaff(payload));
       
-      if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
+      if (result?.message === "Updated Successfully") {
         toast.success('Available times saved successfully!');
         setIsTimeSectionDisabled(true);
         setIsEditing(false);
         await dispatch(getDetailsStaff());
         return { success: true };
       } else {
-        throw new Error(result?.message || result?.error || 'Save failed');
+        throw new Error(result?.message?.error);
       }
     } catch (error) {
       toast.error(`Error saving available times: ${error.message}`);
       return { success: false, error: error.message };
     }
-  }, [dispatch]);
+  }, [dispatch, staffData, timeZone]);
 
   const handleSaveUnAvailableTimes = useCallback(async (formData) => {
     try {
       const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
       
-      const payload = {};
+      // ✅ استخراج string value من timezone
+      let timezoneValue = formData?.time_zone || timeZone;
+      
+      // التأكد من أنه string وليس object
+      if (typeof timezoneValue === 'object' && timezoneValue?.value) {
+        timezoneValue = timezoneValue.value;
+      }
+      
+      const payload = {
+        time_zone: timezoneValue // ✅ الآن string بالتأكيد
+      };
+
+      console.log('Unavailable payload:', payload);
+
       if (unAvailableTimes.length > 0) {
         payload.un_available_times = unAvailableTimes;
+        payload.un_available_dates = staffData?.staff?.un_available_dates || [];
       }
 
       const result = await dispatch(updateUnAvailabil_DashboardStaff(payload));
       
-      if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
-        toast.success('Unavailable times saved successfully!');
+      if (result?.message === "Updated Successfully") {
+        toast.success(unAvailableTimes.length > 0 
+          ? 'Unavailable times saved successfully!' 
+          : 'Unavailable times cleared successfully!');
         setIsTimeSectionDisabled(true);
         setIsEditing(false);
         await dispatch(getDetailsStaff());
         return { success: true };
+      } else {
+        throw new Error(result?.message?.error);
       }
     } catch (error) {
       console.error('Full error object:', error); 
@@ -135,7 +178,7 @@ const StaffAvailability = () => {
       toast.error(`Error saving unavailable times: ${error.message}`);
       return { success: false, error: error.message };
     }
-  }, [dispatch]);
+  }, [dispatch, staffData, timeZone]);
 
   const handleSaveAvailableDates = useCallback(async (formData) => {
     try {
@@ -212,7 +255,8 @@ const StaffAvailability = () => {
       return handleSaveAvailableTimes(formData);
     } else {
       const transformedData = {
-        un_available_times: formData.available_times || formData.un_available_times || []
+        un_available_times: formData.available_times || formData.un_available_times || [],
+        time_zone: formData.time_zone // ✅ تمرير timezone
       };
       return handleSaveUnAvailableTimes(transformedData);
     }
@@ -304,6 +348,7 @@ const StaffAvailability = () => {
       isEditing={isEditing}
       activeSection={activeSection}
       timeZone={timeZone}
+      onTimeZoneChange={handleTimeZoneChange} // ✅ إضافة هذا
       weekDays={weekDays}
       selectedTimeDropdown={selectedTimeDropdown}
       handleTimeDropdownToggle={setSelectedTimeDropdown}

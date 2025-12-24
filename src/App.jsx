@@ -47,7 +47,6 @@ import Login from './Components/Auth/Login/Login';
 import Verify from './Components/Auth/Signup/Verify';
 import ProtectedRoute from './Components/ProtectedRoute/ProtectedRoute';
 import ForgetPassword from './Components/Auth/ForgetPassword/ForgetPassword';
-import AppointmentBooking from './Components/embeded/AppointmentBooking';
 import { Toaster } from 'react-hot-toast';
 import Analytics from './Components/Dashboard/Analytics/Analytics';
 import ResetPassword from './Components/Auth/ForgetPassword/ResetPassword';
@@ -91,6 +90,8 @@ import LayoutDetails from './Components/Settings/Organization/StaffPages/Staff_D
 import AppointmentBooking2 from './Components/embeded/Theme-2/AppointmentBooking2';
 import ThemeRouter from './Components/embeded/ThemeRouter';
 import AppointmentBooking_3 from './Components/embeded/Theme-3/AppointmentBooking-3';
+import InterviewLayut_Staff from './Components/Staff_Dashboard/Staff_Interview_Pages/InterviewLayut_Staff';
+import InterviewDetails_Staff from './Components/Staff_Dashboard/Staff_Interview_Pages/InterviewDetails_Staff';
 
 const router = createBrowserRouter([
   { path: "/verifyNotification", element: <VerifyForm /> },
@@ -118,7 +119,7 @@ const router = createBrowserRouter([
   { path: "/:idAdmin_or/s/:idCustomer/appointmentConfirmation/summary", element: <BookingSummary /> },
 
   // ========== Service ==========
-  { path: "/:idAdmin_or/service/:id", element: <AppointmentBooking /> },
+  { path: "/:idAdmin_or/service/:id", element: <ThemeRouter /> },
   { path: "/:idAdmin_or/service/:id/appointmentConfirmation", element: <AppointmentConfirmation /> },
   { path: "/:idAdmin_or/service/:id/appointmentConfirmation/summary", element: <BookingSummary /> },
   
@@ -276,7 +277,26 @@ const router = createBrowserRouter([
       { path: "notifications/:type", element: <ProtectedRoute><UnifiedNotifications /></ProtectedRoute> },
     ]
   },
-
+  // ========== Interview Layout Staff==========
+    {
+    path: "/interview-layout-staff/:id",
+    element: (
+      <ProtectedRoute>
+          <InterviewLayut_Staff />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: (
+          <ProtectedRoute>
+              <InterviewDetails_Staff />
+          </ProtectedRoute>
+        )
+      },
+        { path: "interview-availability-staff", element: <ProtectedRoute><InterviewAvailability /></ProtectedRoute> },
+    ]
+  },
   // ========== Account Layout ==========
   {
     path: "/layoutAcount",

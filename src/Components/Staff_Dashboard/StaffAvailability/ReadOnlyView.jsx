@@ -13,6 +13,7 @@ const ReadOnlyView = ({
   isEditing,
   activeSection,
   timeZone,
+  onTimeZoneChange,
   weekDays,
   selectedTimeDropdown,
   handleTimeDropdownToggle,
@@ -66,16 +67,6 @@ const ReadOnlyView = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [activeSection, onCancel]);
-
-  // Debug: اطبع القيم
-  useEffect(() => {
-    console.log('🔍 ReadOnlyView State:', {
-      activeSection,
-      activeTab,
-      isEditing,
-      availabilityMode
-    });
-  }, [activeSection, activeTab, isEditing, availabilityMode]);
 
   const getCurrentAvailabilityMode = () => {
     if (activeTab === 'unavailable-times' || activeTab === 'unavailable-dates') {
@@ -181,7 +172,7 @@ const ReadOnlyView = ({
                 </button>
               )}
               
-              {section.id === 'unavailability' && (
+              {section.id === 'unavailability' && !isEditing && (
                 <button
                   onClick={handleUnavailabilityAdd}
                   className="px-3 py-1 border border-red-600 text-red-600 rounded-md hover:bg-red-50 flex items-center text-sm"
@@ -194,47 +185,38 @@ const ReadOnlyView = ({
 
             {/* Content Area */}
             {showContent && (
-              <div ref={sectionRef} className="border-t p-4">
+              <div ref={sectionRef} className="border-t">
                 {/* Time Sections */}
                 {(activeTab === 'available-times' || activeTab === 'unavailable-times') && (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Mode: {getCurrentAvailabilityMode()} | Tab: {activeTab}
-                    </p>
-                    <TimeSection
-                      timeZone={timeZone}
-                      weekDays={weekDays}
-                      selectedTimeDropdown={selectedTimeDropdown}
-                      handleTimeDropdownToggle={handleTimeDropdownToggle}
-                      handleSave={handleSaveTimes}
-                      onUpdateWeekDays={onUpdateWeekDays}
-                      onCancel={onCancel}
-                      getInterviewData={getInterviewData}
-                      availabilityMode={getCurrentAvailabilityMode()}
-                      isTimeSectionDisabled={isTimeSectionDisabled}
-                    />
-                  </div>
+                  <TimeSection
+                    timeZone={timeZone}
+                    onTimeZoneChange={onTimeZoneChange}
+                    weekDays={weekDays}
+                    selectedTimeDropdown={selectedTimeDropdown}
+                    handleTimeDropdownToggle={handleTimeDropdownToggle}
+                    handleSave={handleSaveTimes}
+                    onUpdateWeekDays={onUpdateWeekDays}
+                    onCancel={onCancel}
+                    getInterviewData={getInterviewData}
+                    availabilityMode={getCurrentAvailabilityMode()}
+                    isTimeSectionDisabled={isTimeSectionDisabled}
+                  />
                 )}
                 
                 {/* Calendar Sections */}
                 {(activeTab === 'available-dates' || activeTab === 'unavailable-dates') && (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Mode: {getCurrentAvailabilityMode()} | Tab: {activeTab}
-                    </p>
-                    <CalendarSection
-                      timeZone={timeZone}
-                      currentMonth={currentMonth}
-                      selectedDates={selectedDates}
-                      goToPreviousMonth={goToPreviousMonth}
-                      goToNextMonth={goToNextMonth}
-                      handleDateClick={handleDateClick}
-                      handleSave={handleSaveDates}
-                      getInterviewData={getInterviewData}
-                      availabilityMode={getCurrentAvailabilityMode()} 
-                      onCancel={onCancel}
-                    />
-                  </div>
+                  <CalendarSection
+                    timeZone={timeZone}
+                    currentMonth={currentMonth}
+                    selectedDates={selectedDates}
+                    goToPreviousMonth={goToPreviousMonth}
+                    goToNextMonth={goToNextMonth}
+                    handleDateClick={handleDateClick}
+                    handleSave={handleSaveDates}
+                    getInterviewData={getInterviewData}
+                    availabilityMode={getCurrentAvailabilityMode()} 
+                    onCancel={onCancel}
+                  />
                 )}
               </div>
             )}

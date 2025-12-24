@@ -7,6 +7,7 @@ const staffApisSlice = createSlice({
     staff_appointments: [],
     staff_appointment: null,
     staff_interviews: [],
+    staff_interview: [],
     staff_workspaces: [],
     share_link: null,
     loading: false,
@@ -39,7 +40,6 @@ const staffApisSlice = createSlice({
       state.staff_appointment = action.payload;
     },
     setStaff_interviews(state, action) {
-      console.log('🔵 Reducer received:', action.payload);
       
       if (Array.isArray(action.payload)) {
         state.staff_interviews = action.payload;
@@ -48,8 +48,9 @@ const staffApisSlice = createSlice({
       } else {
         state.staff_interviews = [];
       }
-      
-      console.log('🟢 Reducer set interviews to:', state.staff_interviews);
+    },
+    setStaff_interview(state, action) {
+      state.staff_interview = action.payload;
     },
     setStaff_workspaces(state, action) {
       console.log('🔵 Workspaces Reducer received:', action.payload);

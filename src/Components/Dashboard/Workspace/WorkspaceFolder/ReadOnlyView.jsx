@@ -13,6 +13,7 @@ const ReadOnlyView = ({
   isEditing,
   activeSection,
   timeZone,
+  onTimeZoneChange,
   weekDays,
   selectedTimeDropdown,
   handleTimeDropdownToggle,
@@ -209,6 +210,7 @@ const ReadOnlyView = ({
                 {(activeTab === 'available-times' || activeTab === 'unavailable-times') && (
                   <TimeSection
                     timeZone={timeZone}
+                     onTimeZoneChange={onTimeZoneChange}
                     weekDays={weekDays}
                     selectedTimeDropdown={selectedTimeDropdown}
                     handleTimeDropdownToggle={handleTimeDropdownToggle}

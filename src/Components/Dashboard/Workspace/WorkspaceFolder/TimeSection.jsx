@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, X, Send } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { editWorkspaceById } from '../../../../redux/apiCalls/workspaceCallApi';import toast from "react-hot-toast";
+import { editWorkspaceById } from '../../../../redux/apiCalls/workspaceCallApi';
+import toast from "react-hot-toast";
+import TimezoneSelect from 'react-timezone-select';
 
 const TimeSection = ({ 
   timeZone, 
+  onTimeZoneChange,
   weekDays: initialWeekDays, 
   selectedTimeDropdown,
   handleTimeDropdownToggle,
@@ -17,9 +20,10 @@ const TimeSection = ({
   const [weekDays, setWeekDays] = useState(initialWeekDays);
   const [isEditMode, setIsEditMode] = useState(true);
   const [displayWeekDays, setDisplayWeekDays] = useState([]);
+  const timezoneRef = useRef(null);
   
   const { workspace } = useSelector(state => state.workspace);
-   const id = workspace ? workspace.id : 0;
+  const id = workspace ? workspace.id : 0;
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -39,7 +43,17 @@ const TimeSection = ({
   };
 
   useEffect(() => {
+
+    
     if (workspace) {
+    
+     const timezoneValue = availabilityMode === 'available' 
+      ? workspace.available_times_time_zone 
+      : workspace.un_available_times_time_zone;
+
+    if (timezoneValue && onTimeZoneChange) {
+      onTimeZoneChange(timezoneValue);
+    }
       const timeSource = availabilityMode === 'available' 
         ? workspace.available_times 
         : workspace.un_available_times;
@@ -111,21 +125,27 @@ const TimeSection = ({
         }));
       
       if (handleSave) {
-        const result = await handleSave({ 
-          [availabilityMode === 'available' ? 'available_times' : 'un_available_times']: available_times 
-        });
+        const formData = {
+          time_zone: timeZone
+        };
+        
+        if (availabilityMode === 'available') {
+          formData.available_times = available_times;
+        } else {
+          formData.un_available_times = available_times;
+        }
+        
+        console.log('FormData sent to handleSave:', formData);
+        
+        const result = await handleSave(formData);
         
         if (result && result.success) {
           setDisplayWeekDays([...weekDays]);
           await dispatch(editWorkspaceById(id));
-        } else {
-          throw new Error('Save operation did not return success');
         }
       }
     } catch (error) {
       toast.error(`Error saving times: ${error.message || 'An unexpected error occurred'}`);
-      console.log();
-      
     }
   };
 
@@ -341,7 +361,7 @@ const TimeSection = ({
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between ">
         <div className="flex items-center space-x-2">
           <div>
             {/* <h3 className="font-medium">
@@ -380,6 +400,21 @@ const TimeSection = ({
             </button>
           </div>
         )}
+      </div>
+
+      {/* Timezone Selector */}
+      <div 
+        ref={timezoneRef}
+        className="mb-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-64">
+          <TimezoneSelect
+            value={timeZone}
+            onChange={onTimeZoneChange}
+            className="text-sm"
+          />
+        </div>
       </div>
 
       <div className="border rounded-lg p-4">

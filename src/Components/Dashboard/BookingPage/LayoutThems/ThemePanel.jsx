@@ -3,8 +3,7 @@ import { ChevronDown, ChevronRight, Eye, EyeOff, Upload, Check, X } from 'lucide
 import { useDispatch, useSelector } from 'react-redux';
 import { updateTheme, updateThemeStaff } from '../../../../redux/apiCalls/ThemeCallApi';
 import { LAYOUT_TO_THEME } from '../LayoutWorkspaceTheme/LayoutShapes/themeMapping';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import ImageUploadCrop from '../../InterviewsPages/InterViewPage/ImageUploadCrop';
 
 const ThemePanel = ({
   header,
@@ -25,6 +24,7 @@ const ThemePanel = ({
   const [selectedLayout, setSelectedLayout] = useState('default');
   const [selectedColor, setSelectedColor] = useState(null);
   const [logoDeleted, setLogoDeleted] = useState(false);
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
   const userType = localStorage.getItem("userType");
 
   useEffect(() => {
@@ -59,14 +59,17 @@ const ThemePanel = ({
         }
       }
 
-      // Header
+      // Header - تحقق من وجود الصورة
+      const hasPhoto = theme.photo && theme.photo.trim() !== '';
+      setLogoDeleted(!hasPhoto);
+
       if (theme.nickname) {
         onHeaderChange({
           ...header,
           title: theme.nickname,
           visibleTitle: toBool(theme.show_nickname),
           visibleLogo: toBool(theme.show_photo),
-          logo: logoDeleted ? null : (theme.photo || header.logo) // لا تسترجع اللوجو لو تم حذفه
+          logo: hasPhoto ? theme.photo : null // استخدم hasPhoto مباشرة
         });
       }
 
@@ -75,7 +78,7 @@ const ThemePanel = ({
         onPagePropertiesChange({
           ...pageProperties,
           title: theme.page_title || pageProperties.title,
-          description: theme.page_description || pageProperties.description,
+          description: stripHtml(theme.page_description || '') || pageProperties.description,
           visibleTitle: toBool(theme.show_page_title),
           visibleDescription: toBool(theme.show_page_description)
         });
@@ -156,15 +159,9 @@ const ThemePanel = ({
     }
   };
 
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        handleHeaderChange('logo', reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleImageUpdate = (imageFile) => {
+    handleHeaderChange('logo', imageFile);
+    setIsImageUploadOpen(false);
   };
 
   const handleSaveTheme = () => {
@@ -202,7 +199,7 @@ const ThemePanel = ({
     } else if (logoDeleted) {
       // إرسال قيمة فارغة عند حذف اللوجو
       formData.append('photo', '');
-      formData.append('delete_photo', '1'); // إضافة flag للحذف
+      formData.append('remove_photo', '1'); // ✅ تغيير من delete_photo إلى remove_photo
     }
 
     if (userType === "staff") {
@@ -215,6 +212,26 @@ const ThemePanel = ({
     if (logoDeleted) {
       setLogoDeleted(false);
     }
+  };
+
+  // ✅ دالة حذف الصورة
+  const handleDeleteLogo = async () => {
+    const formData = new FormData();
+    formData.append('nickname', header.title);
+    formData.append('show_nickname', header.visibleTitle ? 1 : 0);
+    formData.append('show_photo', header.visibleLogo ? 1 : 0);
+    formData.append('photo', '');
+    formData.append('remove_photo', '1'); // ✅ استخدام remove_photo
+
+    if (userType === "staff") {
+      await dispatch(updateThemeStaff(formData));
+    } else {
+      await dispatch(updateTheme(formData));
+    }
+
+    // تحديث الـ state المحلي
+    handleHeaderChange('logo', null);
+    setLogoDeleted(true);
   };
 
   const handleSaveFooter = () => {
@@ -239,24 +256,14 @@ const ThemePanel = ({
     }
   };
 
-  // دالة لإزالة tags الزائدة من HTML وإبقاء التنسيق فقط
-  const cleanHtmlForSave = (html) => {
-    // إزالة <p> tags الخارجية فقط إذا كان المحتوى بسيط
-    let cleaned = html.trim();
-    
-    // إذا كان المحتوى يبدأ وينتهي بـ <p> واحد فقط، نزيله
-    if (cleaned.startsWith('<p>') && cleaned.endsWith('</p>') && 
-        (cleaned.match(/<p>/g) || []).length === 1) {
-      cleaned = cleaned.slice(3, -4);
-    }
-    
-    return cleaned;
+  const stripHtml = (html) => {
+    return html.replace(/<[^>]*>/g, '');
   };
 
   const handleSavePageProperties = () => {
     const payload = {
       page_title: pageProperties.title,
-      page_description: cleanHtmlForSave(pageProperties.description), // تنظيف HTML
+      page_description: pageProperties.description,
       show_page_title: pageProperties.visibleTitle ? 1 : 0,
       show_page_description: pageProperties.visibleDescription ? 1 : 0,
     };
@@ -266,24 +273,6 @@ const ThemePanel = ({
       dispatch(updateTheme(payload));
     }
   };
-
-  // React Quill modules configuration
-  const quillModules = {
-    toolbar: [
-      ['bold', 'italic', 'underline'],
-      [{ 'align': [] }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      ['link']
-    ]
-  };
-
-  // React Quill formats - إزالة paragraph format
-  const quillFormats = [
-    'bold', 'italic', 'underline',
-    'align',
-    'list', 'bullet',
-    'link'
-  ];
 
   return (
     <div className="w-full max-w-md bg-white rounded-lg shadow pb-3">
@@ -418,38 +407,38 @@ const ThemePanel = ({
                   <div className="flex items-center justify-between w-full p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50 mb-4">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded overflow-hidden">
-                        <img src={header.logo} alt="Logo" className="w-full h-full object-cover" />
+                        <img src={typeof header.logo === 'string' ? header.logo : URL.createObjectURL(header.logo)} alt="Logo" className="w-full h-full object-cover" />
                       </div>
                       <span className="text-sm text-gray-600">Logo uploaded</span>
                     </div>
                     <div className="flex gap-2">
-                      <label htmlFor="logo-upload" className="text-indigo-600 text-sm hover:underline cursor-pointer">
-                        Change
-                      </label>
                       <button
-                        onClick={() => handleHeaderChange('logo', null)}
+                        type="button"
+                        onClick={() => setIsImageUploadOpen(true)}
+                        className="text-indigo-600 text-sm hover:underline"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteLogo}
                         className="text-red-600 text-sm hover:underline"
+                        title="Delete logo"
                       >
                         <X size={16} />
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <label
-                    htmlFor="logo-upload"
-                    className="w-full p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-between transition-colors mb-4 cursor-pointer"
+                  <button
+                    type="button"
+                    onClick={() => setIsImageUploadOpen(true)}
+                    className="w-full p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-between transition-colors mb-4"
                   >
                     <span className="text-sm text-gray-600">Upload logo</span>
                     <Upload size={17} className='text-gray-500' />
-                  </label>
+                  </button>
                 )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  className="hidden"
-                  id="logo-upload"
-                />
               </div>
 
               <button onClick={handleSaveHeader} className="py-2 px-5 text-sm rounded-lg w-24 text-white bg-[#5646A5]">
@@ -639,14 +628,11 @@ const ThemePanel = ({
                     {pageProperties.visibleDescription ? <Eye size={17} /> : <EyeOff size={17} />}
                   </button>
                 </div>
-                <ReactQuill
-                  theme="snow"
+                <textarea
                   value={pageProperties.description}
-                  onChange={(content) => handlePagePropertiesChange('description', content)}
+                  onChange={(e) => handlePagePropertiesChange('description', e.target.value)}
                   placeholder="Page Description"
-                  className="mb-4 bg-white rounded-lg"
-                  modules={quillModules}
-                  formats={quillFormats}
+                  className="w-full h-32 p-2 border rounded-lg mb-4 text-sm"
                 />
               </div>
 
@@ -657,6 +643,14 @@ const ThemePanel = ({
           )}
         </div>
       </div>
+
+      {/* ImageUploadCrop Component for Logo */}
+      <ImageUploadCrop
+        isOpen={isImageUploadOpen}
+        onClose={() => setIsImageUploadOpen(false)}
+        onImageUpdate={handleImageUpdate}
+        currentImage={typeof header.logo === 'string' ? header.logo : header.logo}
+      />
     </div>
   );
 };

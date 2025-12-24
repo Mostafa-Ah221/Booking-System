@@ -26,6 +26,8 @@ const CalendarSection2 = ({
     monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
     return monday;
   });
+  
+console.log(availableDates);
 
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());

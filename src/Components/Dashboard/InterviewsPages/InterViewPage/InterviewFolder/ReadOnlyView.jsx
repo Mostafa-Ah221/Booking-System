@@ -13,6 +13,7 @@ const ReadOnlyView = ({
   isEditing,
   activeSection,
   timeZone,
+  onTimeZoneChange, // إضافة هذا
   weekDays,
   selectedTimeDropdown,
   handleTimeDropdownToggle,
@@ -34,7 +35,6 @@ const ReadOnlyView = ({
 
   console.log(getInterviewData);
 
-  // تحقق من نوع الـ interview
   const isCollectiveBooking = getInterviewData?.type === "collective-booking";
 
   useEffect(() => {
@@ -108,7 +108,6 @@ const ReadOnlyView = ({
   return (
     <div className="max-w-4xl mx-auto space-y-4" style={{ minHeight: '100vh' }}>
       {sections.map((section) => {
-        // إخفاء قسم unavailability لو كان collective-booking
         if (section.id === 'unavailability' && isCollectiveBooking) {
           return null;
         }
@@ -116,7 +115,7 @@ const ReadOnlyView = ({
         return (
           <div key={section.id} className="border rounded-lg">
             {section.id === 'working-hours' && activeSection === section.id && (
-              <div className="border-b flex transition-all duration-300 ease-in-out opacity-100 max-h-16">
+              <div className=" flex transition-all duration-300 ease-in-out opacity-100 max-h-16">
                 <button
                   onClick={() => handleTabChange('available-times')}
                   className={`px-4 py-2 text-sm transition-colors duration-200 ${
@@ -166,8 +165,8 @@ const ReadOnlyView = ({
               </div>
             )}
 
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-2">
+            <div className={`flex items-center justify-between ${!isEditing ? 'p-4' : 'p-0'}`}>
+              {!isEditing && (<div className="flex items-center gap-2">
                 {activeSection === section.id ? (
                   <ChevronDown size={16} className="text-gray-400" />
                 ) : (
@@ -177,7 +176,8 @@ const ReadOnlyView = ({
                   <h3 className="font-medium">{section.title}</h3>
                   <p className="text-sm text-gray-500">{section.description}</p>
                 </div>
-              </div>
+              </div>)}
+              
               {section.id === 'working-hours' ? (
                 !isEditing ? (
                   <button
@@ -189,13 +189,16 @@ const ReadOnlyView = ({
                   </button>
                 ) : null
               ) : section.id === 'unavailability' && !isCollectiveBooking ? (
+            !isEditing ? ( 
                 <button
                   onClick={handleUnavailabilityAdd}
                   className="px-3 py-1 border border-red-600 text-red-600 rounded-md hover:bg-red-50 flex items-center text-sm transition-colors duration-200"
                 >
                   <Plus size={14} className="mr-1" />
                   Add
-                </button>
+                </button>) : null
+
+             
               ) : section.id === 'special-hours' ? (
                 <button
                   className="px-3 py-1 border border-gray-300 text-gray-500 rounded-md flex items-center text-sm opacity-50 cursor-not-allowed"
@@ -208,17 +211,14 @@ const ReadOnlyView = ({
             </div>
 
             <div
-              // style={{ 
-              //   height: activeSection === section.id ? `${contentHeight}px` : '0px',
-              //   willChange: activeSection === section.id ? 'height' : 'auto'
-              // }}
               className="transition-all duration-300 ease-in-out overflow-hidden"
             >
               {activeSection === section.id && (
-                <div ref={sectionRef} className="p-4 border-t">
+                <div ref={sectionRef} className="border-t">
                   {(activeTab === 'available-times' || activeTab === 'unavailable-times') && (
                     <TimeSection
                       timeZone={timeZone}
+                      onTimeZoneChange={onTimeZoneChange} // إضافة هذا
                       weekDays={weekDays}
                       selectedTimeDropdown={selectedTimeDropdown}
                       handleTimeDropdownToggle={handleTimeDropdownToggle}

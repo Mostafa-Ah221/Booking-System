@@ -1,7 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import { staff_FetchInterviews } from "../../../redux/apiCalls/StaffapiCalls/StaffapiCalls";
 import { useState, useRef, useEffect } from "react";
-import { Wifi, WifiOff, Share2, MoreVertical, ExternalLink, Copy, Trash2 } from "lucide-react";
+import { Wifi, WifiOff, Share2, MoreVertical, ExternalLink, Copy, Trash2, User, Phone } from "lucide-react";
 import Staff_ShareBookingModal from "../Staff_ShareBookingModal";
 import Loader from "../../Loader";
 import { Link, useOutletContext } from "react-router-dom";
@@ -15,21 +15,26 @@ export default function Staff_Interview() {
     loading = false, 
     error 
   } = useSelector(state => state.staffApis || {});
+  
+  console.log(staff_interviews);
 
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState(null);
+  const [hasFetched, setHasFetched] = useState(false);
   const { selectWorkspace } = useOutletContext();
 
   useEffect(() => {
     const fetchData = async () => {
-      const queryParams = {};
+      const queryParams = { force: true }; // ✅ دايماً force عشان ميستخدمش الـ cache
       
       if (selectWorkspace !== null && selectWorkspace !== undefined && selectWorkspace !== 0) {
         queryParams.work_space_id = selectWorkspace;
       }
       
-      await dispatch(staff_FetchInterviews(queryParams));
+      const result = await dispatch(staff_FetchInterviews(queryParams));
+      console.log('Fetch result:', result);
+      setHasFetched(true);
     };
     
     fetchData();
@@ -47,12 +52,6 @@ export default function Staff_Interview() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  const toggleMenu = (id, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setActiveMenuId(activeMenuId === id ? null : id);
-  };
 
   const handleShareClick = (interview, e) => {
     e.preventDefault();
@@ -73,20 +72,18 @@ export default function Staff_Interview() {
     setActiveMenuId(null);
   };
   
- 
-
-  if (loading && (staff_interviews?.length === 0)) {
-     return (
-       <div className="p-6 max-w-6xl mx-auto">
-         <div className="flex justify-between items-center mb-6">
-           <h1 className="text-xl font-semibold">All Interviews</h1>
-         </div>
-         <div className="flex items-center justify-center py-20">
-           <Loader />
-         </div>
-       </div>
-     );
-   }
+  if (loading || !hasFetched) {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-xl font-semibold">All Interviews</h1>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <Loader />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -97,7 +94,7 @@ export default function Staff_Interview() {
           {staff_interviews.map((interview) => (
             <div key={interview.id} className="relative group">
               <Link
-                 to={`/interview-layout/${interview.id}`}
+                to={`/interview-layout-staff/${interview.id}`}
                 className="bg-white rounded-lg shadow-md p-4 flex flex-col h-full min-h-[200px] border border-transparent hover:border-purple-500 cursor-pointer transition-all"
               >
                 <div className="flex items-center mb-4">
@@ -113,7 +110,7 @@ export default function Staff_Interview() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="font-semibold truncate  max-w-[150px]" title={interview.name}>
+                    <h2 className="font-semibold truncate max-w-[150px]" title={interview.name}>
                       {interview.name}
                     </h2>
                     <p className="text-gray-500 text-sm">
@@ -122,13 +119,21 @@ export default function Staff_Interview() {
                   </div>
                 </div>
                 <div className="flex justify-between items-center text-sm mt-auto">
-                  <div className={`flex items-center gap-2 ${
-                    interview.mode === 'online' ? 'text-green-600' : 'text-blue-600'
-                  }`}>
+                   <div
+                    className={`flex items-center gap-2 ${
+                      interview.mode === 'online'
+                        ? 'text-green-600'
+                        : interview.mode === 'phone'
+                        ? 'text-blue-600'
+                         : 'text-purple-600'
+                    }`}
+                  >
                     {interview.mode === 'online' ? (
                       <Wifi size={16} />
+                    ) : interview.mode === 'phone' ? (
+                      <Phone size={16} />
                     ) : (
-                      <WifiOff size={16} />
+                      <User size={16} />
                     )}
                     <span className="capitalize">{interview.mode}</span>
                   </div>

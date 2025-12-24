@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
-import {  ChevronDown } from 'lucide-react';
-import { PiCalendarBlank, PiMonitorLight, PiUsers, PiUsersThreeLight, PiUsersThreeThin } from "react-icons/pi";
-// Import Calendar and TimeSlots components (in real app)
-// For demo purposes, we'll include simplified versions here
+import { ChevronDown } from 'lucide-react';
+import { PiCalendarBlank, PiMonitorLight, PiUsersThreeLight } from "react-icons/pi";
+import { AiOutlineUser } from "react-icons/ai";
 import Calendar from './Calendar';
 import TimeSlots from './TimeSlots';
 import { editInterviewById } from '../../../../redux/apiCalls/interviewCallApi';
 import { useDispatch, useSelector } from 'react-redux';
-import { PiMonitorThin } from "react-icons/pi";
-import { AiOutlineUser } from "react-icons/ai";
+import { 
+  convertDisabledTimesToTimezone,
+  convertDateTimeWithTimezone,
+  isTimePast,
+  timeToMinutes as utilTimeToMinutes
+} from '../../../embeded/timezoneUtils';
 
 const DateTimeSelector = ({ 
   selectedInterview, 
-  selectedDate, 
+  selectedDate,
   selectedTime, 
   onDateSelect, 
   onTimeSelect,
@@ -20,7 +23,9 @@ const DateTimeSelector = ({
   selectedEndTime,
   appointment,
   onStaffSelect,
-  mode = 'schedule' 
+  mode = 'schedule',
+  selectedTimezone,
+  WORKSPACE_TIMEZONE = 'Africa/Cairo' 
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showTimeSlots, setShowTimeSlots] = useState(false);
@@ -33,27 +38,24 @@ const DateTimeSelector = ({
   const [StaffInterview, setStaffInterview] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState([]);
   const [showStaffDropdown, setShowStaffDropdown] = useState(false);
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  
   const dispatch = useDispatch();
   const { interview } = useSelector(state => state.interview);
-console.log(StaffInterview);
-
-const isResourceMode = interview?.type === "resource";
-const isCollectiveMode = interview?.type === "collective-booking";
-const displayItems = isResourceMode 
-  ? interview?.resources 
-  : isCollectiveMode 
-    ? interview?.staff_group  
-    : StaffInterview;
 console.log(interview);
 
-useEffect(() => {
-    dispatch(editInterviewById(selectedInterview?.id));
-},[dispatch, selectedInterview?.id]);
-console.log(interview?.staff_group);
+  const isResourceMode = interview?.type === "resource";
+  const isCollectiveMode = interview?.type === "collective-booking";
+  const displayItems = isResourceMode 
+    ? interview?.resources 
+    : isCollectiveMode 
+      ? interview?.staff_group  
+      : StaffInterview;
 
+  useEffect(() => {
+    dispatch(editInterviewById(selectedInterview?.id));
+  }, [dispatch, selectedInterview?.id]);
 
   // ============= Helper Functions =============
   const formatDateToYMD = (date) => {
@@ -82,225 +84,296 @@ console.log(interview?.staff_group);
     return `${String(selectedDate.getDate()).padStart(2, '0')}-${monthNames[selectedDate.getMonth()]}-${selectedDate.getFullYear()}`;
   };
 
-  // ============= Time Checking Functions =============
-  const isTimeDisabled = (date, time, disabledTimes = []) => {
-    if (!date || !time || !disabledTimes || !Array.isArray(disabledTimes)) {
-      return false;
-    }
-    
-    try {
-      const formattedDate = formatDateToYMD(date);
-      const normalizedTime = normalizeTimeFormat(time);
-      
-      const isDisabled = disabledTimes.some(disabledTime => {
-        if (!disabledTime || !disabledTime.date || !disabledTime.time) {
-          return false;
-        }
-        
-        const disabledDate = formatDateToYMD(new Date(disabledTime.date));
-        const disabledTimeFormatted = normalizeTimeFormat(disabledTime.time);
-        
-        return disabledDate === formattedDate && disabledTimeFormatted === normalizedTime;
-      });
-      
-      return isDisabled;
-    } catch (error) {
-      console.error('Error in isTimeDisabled:', error);
-      return false;
-    }
+  // ============= Date Range Checking Functions =============
+  const isDateInUnavailableDatesRange = (date) => {
+    if (!date || !unavailableDates || unavailableDates.length === 0) return false;
+
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+
+    return unavailableDates.some(range => {
+      if (!range?.from) return false;
+
+      let fromStr = range.from.split(' ')[0].replace(/\//g, '-');
+      const parts = fromStr.split('-');
+      if (parts.length === 3 && parseInt(parts[0], 10) <= 31) {
+        fromStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      const fromDate = new Date(fromStr);
+      fromDate.setHours(0, 0, 0, 0);
+      if (isNaN(fromDate.getTime())) return false;
+
+      if (range.to === null || range.to === undefined || range.to === '' || range.to === 'null') {
+        return checkDate.toDateString() === fromDate.toDateString();
+      }
+
+      let toStr = range.to.split(' ')[0].replace(/\//g, '-');
+      const toParts = toStr.split('-');
+      if (toParts.length === 3 && parseInt(toParts[0], 10) <= 31) {
+        toStr = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
+      }
+      const toDate = new Date(toStr);
+      toDate.setHours(23, 59, 59, 999);
+      if (isNaN(toDate.getTime())) return false;
+
+      return checkDate >= fromDate && checkDate <= toDate;
+    });
   };
 
-const isDateInUnavailableDatesRange = (date) => {
-  if (!date || !unavailableDates || unavailableDates.length === 0) return false;
-
-  const checkDate = new Date(date);
-  checkDate.setHours(0, 0, 0, 0);
-
-  return unavailableDates.some(range => {
-    if (!range?.from) return false;
-
-    // Parse 'from' date
-    let fromStr = range.from.split(' ')[0].replace(/\//g, '-');
-    const parts = fromStr.split('-');
-    if (parts.length === 3 && parseInt(parts[0], 10) <= 31) {
-      // Format: DD-MM-YYYY → convert to YYYY-MM-DD
-      fromStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    const fromDate = new Date(fromStr);
-    fromDate.setHours(0, 0, 0, 0);
-    if (isNaN(fromDate.getTime())) return false;
-
-    // Case 1: to is null → only the 'from' day is unavailable
-    if (range.to === null || range.to === undefined || range.to === '' || range.to === 'null') {
-      return checkDate.toDateString() === fromDate.toDateString();
+  const isDateInAvailableRange = (date, availableDatesRanges = availableDates) => {
+    if (!date || !availableDatesRanges || availableDatesRanges.length === 0) {
+      return false;
     }
 
-    // Case 2: has 'to' → full range
-    let toStr = range.to.split(' ')[0].replace(/\//g, '-');
-    const toParts = toStr.split('-');
-    if (toParts.length === 3 && parseInt(toParts[0], 10) <= 31) {
-      toStr = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
-    }
-    const toDate = new Date(toStr);
-    toDate.setHours(23, 59, 59, 999);
-    if (isNaN(toDate.getTime())) return false;
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
 
-    return checkDate >= fromDate && checkDate <= toDate;
-  });
-};
+    return availableDatesRanges.some(range => {
+      if (!range?.from) return false;
 
+      let fromStr = range.from.split(' ')[0].replace(/\//g, '-');
+      const parts = fromStr.split('-');
+      if (parts.length === 3 && parseInt(parts[0]) <= 31) {
+        fromStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+      const fromDate = new Date(fromStr);
+      fromDate.setHours(0, 0, 0, 0);
+      if (isNaN(fromDate.getTime())) return false;
 
+      if (range.to === null || range.to === undefined || range.to === '' || range.to === 'null') {
+        return checkDate >= fromDate;
+      }
 
-const isDateInAvailableRange = (date, availableDatesRanges = availableDates) => {
-  if (!date || !availableDatesRanges || availableDatesRanges.length === 0) {
-    return false;
-  }
+      let toStr = range.to.split(' ')[0].replace(/\//g, '-');
+      const toParts = toStr.split('-');
+      if (toParts.length === 3 && parseInt(toParts[0]) <= 31) {
+        toStr = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
+      }
+      const toDate = new Date(toStr);
+      toDate.setHours(23, 59, 59, 999);
+      if (isNaN(toDate.getTime())) return false;
 
-  const checkDate = new Date(date);
-  checkDate.setHours(0, 0, 0, 0);
+      return checkDate >= fromDate && checkDate <= toDate;
+    });
+  };
 
-  return availableDatesRanges.some(range => {
-    if (!range?.from) return false;
-
-    // Parse from date
-    let fromStr = range.from.split(' ')[0].replace(/\//g, '-');
-    const parts = fromStr.split('-');
-    if (parts.length === 3 && parseInt(parts[0]) <= 31) {
-      fromStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    const fromDate = new Date(fromStr);
-    fromDate.setHours(0, 0, 0, 0);
-    if (isNaN(fromDate.getTime())) return false;
-
-    // لو to: null → يعني من from للأبد (من التاريخ ده وكل اللي بعده متاح)
-    if (range.to === null || range.to === undefined || range.to === '' || range.to === 'null') {
-      return checkDate >= fromDate;
-    }
-
-    // لو في to → نطبق النطاق عادي
-    let toStr = range.to.split(' ')[0].replace(/\//g, '-');
-    const toParts = toStr.split('-');
-    if (toParts.length === 3 && parseInt(toParts[0]) <= 31) {
-      toStr = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
-    }
-    const toDate = new Date(toStr);
-    toDate.setHours(23, 59, 59, 999);
-    if (isNaN(toDate.getTime())) return false;
-
-    return checkDate >= fromDate && checkDate <= toDate;
-  });
-};
   // ============= Time Slot Generation =============
-const calculateEffectiveAvailableTimes = (selectedDate, availableTimesData, disabledTimes, interviewData) => {
-  if (!selectedDate || !availableTimesData || !Array.isArray(availableTimesData)) {
-    return [];
-  }
+  const calculateEffectiveAvailableTimes = (selectedDate, availableTimesData, disabledTimes, interviewData) => {
+    if (!selectedDate || !availableTimesData || !Array.isArray(availableTimesData)) {
+      return [];
+    }
 
-  const dayId = getDayId(selectedDate);
-  const dayAvailableTimes = availableTimesData.filter(t => 
-    t.day_id.toString() === dayId.toString()
-  );
+    const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;
+    const isoDate = formatDateToYMD(selectedDate);
+    if (!isoDate) return [];
 
-  if (dayAvailableTimes.length === 0) return [];
+    const convertedDisabledTimes = convertDisabledTimesToTimezone(
+      disabledTimes || [],
+      userTimezone,
+      WORKSPACE_TIMEZONE
+    );
 
-  // الجديد: ناخد unavailable_times بس لو التاريخ داخل unavailable_dates
-  const shouldApplyUnavailableTimes = isDateInUnavailableDatesRange(selectedDate);
-  const dayUnavailableTimes = shouldApplyUnavailableTimes
-    ? unavailableTimes.filter(t => t.day_id.toString() === dayId.toString())
-    : []; // لو خارج الفترة → مفيش unavailable_times خالص
-
-  // باقي الكود زي ما هو...
-  const timeToMinutes = (timeStr) => {
-    const normalized = normalizeTimeFormat(timeStr);
-    const [h, m] = normalized.split(':').map(Number);
-    return h * 60 + m;
-  };
-
-  const availableRanges = [];
-
-  dayAvailableTimes.forEach(range => {
-    if (!range?.from) return;
-    const from = timeToMinutes(range.from);
-    const to = range.to ? timeToMinutes(range.to) : 24 * 60;
-
-    let current = [{ from, to }];
-
-    // نطرح unavailable_times بس لو موجودة
-    dayUnavailableTimes.forEach(un => {
-      if (!un?.from) return;
-      const uFrom = timeToMinutes(un.from);
-      const uTo = un.to ? timeToMinutes(un.to) : 24 * 60;
-
-      const newRanges = [];
-      current.forEach(r => {
-        if (uTo <= r.from || uFrom >= r.to) {
-          newRanges.push(r);
-        } else {
-          if (uFrom > r.from) newRanges.push({ from: r.from, to: Math.min(r.to, uFrom) });
-          if (uTo < r.to) newRanges.push({ from: Math.max(r.from, uTo), to: r.to });
-        }
-      });
-      current = newRanges.filter(r => r.from < r.to);
+    const disabledMap = {};
+    convertedDisabledTimes.forEach(d => {
+      if (d.date === isoDate) {
+        const key = d.time.slice(0, 5);
+        disabledMap[key] = true;
+      }
     });
 
-    availableRanges.push(...current);
-  });
-
-  // توليد السلوتس (نفس الكود القديم)
-  const durationCycle = parseInt(interviewData?.duration_cycle) || 15;
-  const durationPeriod = interviewData?.duration_period || "minutes";
-  const restCycle = parseInt(interviewData?.rest_cycle) || 0;
-  const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
-  const totalSlotDuration = durationInMinutes + restCycle;
-
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const isToday = new Date(selectedDate).setHours(0,0,0,0) === today.getTime();
-  const nowMinutes = isToday ? new Date().getHours() * 60 + new Date().getMinutes() : -1;
-
-  const slots = [];
-  availableRanges.forEach(r => {
-    for (let m = r.from; m + durationInMinutes <= r.to; m += totalSlotDuration) {
-      if (isToday && m < nowMinutes) continue;
+    const generateTimesForDay = (targetISODate) => {
+      const checkDate = new Date(targetISODate + 'T00:00:00.000Z');
+      const dayOfWeek = checkDate.getUTCDay();
+      const dayId = dayOfWeek === 0 ? 1 : dayOfWeek + 1;
       
-      const h = Math.floor(m / 60).toString().padStart(2, '0');
-      const min = (m % 60).toString().padStart(2, '0');
-      const timeStr = `${h}:${min}`;
+      const dayAvailableTimes = availableTimesData.filter(timeRange => 
+        timeRange.day_id.toString() === dayId.toString()
+      );
 
-      if (!isTimeDisabled(selectedDate, timeStr, disabledTimes)) {
-        slots.push(timeStr);
-      }
+      if (dayAvailableTimes.length === 0) return [];
+
+      const shouldApplyUnavailableTimes = isDateInUnavailableDatesRange(checkDate);
+      const dayUnavailableTimes = shouldApplyUnavailableTimes
+        ? unavailableTimes.filter(timeRange => timeRange.day_id.toString() === dayId.toString())
+        : [];
+
+      const availableRanges = [];
+      
+      dayAvailableTimes.forEach((availableRange) => {
+        if (!availableRange || !availableRange.from) return;
+        
+        const availableFromMinutes = utilTimeToMinutes(availableRange.from);
+        let availableToMinutes;
+
+        if (!availableRange.to || availableRange.to === null) {
+          availableToMinutes = 23 * 60 + 59;
+        } else {
+          availableToMinutes = utilTimeToMinutes(availableRange.to);
+        }
+        
+        let currentRanges = [{ from: availableFromMinutes, to: availableToMinutes }];
+        
+        dayUnavailableTimes.forEach((unavailableRange) => {
+          if (!unavailableRange || !unavailableRange.from) return;
+          
+          const unavailableFromMinutes = utilTimeToMinutes(unavailableRange.from);
+          let unavailableToMinutes;
+
+          if (!unavailableRange.to || unavailableRange.to === null) {
+            unavailableToMinutes = 23 * 60 + 59;
+          } else {
+            unavailableToMinutes = utilTimeToMinutes(unavailableRange.to);
+          }
+          
+          const newRanges = [];
+          currentRanges.forEach((range) => {
+            if (unavailableToMinutes <= range.from || unavailableFromMinutes >= range.to) {
+              newRanges.push(range);
+            } else if (unavailableFromMinutes <= range.from && unavailableToMinutes < range.to) {
+              newRanges.push({ from: unavailableToMinutes, to: range.to });
+            } else if (unavailableFromMinutes > range.from && unavailableToMinutes >= range.to) {
+              newRanges.push({ from: range.from, to: unavailableFromMinutes });
+            } else if (unavailableFromMinutes > range.from && unavailableToMinutes < range.to) {
+              newRanges.push({ from: range.from, to: unavailableFromMinutes });
+              newRanges.push({ from: unavailableToMinutes, to: range.to });
+            }
+          });
+          currentRanges = newRanges;
+        });
+        
+        availableRanges.push(...currentRanges);
+      });
+
+      const effectiveTimeSlots = [];
+      const durationCycle = parseInt(interviewData?.duration_cycle) || 15;
+      const durationPeriod = interviewData?.duration_period || "minutes";
+      const restCycle = parseInt(interviewData?.rest_cycle) || 0;
+      
+      const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
+      const totalSlotDuration = durationInMinutes + restCycle;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selectedDateObj = new Date(targetISODate + 'T00:00:00.000Z');
+      const isToday = selectedDateObj.toDateString() === today.toDateString();
+      const nowMinutes = isToday ? (new Date().getHours() * 60 + new Date().getMinutes()) : -1;
+      
+      availableRanges.forEach((range) => {
+        const startMinutes = range.from;
+        const endMinutes = range.to;
+        
+        for (let currentMinutes = startMinutes; currentMinutes + durationInMinutes <= endMinutes; currentMinutes += totalSlotDuration) {
+          const hours = Math.floor(currentMinutes / 60);
+          const minutes = currentMinutes % 60;
+          const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+          
+          let isPast = false;
+          if (isToday) {
+            const slotTimeMinutes = hours * 60 + minutes;
+            isPast = slotTimeMinutes < nowMinutes;
+          }
+          
+          if (!isPast) {
+            effectiveTimeSlots.push(formattedTime);
+          }
+        }
+      });
+
+      return [...new Set(effectiveTimeSlots)].sort();
+    };
+
+    const convertAndCheck = (cairoDateStr, cairoTime, targetDateStr) => {
+      const converted = convertDateTimeWithTimezone(
+        cairoDateStr,
+        cairoTime,
+        WORKSPACE_TIMEZONE,
+        userTimezone
+      );
+
+      if (converted.date !== targetDateStr) return null;
+
+      const timeKey = converted.time.slice(0, 5);
+      const isDisabled = !!disabledMap[timeKey];
+      const isPastTime = isTimePast(targetDateStr, converted.time);
+
+      return (!isDisabled && !isPastTime) ? converted.time : null;
+    };
+
+    const allUserTimes = [];
+
+    const dateStr = selectedDate.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    // Current day
+    const currentDayTimes = generateTimesForDay(isoDate);
+    currentDayTimes.forEach(time => {
+      const result = convertAndCheck(dateStr, time, dateStr);
+      if (result) allUserTimes.push(result);
+    });
+
+    // Previous day (for timezone differences)
+    if (userTimezone !== WORKSPACE_TIMEZONE) {
+      const prevDate = new Date(isoDate + 'T00:00:00.000Z');
+      prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+      const prevISO = prevDate.toISOString().split('T')[0];
+      const prevTimes = generateTimesForDay(prevISO);
+      
+      const prevDay = String(prevDate.getUTCDate()).padStart(2, '0');
+      const prevMonth = monthNames[prevDate.getUTCMonth()];
+      const prevYear = prevDate.getUTCFullYear();
+      const prevDateStr = `${prevDay} ${prevMonth} ${prevYear}`;
+
+      prevTimes.forEach(time => {
+        const result = convertAndCheck(prevDateStr, time, dateStr);
+        if (result) allUserTimes.push(result);
+      });
     }
-  });
 
-  return [...new Set(slots)].sort();
-};
+    // Next day (for timezone differences)
+    if (userTimezone !== WORKSPACE_TIMEZONE) {
+      const nextDate = new Date(isoDate + 'T00:00:00.000Z');
+      nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+      const nextISO = nextDate.toISOString().split('T')[0];
+      const nextTimes = generateTimesForDay(nextISO);
+      
+      const nextDay = String(nextDate.getUTCDate()).padStart(2, '0');
+      const nextMonth = monthNames[nextDate.getUTCMonth()];
+      const nextYear = nextDate.getUTCFullYear();
+      const nextDateStr = `${nextDay} ${nextMonth} ${nextYear}`;
 
+      nextTimes.forEach(time => {
+        const result = convertAndCheck(nextDateStr, time, dateStr);
+        if (result) allUserTimes.push(result);
+      });
+    }
 
-const isDateAvailable = (date) => {
-  if (!date) return false;
+    const uniqueTimes = [...new Set(allUserTimes)].sort((a, b) => {
+      const [ha, ma] = a.split(':').map(Number);
+      const [hb, mb] = b.split(':').map(Number);
+      return ha * 60 + ma - (hb * 60 + mb);
+    });
 
-  const checkDate = new Date(date);
-  checkDate.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (checkDate < today) return false;
+    return uniqueTimes;
+  };
 
-  // 1. لازم يكون في نطاق التواريخ المتاحة
-  if (!isDateInAvailableRange(checkDate)) return false;
+  const isDateAvailable = (date) => {
+    if (!date) return false;
 
-  // 2. لازم يكون لليوم ده أوقات متاحة
-  const dayId = getDayId(checkDate);
-  const hasAvailableTimes = availableTimes.some(t => 
-    t.day_id.toString() === dayId.toString()
-  );
-  if (!hasAvailableTimes) return false;
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (checkDate < today) return false;
 
-  // 3. الأهم: نحسب الأوقات الفعلية بعد طرح unavailable_times (بس لو التاريخ داخل unavailable_dates)
-  const slots = calculateEffectiveAvailableTimes(checkDate, availableTimes, disabledTimes, interviewDetails);
-
-  return slots.length > 0;
-};
+    // ✅ الجزء المهم: نحسب الأوقات الفعلية (اللي بتشمل الأيام المجاورة)
+    const slots = calculateEffectiveAvailableTimes(checkDate, availableTimes, disabledTimes, interviewDetails);
+    
+    // لو فيه أي وقت متاح (حتى لو جاي من يوم تاني)، يبقى اليوم متاح
+    return slots.length > 0;
+  };
 
   const getFirstAvailableTime = (date, availableTimeSlots) => {
     if (!date || !availableTimeSlots || availableTimeSlots.length === 0) {
@@ -315,88 +388,116 @@ const isDateAvailable = (date) => {
   };
 
   // ============= Staff Selection =============
-const handleStaffSelect = (staff) => {
-  setSelectedStaff(staff);
-  setShowStaffDropdown(false);
-  
-  if (onStaffSelect) {
-    onStaffSelect(staff);
-  }
-  
-  onDateSelect(null);
-  onTimeSelect(null);
-  setShowTimeSlots(false);
-  
-  if (staff) {
-    // For resources: use interview data for dates/times, but resource's disabled_times
-    if (isResourceMode && interviewDetails) {
-      setAvailableDates(interviewDetails.available_dates || []);
-      setAvailableTimes(interviewDetails.available_times || []);
-      setUnavailableDates(interviewDetails.un_available_dates || []);
-      setUnavailableTimes(interviewDetails.un_available_times || []);
-      setDisabledTimes(staff.disabled_times || []);
-    } else {
-      setAvailableDates(staff.available_dates || []);
-      setAvailableTimes(staff.available_times || []);
-      setUnavailableDates(staff.un_available_dates || []);
-      setUnavailableTimes(staff.un_available_times || []);
-      setDisabledTimes(staff.disabled_times || []);
-    }
-    if (isCollectiveMode) {
-      setAvailableDates(staff.collective_available_dates || []);
-      setAvailableTimes(staff.collective_available_times || []);
-      setUnavailableDates(staff.collective_unavailable_dates || []);
-      setUnavailableTimes(staff.collective_unavailable_times || []);
-      setDisabledTimes(staff.disabled_times || []);
+  const handleStaffSelect = (staff) => {
+    setSelectedStaff(staff);
+    setShowStaffDropdown(false);
+    
+    if (onStaffSelect) {
+      onStaffSelect(staff);
     }
     
-    if (staff.available_dates && staff.available_dates.length > 0) {
-      // Determine which dates to use
-      const datesToUse = isResourceMode && interviewDetails 
-        ? interviewDetails.available_dates 
-        : staff.available_dates;
-      const timesToUse = isResourceMode && interviewDetails 
-        ? interviewDetails.available_times 
-        : staff.available_times;
-      const disabledTimesToUse = staff.disabled_times || [];
+    onDateSelect(null);
+    onTimeSelect(null);
+    setShowTimeSlots(false);
+    
+    if (staff) {
+      if (isResourceMode && interviewDetails) {
+        setAvailableDates(interviewDetails.available_dates || []);
+        setAvailableTimes(interviewDetails.available_times || []);
+        setUnavailableDates(interviewDetails.un_available_dates || []);
+        setUnavailableTimes(interviewDetails.un_available_times || []);
+        setDisabledTimes(staff.disabled_times || []);
+      } else {
+        setAvailableDates(staff.available_dates || []);
+        setAvailableTimes(staff.available_times || []);
+        setUnavailableDates(staff.un_available_dates || []);
+        setUnavailableTimes(staff.un_available_times || []);
+        setDisabledTimes(staff.disabled_times || []);
+      }
+      if (isCollectiveMode) {
+        setAvailableDates(staff.collective_available_dates || []);
+        setAvailableTimes(staff.collective_available_times || []);
+        setUnavailableDates(staff.collective_unavailable_dates || []);
+        setUnavailableTimes(staff.collective_unavailable_times || []);
+        setDisabledTimes(staff.disabled_times || []);
+      }
+      
+      // Find first available date/time after staff selection
+      findFirstAvailableDateTime(staff);
+    }
+  };
 
-      for (const dateRange of datesToUse) {
-        if (!dateRange || !dateRange.from) continue;
+  // ============= Find First Available Date/Time =============
+  const findFirstAvailableDateTime = (staffData) => {
+    const datesToUse = isResourceMode && interviewDetails 
+      ? interviewDetails.available_dates 
+      : isCollectiveMode 
+        ? staffData.collective_available_dates
+        : staffData.available_dates;
+        
+    const timesToUse = isResourceMode && interviewDetails 
+      ? interviewDetails.available_times 
+      : isCollectiveMode 
+        ? staffData.collective_available_times
+        : staffData.available_times;
 
-        try {
-          const fromDate = new Date(dateRange.from);
-          if (isNaN(fromDate.getTime())) continue;
+    if (!datesToUse || datesToUse.length === 0) return;
 
-          const checkDates = isResourceMode && interviewDetails 
-            ? interviewDetails.available_dates 
-            : staff.available_dates;
-          const checkTimes = isResourceMode && interviewDetails 
-            ? interviewDetails.available_times 
-            : staff.available_times;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-          if (isDateAvailable(fromDate, checkDates, checkTimes)) {
-            const availableTimeSlots = calculateEffectiveAvailableTimes(
-              fromDate,
-              checkTimes,
-              disabledTimesToUse,
-              interviewDetails
-            );
-
-            const firstAvailableTime = getFirstAvailableTime(fromDate, availableTimeSlots);
-
-            if (firstAvailableTime) {
-              onDateSelect(fromDate);
-              onTimeSelect(firstAvailableTime);
-              break;
-            }
-          }
-        } catch (error) {
-          console.error("Error parsing date:", error);
+    // ✅ بدل ما نجمع بس الأيام من available_dates، 
+    // هنجمع كل الأيام في range واسع عشان نشوف الأيام الليممكن تفتح من timezones تانية
+    const allPossibleDates = [];
+    
+    for (const dateRange of datesToUse) {
+      if (!dateRange?.from) continue;
+      
+      try {
+        const fromDate = new Date(dateRange.from.split(' ')[0]);
+        const toDate = dateRange.to ? new Date(dateRange.to.split(' ')[0]) : new Date('2099-12-31');
+        
+        if (isNaN(fromDate.getTime())) continue;
+        
+        // ✅ نبدأ من يوم قبل الـ range عشان نشوف لو فيه أوقات من اليوم ده هتظهر
+        const startDate = new Date(Math.max(fromDate.getTime(), today.getTime()));
+        startDate.setDate(startDate.getDate() - 1); // يوم قبل كده
+        
+        const currentDate = new Date(Math.max(startDate.getTime(), today.getTime()));
+        const endDate = new Date(toDate.getTime());
+        endDate.setDate(endDate.getDate() + 1); // يوم بعد كده
+        
+        while (currentDate <= endDate) {
+          allPossibleDates.push(new Date(currentDate));
+          currentDate.setDate(currentDate.getDate() + 1);
         }
+      } catch (err) {
+        console.warn('Error processing date range:', dateRange, err);
+        continue;
       }
     }
-  }
-};
+    
+    allPossibleDates.sort((a, b) => a - b);
+
+    // ✅ نفحص كل يوم بالـ calculateEffectiveAvailableTimes (اللي بتشوف الأيام المجاورة)
+    for (const date of allPossibleDates) {
+      const timeSlots = calculateEffectiveAvailableTimes(
+        date,
+        timesToUse,
+        staffData.disabled_times || [],
+        interviewDetails
+      );
+      
+      if (timeSlots.length > 0) {
+        onDateSelect(new Date(date));
+        onTimeSelect(timeSlots[0]);
+        return;
+      }
+    }
+    
+    onDateSelect(null);
+    onTimeSelect(null);
+  };
 
   // ============= API Fetch =============
   const fetchInterviewDetails = async (shareLink) => {
@@ -439,33 +540,61 @@ const handleStaffSelect = (staff) => {
         
         setDisabledTimes(disabledTimesToUse);
 
+        // Find first available date/time for initial load
         if (dataSource.available_dates && dataSource.available_dates.length > 0) {
-          for (const dateRange of dataSource.available_dates) {
-            if (!dateRange || !dateRange.from) continue;
+          const firstDate = new Date(dataSource.available_dates[0].from);
+          setCurrentMonth(firstDate);
+          
+          setTimeout(() => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-            try {
-              const fromDate = new Date(dateRange.from);
-              if (isNaN(fromDate.getTime())) continue;
-
-              if (isDateAvailable(fromDate, dataSource.available_dates, dataSource.available_times)) {
-                const availableTimeSlots = calculateEffectiveAvailableTimes(
-                  fromDate,
-                  dataSource.available_times || [],
-                  disabledTimesToUse,
-                  interviewData
-                );
-                const firstAvailableTime = getFirstAvailableTime(fromDate, availableTimeSlots);
-
-                if (firstAvailableTime) {
-                  onDateSelect(fromDate);
-                  onTimeSelect(firstAvailableTime);
-                  break;
+            const allPossibleDates = [];
+            
+            for (const dateRange of dataSource.available_dates) {
+              if (!dateRange?.from) continue;
+              
+              try {
+                const fromDate = new Date(dateRange.from.split(' ')[0]);
+                const toDate = dateRange.to ? new Date(dateRange.to.split(' ')[0]) : new Date('2099-12-31');
+                
+                if (isNaN(fromDate.getTime())) continue;
+                
+                // ✅ نبدأ من يوم قبل الـ range
+                const startDate = new Date(Math.max(fromDate.getTime(), today.getTime()));
+                startDate.setDate(startDate.getDate() - 1);
+                
+                const currentDate = new Date(Math.max(startDate.getTime(), today.getTime()));
+                const endDate = new Date(toDate.getTime());
+                endDate.setDate(endDate.getDate() + 1); // يوم بعد كده
+                
+                while (currentDate <= endDate) {
+                  allPossibleDates.push(new Date(currentDate));
+                  currentDate.setDate(currentDate.getDate() + 1);
                 }
+              } catch (err) {
+                console.warn('Error processing date range:', dateRange, err);
+                continue;
               }
-            } catch (error) {
-              console.error("Error parsing date:", error);
             }
-          }
+            
+            allPossibleDates.sort((a, b) => a - b);
+
+            for (const date of allPossibleDates) {
+              const timeSlots = calculateEffectiveAvailableTimes(
+                date,
+                dataSource.available_times || [],
+                disabledTimesToUse,
+                interviewData
+              );
+              
+              if (timeSlots.length > 0) {
+                onDateSelect(new Date(date));
+                onTimeSelect(timeSlots[0]);
+                break;
+              }
+            }
+          }, 100);
         }
       }
     } catch (error) {
@@ -490,7 +619,6 @@ const handleStaffSelect = (staff) => {
     }
   }, [selectedInterview]);
 
-
   useEffect(() => {
     if (selectedDate && availableTimes.length > 0 && interviewDetails) {
       const availableTimeSlots = calculateEffectiveAvailableTimes(
@@ -506,6 +634,81 @@ const handleStaffSelect = (staff) => {
       }
     }
   }, [selectedDate, disabledTimes, availableTimes, interviewDetails]);
+
+  // Handle timezone changes
+  useEffect(() => {
+    if (selectedDate && interviewDetails && selectedTimezone) {
+      const timeSlots = calculateEffectiveAvailableTimes(
+        selectedDate,
+        availableTimes,
+        disabledTimes,
+        interviewDetails
+      );
+      
+      // Reset time if current selection is not available in new timezone
+      if (selectedTime && !timeSlots.some(slot => normalizeTimeFormat(slot) === normalizeTimeFormat(selectedTime))) {
+        const firstAvailable = getFirstAvailableTime(selectedDate, timeSlots);
+        onTimeSelect(firstAvailable);
+      }
+      
+      // Check if the currently selected date is still available in the new timezone
+      if (!isDateAvailable(selectedDate)) {
+        // Find first available date in new timezone
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const allPossibleDates = [];
+        
+        for (const dateRange of availableDates) {
+          if (!dateRange?.from) continue;
+          
+          try {
+            const fromDate = new Date(dateRange.from.split(' ')[0]);
+            const toDate = dateRange.to ? new Date(dateRange.to.split(' ')[0]) : new Date('2099-12-31');
+            
+            if (isNaN(fromDate.getTime())) continue;
+            
+            // ✅ نبدأ من يوم قبل الـ range عشان نلاقي الأيام اللي ممكن تفتح
+            const startDate = new Date(Math.max(fromDate.getTime(), today.getTime()));
+            startDate.setDate(startDate.getDate() - 1);
+            
+            const currentDate = new Date(Math.max(startDate.getTime(), today.getTime()));
+            const endDate = new Date(toDate.getTime());
+            endDate.setDate(endDate.getDate() + 1); // يوم بعد كده
+            
+            while (currentDate <= endDate) {
+              allPossibleDates.push(new Date(currentDate));
+              currentDate.setDate(currentDate.getDate() + 1);
+            }
+          } catch (err) {
+            console.warn('Error processing date range:', dateRange, err);
+            continue;
+          }
+        }
+        
+        allPossibleDates.sort((a, b) => a - b);
+
+        for (const date of allPossibleDates) {
+          const slots = calculateEffectiveAvailableTimes(
+            date,
+            availableTimes,
+            disabledTimes,
+            interviewDetails
+          );
+          
+          if (slots.length > 0) {
+            onDateSelect(new Date(date));
+            onTimeSelect(slots[0]);
+            return;
+          }
+        }
+        
+        // If no available date found, reset selections
+        onDateSelect(null);
+        onTimeSelect(null);
+      }
+    }
+  }, [selectedTimezone]);
 
   // ============= Event Handlers =============
   const handleDateSelectFromCalendar = (date) => {
@@ -555,13 +758,13 @@ const handleStaffSelect = (staff) => {
       {mode === 'schedule' && displayItems && displayItems.length > 0 && (
         <div className="mb-6">
           <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                {
-                isResourceMode 
-                    ? <PiMonitorLight size={20} />
-                    : isCollectiveMode 
-                    ? <PiUsersThreeLight size={22} />
-                    : <AiOutlineUser size={18} />
-                }
+            {
+              isResourceMode 
+                ? <PiMonitorLight size={20} />
+                : isCollectiveMode 
+                ? <PiUsersThreeLight size={22} />
+                : <AiOutlineUser size={18} />
+            }
             {isResourceMode ? 'Select Resource' : isCollectiveMode ? 'Select Group': 'Select Staff'}
           </h3>
           <div className="relative">
@@ -582,9 +785,9 @@ const handleStaffSelect = (staff) => {
                     </div>
                   </>
                 ) : (
-                   <span className="text-gray-500">
-                        {isResourceMode ? 'Select a resource' : isCollectiveMode ? 'Select a group': 'Select a staff'}
-                    </span>
+                  <span className="text-gray-500">
+                    {isResourceMode ? 'Select a resource' : isCollectiveMode ? 'Select a group': 'Select a staff'}
+                  </span>
                 )}
               </div>
               <ChevronDown size={16} className="text-gray-400" />
@@ -593,9 +796,15 @@ const handleStaffSelect = (staff) => {
             {showStaffDropdown && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
                 {displayItems && displayItems.length > 0 ? (
-                   displayItems.map((item) => (
+                  displayItems.map((item, index) => (
                     <button
-                     key={item.id || item.group_id}
+                      key={
+                        item.id || 
+                        item.group_id || 
+                        item.resource_id || 
+                        item.staff_id || 
+                        `item-${index}`
+                      }
                       onClick={() => handleStaffSelect(item)}
                       className="w-full p-3 flex items-center gap-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
                     >
@@ -605,14 +814,14 @@ const handleStaffSelect = (staff) => {
                         </span>
                       </div>
                       <div className="text-left">
-                        <div className="font-medium truncate  max-w-[150px]">{item.name || item.group_name}</div>
+                        <div className="font-medium truncate max-w-[150px]">{item.name || item.group_name}</div>
                       </div>
                     </button>
                   ))
                 ) : (
-                   <div className="p-4 text-center text-gray-500">
-                        {isResourceMode ? 'No resources available' : 'No staff available'}
-                    </div>
+                  <div className="p-4 text-center text-gray-500">
+                    {isResourceMode ? 'No resources available' : 'No staff available'}
+                  </div>
                 )}
               </div>
             )}
@@ -650,9 +859,9 @@ const handleStaffSelect = (staff) => {
       )}
 
       {/* Main Content */}
-      {!isLoading && ( mode === 'reschedule' || 
-  (selectedStaff && Object.keys(selectedStaff).length > 0) ||
-  (!displayItems || displayItems.length === 0)) && (
+      {!isLoading && (mode === 'reschedule' || 
+        (selectedStaff && Object.keys(selectedStaff).length > 0) ||
+        (!displayItems || displayItems.length === 0)) && (
         <>
           {/* Date Time Display Button */}
           <button

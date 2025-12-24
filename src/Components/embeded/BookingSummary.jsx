@@ -3,7 +3,7 @@ import { Calendar, User, Phone, Mail, Clock, MapPin, Hash, ChevronRight, Printer
 import { useLocation, Link, useParams, useSearchParams } from 'react-router-dom';
 import RescheduleSidebar from './RescheduleSidebar';
 import CancelConfirmationModal from './CancelConfirmationModal';
-import { getAppointmentByIdPublic } from '../../redux/apiCalls/AppointmentCallApi';
+import { getAppointmentByTokenPublic } from '../../redux/apiCalls/AppointmentCallApi';
 import { useDispatch } from 'react-redux';
 import toast from "react-hot-toast";
 import { PiBaseballCap } from "react-icons/pi";
@@ -21,7 +21,7 @@ export default function BookingSummary() {
   const double_book = localStorage.getItem("double_book");
   const { id, idAdmin, idCustomer, idSpace } = useParams();
   const [searchParams] = useSearchParams();
-  const appointmentId = searchParams.get('appid');
+  const appointmentToken = searchParams.get('apptok');
   const share_link = id || idAdmin || idCustomer || idSpace;
 
   const getBasePath = () => {
@@ -49,7 +49,7 @@ console.log(basePath);
 
   const fetchAppointmentData = async () => {
     try {
-      const result = await dispatch(getAppointmentByIdPublic(appointmentId));
+      const result = await dispatch(getAppointmentByTokenPublic(appointmentToken));
       setAppointmentData(result.data.appointment);
     } catch (error) {
       console.error('Error:', error);
@@ -59,10 +59,10 @@ const handleCancelSuccess = () => {
   fetchAppointmentData();
 };
   useEffect(() => {
-    if (appointmentId) {
+    if (appointmentToken) {
       fetchAppointmentData();
     }
-  }, [appointmentId, dispatch]);
+  }, [appointmentToken, dispatch]);
 
   const handleRescheduleSuccess = () => {
     fetchAppointmentData();
@@ -340,7 +340,7 @@ END:VCALENDAR
               </div>
               <div className="sm:w-2/3 pl-6 sm:pl-0">
                 <div className="font-medium text-sm sm:text-base">{appointmentData?.date}</div>
-                <div className="text-xs sm:text-sm text-gray-500 mt-1">{appointmentData?.time} GMT</div>
+                <div className="text-xs sm:text-sm text-gray-500 mt-1">{appointmentData?.time} ({appointmentData?.time_zone})</div>
                 <div className="text-xs sm:text-sm text-gray-500 flex items-center mt-1">
                   <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
                   <span className="break-all">{appointmentData?.time_zone}</span>

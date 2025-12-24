@@ -89,7 +89,7 @@ console.log(bookingData);
             </div>
 
             <div>
-              <h3 className="font-semibold text-gray-800">
+              <h3 className="font-semibold text-gray-800 truncate max-w-[150px]">
                 {bookingData?.service_name || selectedService}
               </h3>
               <p className="text-sm text-gray-500">
@@ -132,7 +132,7 @@ console.log(bookingData);
         Email <span className="text-red-500">*</span>
       </label>
       <input
-        type="email"
+        type="please enter a valid email address"
         placeholder="Email"
         value={formData.email}
         onChange={(e) => onFormChange('email', e.target.value)}

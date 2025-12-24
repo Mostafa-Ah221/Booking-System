@@ -12,10 +12,12 @@ const InterviewAvailability = () => {
   const [activeTab, setActiveTab] = useState('available-times');
   const [availabilityMode, setAvailabilityMode] = useState('available');
   const [activeSection, setActiveSection] = useState(null);
-  const [timeZone] = useState('Africa/Cairo - EET (+02:00)');
+  const [timeZone, setTimeZone] = useState({
+    value: 'Africa/Cairo',
+    label: '(GMT+2:00) Cairo'
+  });
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isTimeSectionDisabled, setIsTimeSectionDisabled] = useState(true);
-  
   const [selectedAvailableDates, setSelectedAvailableDates] = useState([]);
   const [selectedUnAvailableDates, setSelectedUnAvailableDates] = useState([]);
   
@@ -28,7 +30,7 @@ const InterviewAvailability = () => {
   const { workspace } = useSelector(state => state.workspace);
   
   const [weekDays, setWeekDays] = useState([]);
-console.log(interview);
+  console.log(interview);
 
   useEffect(() => {
     dispatch(fetchAllInterviews());
@@ -39,6 +41,10 @@ console.log(interview);
       dispatch(editWorkspaceById(interview?.workspace_id));
     }
   }, [dispatch, interview?.workspace_id]);
+
+  const handleTimeZoneChange = useCallback((selectedTimezone) => {
+    setTimeZone(selectedTimezone);
+  }, []);
 
   const formatDate = useCallback((date) => date.toISOString().split('T')[0], []);
 
@@ -99,16 +105,30 @@ console.log(interview);
 
   const handleSaveAvailableTimes = useCallback(async (formData) => {
     try {
+      console.log('FormData received:', formData);
+      
       const availableTimesData = formData?.available_times;
       
       if (!availableTimesData || !Array.isArray(availableTimesData) || availableTimesData.length === 0) {
         throw new Error('No available times provided');
       }
       
+      // ✅ استخراج string value من timezone
+      let timezoneValue = formData?.time_zone || timeZone;
+      
+      // التأكد من أنه string وليس object
+      if (typeof timezoneValue === 'object' && timezoneValue?.value) {
+        timezoneValue = timezoneValue.value;
+      }
+      
       const payload = { 
         available_times: availableTimesData,
-        available_dates: interview?.available_dates || []
+        available_dates: interview?.available_dates || [],
+        time_zone: timezoneValue // ✅ الآن string بالتأكيد
       };
+      
+      console.log('Payload sent to API:', payload);
+      
       const result = await dispatch(updateAvailability(id, payload));
       
       if (result?.message === "Updated Successfully") {
@@ -118,45 +138,32 @@ console.log(interview);
         await dispatch(editInterviewById(id));
         return { success: true };
       } else {
-        console.log(result?.message);
         throw new Error(result?.message.error);  
       }
     } catch (error) {
-       toast.error(
-    error?.response?.data?.message ||
-    error.message 
-  );
-      console.error('Full error object:', error);
-      console.error('Error response:', error);
-      
-      const errorMessage = error.message || error.response?.data?.message?.error?.[0] || 'An error occurred';
-      
-      if (errorMessage.includes('No available times found for the workspace') || 
-          errorMessage.includes('workspace')) {
-        
-        const workspaceData = interview?.workspace_id 
-          ? { id: interview.workspace_id, name: workspace?.name || 'Workspace' }
-          : null;
-        
-        if (workspaceData) {
-          navigateToWorkspaceAvailability(workspaceData);
-        } else {
-          toast.error(errorMessage);
-        }
-      } else {
-        toast.error(errorMessage);
-      }
-      
-      return { success: false, error: errorMessage };
+      toast.error(`Error saving available times: ${error.message}`);
+      return { success: false };
     }
-  }, [dispatch, id, interview, workspace, navigateToWorkspaceAvailability]);
+  }, [dispatch, id, interview, workspace, timeZone, navigateToWorkspaceAvailability]);
 
   const handleSaveUnAvailableTimes = useCallback(async (formData) => {
     try {
       const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
-      console.log( interview?.un_available_dates);
       
-      const payload = {};
+      // ✅ استخراج string value من timezone
+      let timezoneValue = formData?.time_zone || timeZone;
+      
+      // التأكد من أنه string وليس object
+      if (typeof timezoneValue === 'object' && timezoneValue?.value) {
+        timezoneValue = timezoneValue.value;
+      }
+      
+      const payload = {
+        time_zone: timezoneValue // ✅ الآن string بالتأكيد
+      };
+      
+      console.log('Unavailable payload:', payload);
+      
       if (unAvailableTimes.length > 0) {
         payload.un_available_times = unAvailableTimes;
         payload.un_available_dates = interview?.un_available_dates || [];
@@ -173,34 +180,13 @@ console.log(interview);
         await dispatch(editInterviewById(id));
         return { success: true };
       } else {
-        console.log(result?.message); 
         throw new Error(result?.message.error);
       }
     } catch (error) {
-      console.error('Full error object:', error); 
-      console.error('Error response:', error.response?.data.message.error[0]); 
-      
-      const errorMessage = error.message || error.response?.data?.message?.error?.[0] || 'An error occurred';
-      
-      if (errorMessage.includes('No available times found for the workspace') || 
-          errorMessage.includes('workspace')) {
-        
-        const workspaceData = interview?.workspace_id 
-          ? { id: interview.workspace_id, name: workspace?.name || 'Workspace' }
-          : null;
-        
-        if (workspaceData) {
-          navigateToWorkspaceAvailability(workspaceData);
-        } else {
-          toast.error(errorMessage);
-        }
-      } else {
-        toast.error(errorMessage);
-      }
-      
-      return { success: false, error: errorMessage };
+      toast.error(`Error saving unavailable times: ${error.message}`);
+      return { success: false };
     }
-  }, [dispatch, id, interview, workspace, navigateToWorkspaceAvailability]);
+  }, [dispatch, id, interview, workspace, timeZone, navigateToWorkspaceAvailability]);
 
   const handleSaveAvailableDates = useCallback(async (formData) => {
     try {
@@ -363,6 +349,7 @@ console.log(interview);
       isEditing={isEditing}
       activeSection={activeSection}
       timeZone={timeZone}
+      onTimeZoneChange={handleTimeZoneChange}
       weekDays={weekDays}
       selectedTimeDropdown={selectedTimeDropdown}
       handleTimeDropdownToggle={setSelectedTimeDropdown}

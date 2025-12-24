@@ -319,6 +319,8 @@ export function updateAvailabilStaff(id, formData) {
     dispatch(staffAction.setLoading(true));
     
     try {
+      console.log('updateAvailabilStaff - formData:', formData);
+      
       if (!formData || (!formData.available_times && !formData.available_dates)) {
         throw new Error("Invalid availability data format");
       }
@@ -327,6 +329,13 @@ export function updateAvailabilStaff(id, formData) {
         available_times: formData.available_times || [],
         available_dates: formData.available_dates || []
       };
+
+
+      if (formData.time_zone) {
+        requestBody.time_zone = formData.time_zone;
+      }
+
+      console.log('updateAvailabilStaff - requestBody:', requestBody);
 
       const response = await axiosInstance.post(
         `/staff/availability/update/${id}`,
@@ -377,19 +386,30 @@ export function updateUnAvailabilStaff(id, formData) {
     dispatch(staffAction.setLoading(true));
     
     try {
+      console.log('updateUnAvailabilStaff - formData:', formData);
+      
       if (!formData) {
         throw new Error("Invalid availability data format");
       }
 
       const requestBody = {};
+      
+      // إضافة un_available_times إذا كان موجود
       if (formData.un_available_times) {
         requestBody.un_available_times = formData.un_available_times;
       }
+      
+      // إضافة un_available_dates إذا كان موجود
       if (formData.un_available_dates) {
         requestBody.un_available_dates = formData.un_available_dates;
       }
 
-      console.log('Unavailable - Request body sent to API:', requestBody);
+      // إضافة time_zone إذا كان موجود
+      if (formData.time_zone) {
+        requestBody.time_zone = formData.time_zone;
+      }
+
+      console.log('updateUnAvailabilStaff - requestBody:', requestBody);
 
       const response = await axiosInstance.post(
         `/staff/unavailability/update/${id}`,

@@ -128,13 +128,19 @@ function invertColor(hex) {
           style={{ backgroundColor: secondaryColor, borderRight: `1px solid #100f0f14` }}
         >
           <div className='flex gap-3 align-center mb-20'>
-            {header?.visibleLogo && (
-              <div className="w-10 h-10 rounded-md mb-4 flex items-center justify-center">
-                {header.logo ? (
-                  <img src={header.logo} alt="Logo" className="w-full h-full rounded-md object-cover" />
-                ) : null}
-              </div>
-            )}
+           {header?.visibleLogo && header.logo && (
+                    <div className="w-10 h-10 rounded-md mb-4 flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={
+                          typeof header.logo === 'string' 
+                            ? header.logo 
+                            : URL.createObjectURL(header.logo)
+                        } 
+                        alt="Logo" 
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                  )}
             {header?.visibleTitle && (
               <h1 className="text-xl md:text-xl font-semibold mb-4 md:mb-8">{header.title}</h1>
             )}
@@ -267,11 +273,17 @@ function invertColor(hex) {
       style={{ backgroundColor: secondaryColor }}
     >
       <div className="border-b mb-2 flex gap-3">
-        {header?.visibleLogo && (
-          <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-            {header.logo ? (
-              <img src={header.logo} alt="Logo" className="w-full h-full rounded-md object-cover" />
-            ) : null}
+        {header?.visibleLogo && header.logo && (
+          <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center overflow-hidden rounded-md">
+            <img 
+              src={
+                typeof header.logo === 'string' 
+                  ? header.logo 
+                  : URL.createObjectURL(header.logo)
+              } 
+              alt="Logo" 
+              className="w-full h-full object-cover rounded-md" 
+            />
           </div>
         )}
         {header?.visibleTitle && (

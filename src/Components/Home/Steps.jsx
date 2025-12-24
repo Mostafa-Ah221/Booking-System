@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import CustomizeAvailability from '../../assets/image/New folder/Customize availability.mp4';
+import shareLink from '../../assets/image/New folder/Share your booking link.mp4';
+import getBooked from '../../assets/image/New folder/Get booked.mp4';
 
 const Steps = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -9,21 +12,21 @@ const Steps = () => {
       label: 'STEP 01',
       title: 'Customize availability',
       description: 'Add your available times and sync your calendars.',
-      video: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-personalize-availability.mp4"
+      video: CustomizeAvailability
     },
     {
       number: '2',
       label: 'STEP 02',
       title: 'Share your booking link',
       description: 'Let clients see your availability from a custom booking page.',
-      video: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-share-your-booking.mp4"
+      video: shareLink
     },
     {
       number: '3',
       label: 'STEP 03',
       title: 'Get booked',
       description: 'Have clients schedule appointments for their preferred time slots in just a few clicks.',
-      video: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-get-booked.mp4"
+      video: getBooked
     }
   ];
 
@@ -92,12 +95,7 @@ const Steps = () => {
 
           {/* Right Column - Video Preview */}
           <div className="relative bg-white rounded-lg shadow-xl p-4 aspect-video">
-            {/* Window Controls */}
-            <div className="flex gap-2 mb-4 absolute top-4 left-4 z-10">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500" />
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-            </div>
+          
             
             {/* Video Container */}
             <div className="w-full h-full rounded-lg overflow-hidden">

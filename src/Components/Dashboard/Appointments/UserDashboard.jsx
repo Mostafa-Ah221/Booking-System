@@ -36,7 +36,6 @@ const UserDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
   const appointmentsPerPage = 11;
-console.log(selectedAppointment);
 
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('appointmentColumns');

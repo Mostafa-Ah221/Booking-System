@@ -156,93 +156,112 @@ useEffect(() => {
   };
 
   const handelUpdateInterview = async () => {
-    if (!validateForm()) return;
+  if (!validateForm()) return;
 
-    let dataToSend = {};
+  let dataToSend = {};
 
-    if (isResourceType) {
-      dataToSend = {
-        name: formData.name,
-        work_space_id: formData.workspace_id,
-        duration_cycle: parseInt(formData.duration_cycle),
-        duration_period: formData.duration_period,
-        rest_cycle: formData.rest_cycle ? parseInt(formData.rest_cycle) : null,
-        status: formData.status,
-        mode: formData.mode,
-        double_book: formData.double_book === "1",                    
-        approve_appointment: formData.approve_appointment === "1",    
-        require_staff_select: formData.require_staff_select === "1", 
-        require_end_time: formData.require_end_time === "1", 
-         reminder_note: formData.reminder_note || null,         
-      };
-    } else {
-      dataToSend = {
-        name: formData.name,
-        work_space_id: formData.workspace_id,
-        duration_cycle: parseInt(formData.duration_cycle),
-        duration_period: formData.duration_period,
-        rest_cycle: formData.rest_cycle ? parseInt(formData.rest_cycle) : null,
-        status: formData.status,
-        mode: formData.mode,
-         reminder_note: formData.reminder_note || null,
-        double_book: formData.double_book === "1",
-        approve_appointment: formData.approve_appointment === "1",
-        require_staff_select: formData.require_staff_select === "1",
-        require_end_time: formData.require_end_time === "1",
-        max_clients: formData.max_clients && parseInt(formData.max_clients) > 0
-          ? parseInt(formData.max_clients)
-          : null,
-      };
-    }
+  if (isResourceType) {
+    dataToSend = {
+      name: formData.name,
+      work_space_id: formData.workspace_id,
+      duration_cycle: parseInt(formData.duration_cycle),
+      duration_period: formData.duration_period,
+      rest_cycle: formData.rest_cycle ? parseInt(formData.rest_cycle) : null,
+      status: formData.status,
+      mode: formData.mode,
+      double_book: formData.double_book === "1",                    
+      approve_appointment: formData.approve_appointment === "1",    
+      require_staff_select: formData.require_staff_select === "1", 
+      require_end_time: formData.require_end_time === "1", 
+      reminder_note: formData.reminder_note || null,         
+    };
+  } else {
+    dataToSend = {
+      name: formData.name,
+      work_space_id: formData.workspace_id,
+      duration_cycle: parseInt(formData.duration_cycle),
+      duration_period: formData.duration_period,
+      rest_cycle: formData.rest_cycle ? parseInt(formData.rest_cycle) : null,
+      status: formData.status,
+      mode: formData.mode,
+      reminder_note: formData.reminder_note || null,
+      double_book: formData.double_book === "1",
+      approve_appointment: formData.approve_appointment === "1",
+      require_staff_select: formData.require_staff_select === "1",
+      require_end_time: formData.require_end_time === "1",
+      max_clients: formData.max_clients && parseInt(formData.max_clients) > 0
+        ? parseInt(formData.max_clients)
+        : null,
+    };
+  }
 
-    if (formData.mode === "online" || formData.mode === "online/inperson") {
-      dataToSend.meeting_link = formData.meeting_link;
-    }
+  if (formData.mode === "online" || formData.mode === "online/inperson") {
+    dataToSend.meeting_link = formData.meeting_link;
+  }
 
-    if (formData.mode === "inperson") {
-      dataToSend.inperson_mode = formData.inperson_mode;
-      if (formData.inperson_mode === "inhouse" && formData.location) {
-        dataToSend.location = formData.location;
-      }
-    }
-
-    if (formData.mode === "online/inperson" && formData.location) {
+  if (formData.mode === "inperson") {
+    dataToSend.inperson_mode = formData.inperson_mode;
+    if (formData.inperson_mode === "inhouse" && formData.location) {
       dataToSend.location = formData.location;
     }
+  }
 
-    if (formData.status === "paid") {
-  dataToSend.price = parseFloat(formData.price);
-  dataToSend.currency = formData.currency;
-  dataToSend.payment_details = formData.payment_details;
-} 
+  if (formData.mode === "online/inperson" && formData.location) {
+    dataToSend.location = formData.location;
+  }
 
-    if (tempImage) {
-      dataToSend.photo = tempImage;
-    }
+  if (formData.status === "paid") {
+    dataToSend.price = parseFloat(formData.price);
+    dataToSend.currency = formData.currency;
+    dataToSend.payment_details = formData.payment_details;
+  }
 
-    try {
-      console.log("Sending data:", dataToSend);
-
-      const result = await dispatch(updateInterview(id, dataToSend));
-
-      if (result?.success) {
-        toast.success(result.message);
-        onCancel();
-        dispatch(editInterviewById(id));
-      } else if (result?.errors) {
-        Object.keys(result.errors).forEach((field) => {
-          result.errors[field].forEach((msg) => toast.error(msg));
-        });
+  // إذا كان هناك صورة، نحول البيانات إلى FormData
+  if (tempImage) {
+    const formDataToSend = new FormData();
+    
+    Object.keys(dataToSend).forEach(key => {
+      const value = dataToSend[key];
+      
+      if (value !== null && value !== undefined) {
+        // تحويل القيم البوليانية إلى 1 أو 0
+        if (typeof value === 'boolean') {
+          formDataToSend.append(key, value ? 1 : 0);
+        } else {
+          formDataToSend.append(key, value);
+        }
       }
-    } catch (error) {
-      const errorMsg =
-        error?.response?.data?.errors
-          ? JSON.stringify(error.response.data.errors)
-          : error?.response?.data?.message || "حدث خطأ غير متوقع";
+    });
+    
+    // إضافة الصورة
+    formDataToSend.append('photo', tempImage);
+    
+    dataToSend = formDataToSend;
+  }
 
-      toast.error(errorMsg);
+  try {
+    console.log("Sending data:", dataToSend);
+
+    const result = await dispatch(updateInterview(id, dataToSend));
+
+    if (result?.success) {
+      toast.success(result.message);
+      onCancel();
+      dispatch(editInterviewById(id));
+    } else if (result?.errors) {
+      Object.keys(result.errors).forEach((field) => {
+        result.errors[field].forEach((msg) => toast.error(msg));
+      });
     }
-  };
+  } catch (error) {
+    const errorMsg =
+      error?.response?.data?.errors
+        ? JSON.stringify(error.response.data.errors)
+        : error?.response?.data?.message || "حدث خطأ غير متوقع";
+
+    toast.error(errorMsg);
+  }
+};
 
   const handleImageClick = () => {
     setIsImageUploadOpen(true);

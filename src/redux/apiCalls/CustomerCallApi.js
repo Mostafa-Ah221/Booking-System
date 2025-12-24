@@ -112,13 +112,14 @@ export function updateCustomer(customerId, customerData) {
         try {
             dispatch(customerAction.setLoading(true));
             
+            const phoneToSend = `${customerData.code_phone}${customerData.phone}`;
+            
             const response = await axiosInstance.patch(
                 `/client/update/${customerId}`,
                 { 
                     name: customerData.name,
                     email: customerData.email,
-                    code_phone: customerData.code_phone,
-                    phone: customerData.phone,
+                    phone: phoneToSend, 
                 }
             );
             console.log(response.data);

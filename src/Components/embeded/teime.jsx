@@ -17,7 +17,7 @@ const TimeSelectionModal = ({
   durationPeriod = 'minutes',
   setSelectedEndTime
 }) => {
-  console.log(availableTimes);
+  console.log(disabledTimes);
   
   const [showStartDropdown, setShowStartDropdown] = useState(false);
   const [showEndDropdown, setShowEndDropdown] = useState(false);

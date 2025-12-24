@@ -11,7 +11,13 @@ const StaffAvailability = () => {
   const [activeTab, setActiveTab] = useState('available-times');
   const [availabilityMode, setAvailabilityMode] = useState('available');
   const [activeSection, setActiveSection] = useState(null);
-  const [timeZone] = useState('Africa/Cairo - EET (+02:00)');
+  
+  // ✅ تحويل timeZone لـ object
+  const [timeZone, setTimeZone] = useState({
+    value: 'Africa/Cairo',
+    label: '(GMT+2:00) Cairo'
+  });
+  
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isTimeSectionDisabled, setIsTimeSectionDisabled] = useState(true);
   
@@ -27,6 +33,21 @@ const StaffAvailability = () => {
   
   const [weekDays, setWeekDays] = useState([]);
 
+  // ✅ تحميل الـ timezone من البيانات المحفوظة
+  useEffect(() => {
+    if (staff?.staff?.time_zone) {
+      setTimeZone({
+        value: staff.staff.time_zone,
+        label: staff.staff.time_zone // يمكن تحسينها بعرض label أفضل
+      });
+    }
+  }, [staff?.staff?.time_zone]);
+
+  // ✅ Handler لتحديث الـ timezone
+  const handleTimeZoneChange = useCallback((selectedTimezone) => {
+    setTimeZone(selectedTimezone);
+  }, []);
+
   const formatDate = useCallback((date) => date.toISOString().split('T')[0], []);
 
   const isConsecutiveDate = useCallback((date1, date2) => {
@@ -35,17 +56,19 @@ const StaffAvailability = () => {
     d1.setDate(d1.getDate() + 1);
     return d1.toISOString().split('T')[0] === date2;
   }, []);
-const expandRanges = (ranges) => {
-  const dates = [];
-  ranges.forEach(range => {
-    const start = new Date(range.from);
-    const end = new Date(range.to);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push({ date: d.toISOString().split('T')[0] });
-    }
-  });
-  return dates;
-};
+  
+  const expandRanges = (ranges) => {
+    const dates = [];
+    ranges.forEach(range => {
+      const start = new Date(range.from);
+      const end = new Date(range.to);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push({ date: d.toISOString().split('T')[0] });
+      }
+    });
+    return dates;
+  };
+
   const formatDateRanges = useCallback((dates) => {
     if (!dates.length) return [];
     
@@ -84,16 +107,30 @@ const expandRanges = (ranges) => {
 
   const handleSaveAvailableTimes = useCallback(async (formData) => {
     try {
+      console.log('handleSaveAvailableTimes - formData:', formData);
+      
       const availableTimesData = formData?.available_times;
       
       if (!availableTimesData || !Array.isArray(availableTimesData) || availableTimesData.length === 0) {
         throw new Error('No available times provided');
       }
       
+      // ✅ استخراج string value من timezone
+      let timezoneValue = formData?.time_zone || timeZone;
+      
+      // التأكد من أنه string وليس object
+      if (typeof timezoneValue === 'object' && timezoneValue?.value) {
+        timezoneValue = timezoneValue.value;
+      }
+      
       const payload = { 
         available_times: availableTimesData,
-        available_dates: staff?.staff?.available_dates || []
+        available_dates: staff?.staff?.available_dates || [],
+        time_zone: timezoneValue // ✅ الآن string بالتأكيد
       };
+      
+      console.log('handleSaveAvailableTimes - payload:', payload);
+      
       const result = await dispatch(updateAvailabilStaff(id, payload));
       
       if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
@@ -109,32 +146,42 @@ const expandRanges = (ranges) => {
       toast.error(`Error saving available times: ${error.message}`);
       return { success: false, error: error.message };
     }
-  }, [dispatch, id, staff]);
+  }, [dispatch, id, staff, timeZone]);
 
- const handleSaveUnAvailableTimes = useCallback(async (formData) => {
-  try {
-    const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
-    
-    const payload = {};
-    if (unAvailableTimes.length > 0) {
-      payload.un_available_times = unAvailableTimes;
-      payload.un_available_dates = staff?.staff?.un_available_dates || [];
-    }
+  const handleSaveUnAvailableTimes = useCallback(async (formData) => {
+    try {
+      console.log('handleSaveUnAvailableTimes - formData:', formData);
+      
+      const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
+      
+      // ✅ استخراج timezone من formData أو state
+      const timezoneValue = formData?.time_zone || (typeof timeZone === 'object' ? timeZone.value : timeZone);
+      
+      const payload = {
+        time_zone: timezoneValue
+      };
+      
+      if (unAvailableTimes.length > 0) {
+        payload.un_available_times = unAvailableTimes;
+        payload.un_available_dates = staff?.staff?.un_available_dates || [];
+      }
 
-    const result = await dispatch(updateUnAvailabilStaff(id, payload));
-    
-    if (result?.message === "Updated Successfully") {
-      toast.success('Unavailable times saved!');
-      setIsTimeSectionDisabled(true);
-      setIsEditing(false);
-      await dispatch(getStaffById(id));
-      return { success: true };
+      console.log('handleSaveUnAvailableTimes - payload:', payload);
+
+      const result = await dispatch(updateUnAvailabilStaff(id, payload));
+      
+      if (result?.message === "Updated Successfully") {
+        toast.success('Unavailable times saved!');
+        setIsTimeSectionDisabled(true);
+        setIsEditing(false);
+        await dispatch(getStaffById(id));
+        return { success: true };
+      }
+    } catch (error) {
+      toast.error(error.message || 'Save failed');
     }
-  } catch (error) {
-    toast.error(error.message || 'Save failed');
-  }
-  return { success: false };
-}, [dispatch, id, staff?.staff?.un_available_dates]);
+    return { success: false };
+  }, [dispatch, id, staff?.staff?.un_available_dates, timeZone]);
 
   const handleSaveAvailableDates = useCallback(async (formData) => {
     try {
@@ -166,31 +213,31 @@ const expandRanges = (ranges) => {
     }
   }, [dispatch, id, staff]);
 
- const handleSaveUnAvailableDates = useCallback(async (formData) => {
-  try {
-    const dates = formData.un_available_dates || [];
-    if (!dates.every(d => d.from && d.to)) throw new Error("Invalid dates");
+  const handleSaveUnAvailableDates = useCallback(async (formData) => {
+    try {
+      const dates = formData.un_available_dates || [];
+      if (!dates.every(d => d.from && d.to)) throw new Error("Invalid dates");
 
-    const payload = { 
-      un_available_dates: dates.length ? dates : [] 
-    };
+      const payload = { 
+        un_available_dates: dates.length ? dates : [] 
+      };
 
-    const result = await dispatch(updateUnAvailabilStaff(id, payload));
-    
-    if (result?.message === "Updated Successfully") {
-      toast.success('Unavailable dates saved!');
+      const result = await dispatch(updateUnAvailabilStaff(id, payload));
       
-      const newDates = expandRanges(dates);
-      setSelectedUnAvailableDates(newDates);
-      setIsEditing(false);
-      await dispatch(getStaffById(id));
-      return { success: true };
+      if (result?.message === "Updated Successfully") {
+        toast.success('Unavailable dates saved!');
+        
+        const newDates = expandRanges(dates);
+        setSelectedUnAvailableDates(newDates);
+        setIsEditing(false);
+        await dispatch(getStaffById(id));
+        return { success: true };
+      }
+    } catch (error) {
+      toast.error(error.message);
     }
-  } catch (error) {
-    toast.error(error.message);
-  }
-  return { success: false };
-}, [dispatch, id]);
+    return { success: false };
+  }, [dispatch, id]);
 
   const handleSaveTimes = useCallback((formData) => {
     const currentMode = activeTab.includes('unavailable') ? 'unavailable' : 'available';
@@ -199,7 +246,8 @@ const expandRanges = (ranges) => {
       return handleSaveAvailableTimes(formData);
     } else {
       const transformedData = {
-        un_available_times: formData.available_times || formData.un_available_times || []
+        un_available_times: formData.available_times || formData.un_available_times || [],
+        time_zone: formData.time_zone
       };
       return handleSaveUnAvailableTimes(transformedData);
     }
@@ -295,6 +343,7 @@ const expandRanges = (ranges) => {
       isEditing={isEditing}
       activeSection={activeSection}
       timeZone={timeZone}
+      onTimeZoneChange={handleTimeZoneChange}
       weekDays={weekDays}
       selectedTimeDropdown={selectedTimeDropdown}
       handleTimeDropdownToggle={setSelectedTimeDropdown}

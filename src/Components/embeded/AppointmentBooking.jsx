@@ -247,7 +247,6 @@ const AppointmentBooking = () => {
     }
   };
 
-  // ✅ تحديث fetchInterviews لتتبع Not Found
   const fetchInterviews = async (resourceId, mode) => {
     setInterviewsLoading(true);
     try {
@@ -902,26 +901,29 @@ if (isInitialLoading) {
       </div>
          
       {/* Modals */}
-     <CalendarModal
-  show={showCalendarModal}
-  onClose={() => setShowCalendarModal(false)}
-  selectedDate={selectedDate}
-  onDateSelect={setSelectedDate}
-  availableDates={bookingData?.available_dates || []}
-  unavailableDates={bookingData?.unavailable_dates || []}
-  disabledTimes={bookingData?.disabled_times || []}
-  availableTimes={bookingData?.available_times || []}
-  availableTimesFromAPI={bookingData?.raw_available_times || []}
-  unavailableTimes={bookingData?.unavailable_times || []}
-  
-  // ← أضف دول كلهم
-  selectedTimeZone={selectedTimezone}
-  setSelectedTimezone={setSelectedTimezone}        // مهم جدًا
-  workspaceTimezone={bookingData?.workspace_timezone || 'Africa/Cairo'}
-  durationCycle={parseInt(bookingData?.duration_cycle) || 15}
-  durationPeriod={bookingData?.duration_period || 'minutes'}
-  restCycle={parseInt(bookingData?.rest_cycle || 0)}
-/>
+          <CalendarModal
+        show={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        selectedDate={selectedDate}
+        onDateSelect={(date) => {
+          setSelectedDate(date);
+          setShowCalendarModal(false);
+        }}
+        availableDates={bookingData?.available_dates || []}
+        unavailableDates={bookingData?.unavailable_dates || []}
+        disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
+        availableTimes={bookingData?.available_times || []}
+        availableTimesFromAPI={bookingData?.raw_available_times || []}
+        unavailableTimes={bookingData?.unavailable_times || []}
+        
+        // ← أضف دول كلهم
+        selectedTimeZone={selectedTimezone}
+        setSelectedTimezone={setSelectedTimezone}        // مهم جدًا
+        workspaceTimezone={bookingData?.workspace_timezone || 'Africa/Cairo'}
+        durationCycle={parseInt(bookingData?.duration_cycle) || 15}
+        durationPeriod={bookingData?.duration_period || 'minutes'}
+        restCycle={parseInt(bookingData?.rest_cycle || 0)}
+      />
       <TimeSelectionModal
         show={showTimeModal}
         onClose={() => setShowTimeModal(false)}
@@ -930,7 +932,7 @@ if (isInitialLoading) {
         availableTimes={bookingData?.available_times || []}
         unavailableTimes={bookingData?.unavailable_times || []}
         selectedDate={selectedDate}
-        disabledTimes={bookingData?.disabled_times || []}
+        disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
         unavailableDates={bookingData?.unavailable_dates || []}
         requireEndTime={requireEndTime}
         selectedEndTime={selectedEndTime}

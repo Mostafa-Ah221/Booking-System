@@ -34,7 +34,7 @@ function UnassignConfirmModal({ isOpen, onClose, onConfirm, staffName, isUnassig
         {/* Content */}
         <div className="p-6">
           <p className="text-gray-700 mb-4">
-            Are you sure you want to unassign <span className="font-semibold">"{staffName}"</span> from this interview?
+            Are you sure you want to unassign <span className="font-semibold truncate block max-w-[100px]">{staffName}</span> from this interview?
           </p>
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-sm text-red-800">

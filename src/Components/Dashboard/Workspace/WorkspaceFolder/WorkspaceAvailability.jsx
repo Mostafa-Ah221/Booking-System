@@ -10,7 +10,13 @@ const InterviewAvailability = () => {
   const [activeTab, setActiveTab] = useState('available-times');
   const [availabilityMode, setAvailabilityMode] = useState('available');
   const [activeSection, setActiveSection] = useState(null);
-  const [timeZone] = useState('Africa/Cairo - EET (+02:00)');
+  
+  // ✅ تحويل timeZone لـ object
+  const [timeZone, setTimeZone] = useState({
+    value: 'Africa/Cairo',
+    label: '(GMT+2:00) Cairo'
+  });
+  
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isTimeSectionDisabled, setIsTimeSectionDisabled] = useState(true);
   
@@ -22,9 +28,23 @@ const InterviewAvailability = () => {
   const dispatch = useDispatch();
   const { workspace } = useSelector(state => state.workspace);
   const id = workspace ? workspace.id : 0;
-  console.log(id);
   
   const [weekDays, setWeekDays] = useState([]);
+
+  // ✅ تحميل الـ timezone من البيانات المحفوظة
+  useEffect(() => {
+    if (workspace?.time_zone) {
+      setTimeZone({
+        value: workspace.time_zone,
+        label: workspace.time_zone
+      });
+    }
+  }, [workspace?.time_zone]);
+
+  // ✅ Handler لتحديث الـ timezone
+  const handleTimeZoneChange = useCallback((selectedTimezone) => {
+    setTimeZone(selectedTimezone);
+  }, []);
 
   const formatDate = useCallback((date) => date.toISOString().split('T')[0], []);
 
@@ -34,6 +54,18 @@ const InterviewAvailability = () => {
     d1.setDate(d1.getDate() + 1);
     return d1.toISOString().split('T')[0] === date2;
   }, []);
+
+  const expandRanges = (ranges) => {
+    const dates = [];
+    ranges.forEach(range => {
+      const start = new Date(range.from);
+      const end = new Date(range.to);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push({ date: d.toISOString().split('T')[0] });
+      }
+    });
+    return dates;
+  };
 
   const formatDateRanges = useCallback((dates) => {
     if (!dates.length) return [];
@@ -73,13 +105,30 @@ const InterviewAvailability = () => {
 
   const handleSaveAvailableTimes = useCallback(async (formData) => {
     try {
+      console.log('handleSaveAvailableTimes - formData:', formData);
+      
       const availableTimesData = formData?.available_times;
       
       if (!availableTimesData || !Array.isArray(availableTimesData) || availableTimesData.length === 0) {
         throw new Error('No available times provided');
       }
       
-      const payload = { available_times: availableTimesData };
+      // ✅ استخراج string value من timezone
+      let timezoneValue = formData?.time_zone || timeZone;
+      
+      // التأكد من أنه string وليس object
+      if (typeof timezoneValue === 'object' && timezoneValue?.value) {
+        timezoneValue = timezoneValue.value;
+      }
+      
+      const payload = { 
+        available_times: availableTimesData,
+        available_dates: workspace?.available_dates || [],
+        time_zone: timezoneValue // ✅ الآن string بالتأكيد
+      };
+      
+      console.log('handleSaveAvailableTimes - payload:', payload);
+      
       const result = await dispatch(updateAvailabilWorkspace(id, payload));
       
       if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
@@ -95,39 +144,54 @@ const InterviewAvailability = () => {
       toast.error(`Error saving available times: ${error.message}`);
       return { success: false, error: error.message };
     }
-  }, [dispatch, id]);
+  }, [dispatch, id, workspace, timeZone]);
 
   const handleSaveUnAvailableTimes = useCallback(async (formData) => {
     try {
+      console.log('handleSaveUnAvailableTimes - formData:', formData);
+      
       const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
       
-      // if (!unAvailableTimes || unAvailableTimes.length === 0) {
-      //   throw new Error('No unavailable times provided');
-      // }
+      // ✅ استخراج string value من timezone
+      let timezoneValue = formData?.time_zone || timeZone;
       
-      const payload = { un_available_times: unAvailableTimes };
+      // التأكد من أنه string وليس object
+      if (typeof timezoneValue === 'object' && timezoneValue?.value) {
+        timezoneValue = timezoneValue.value;
+      }
+      
+      const payload = {
+        time_zone: timezoneValue // ✅ الآن string بالتأكيد
+      };
+      
+      if (unAvailableTimes.length > 0) {
+        payload.un_available_times = unAvailableTimes;
+        payload.un_available_dates = workspace?.un_available_dates || [];
+      }
+      
+      console.log('handleSaveUnAvailableTimes - payload:', payload);
+      
       const result = await dispatch(updateUnAvailabilWorkspace(id, payload));
       
-      if (result) {
-        toast.success('Unavailable times saved successfully!');
+      if (result?.message === "Updated Successfully") {
+        toast.success('Unavailable times saved!');
         setIsTimeSectionDisabled(true);
         setIsEditing(false);
+        await dispatch(editWorkspaceById(id));
         return { success: true };
-      } else {
-        throw new Error(result?.message || result?.error || 'Save failed');
       }
     } catch (error) {
-
-      toast.error(`Error saving unavailable times: ${error.message}`);
-      return { success: false, error: error.message };
+      toast.error(error.message || 'Save failed');
     }
-  }, [dispatch, id]);
+    return { success: false };
+  }, [dispatch, id, workspace?.un_available_dates, timeZone]);
 
   const handleSaveAvailableDates = useCallback(async (formData) => {
     try {
-    
+      const payload = { 
+        available_dates: formData.available_dates,
+      };
       
-      const payload = { available_dates: formData.available_dates };
       const result = await dispatch(updateAvailabilWorkspace(id, payload));
       
       if (result?.success || result?.message === "Updated Successfully") {
@@ -145,69 +209,49 @@ const InterviewAvailability = () => {
         setIsEditing(false);
         return { success: true };
       } else {
-        
         throw new Error(result?.message || "Save failed");
       }
     } catch (error) {
-      
       toast.error(`Error saving available dates: ${error.message}`);
       return { success: false };
     }
-  }, [dispatch, id]);
+  }, [dispatch, id, workspace]);
 
   const handleSaveUnAvailableDates = useCallback(async (formData) => {
     try {
-      const unAvailableDates = formData.un_available_dates || formData.available_dates || [];
-      
-      
-      
-      const validDates = unAvailableDates.every(dateRange => dateRange.from && dateRange.to);
-      if (!validDates) {
-        throw new Error("Invalid date range format");
-      }
-      
-      const payload = { un_available_dates: unAvailableDates };
+      const dates = formData.un_available_dates || [];
+      if (!dates.every(d => d.from && d.to)) throw new Error("Invalid dates");
+
+      const payload = { 
+        un_available_dates: dates.length ? dates : [] 
+      };
+
       const result = await dispatch(updateUnAvailabilWorkspace(id, payload));
       
-      if (result?.success || result?.message === "Updated Successfully" || (result?.message && !result?.error)) {
-        toast.success('Unavailable dates saved successfully!');
+      if (result?.message === "Updated Successfully") {
+        toast.success('Unavailable dates saved!');
         
-        const newSelectedDates = [];
-        unAvailableDates.forEach(range => {
-          const start = new Date(range.from);
-          const end = new Date(range.to);
-          for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
-            newSelectedDates.push({ date: d.toISOString().split('T')[0] });
-          }
-        });
-        setSelectedUnAvailableDates(newSelectedDates);
+        const newDates = expandRanges(dates);
+        setSelectedUnAvailableDates(newDates);
         setIsEditing(false);
+        await dispatch(editWorkspaceById(id));
         return { success: true };
-      } else {
-        throw new Error(result?.message || result?.error || "Save failed");
       }
     } catch (error) {
-      toast.error(`Error saving unavailable dates: ${error.message}`);
-      console.log(error);
-      
-      return { success: false, error: error.message };
+      toast.error(error.message);
     }
+    return { success: false };
   }, [dispatch, id]);
 
   const handleSaveTimes = useCallback((formData) => {
     const currentMode = activeTab.includes('unavailable') ? 'unavailable' : 'available';
     
-    // const timesData = formData.available_times || formData.un_available_times;
-    // if (!timesData || timesData.length === 0) {
-    //   toast.error('Please select at least one day and time slot');
-    //   return Promise.resolve({ success: false, error: 'No times data' });
-    // }
-    
     if (currentMode === 'available') {
       return handleSaveAvailableTimes(formData);
     } else {
       const transformedData = {
-        un_available_times: formData.available_times || formData.un_available_times || []
+        un_available_times: formData.available_times || formData.un_available_times || [],
+        time_zone: formData.time_zone
       };
       return handleSaveUnAvailableTimes(transformedData);
     }
@@ -292,7 +336,6 @@ const InterviewAvailability = () => {
     <ReadOnlyView
       sections={[
         { id: 'working-hours', title: 'Working Hours', description: 'Set weekly available days and hours.', expandable: true },
-        // { id: 'unavailability', title: 'Unavailability', description: 'Add extra unavailable days or hours.', expandable: true }
       ]}
       onEdit={handleEdit}
       handleSpecialHoursAdd={handleSpecialHoursAdd}
@@ -303,6 +346,7 @@ const InterviewAvailability = () => {
       isEditing={isEditing}
       activeSection={activeSection}
       timeZone={timeZone}
+      onTimeZoneChange={handleTimeZoneChange}
       weekDays={weekDays}
       selectedTimeDropdown={selectedTimeDropdown}
       handleTimeDropdownToggle={setSelectedTimeDropdown}

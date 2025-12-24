@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ClassicLayout from './ClassicLayout';
 import FreshLayout from './FreshLayout';
 import ModernWebLayout from './ModernWebLayout';
 import NewLayout from './NewLayout';
-import { Menu, MoveLeft, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import WorkspaceThemePanel from '../WorkspaceThemePanal';
 import Footer from './Footer';
 import { Link, useLocation } from 'react-router-dom';
@@ -20,11 +20,19 @@ export default function AllLayout() {
     error: state.themes?.error || null
   }));
 
-  const [selectedLayout, setSelectedLayout] = useState('');
+  const location = useLocation();
+  const { workspaceData, workspaceTheme, interviewData, interviewTheme } = location.state || {};
+console.log(interviewTheme);
+  
+  const isInterview = Boolean(interviewData?.id);
+  const currentId = isInterview ? interviewData?.id : workspaceData?.id;
+  const currentTheme = isInterview ? interviewTheme : workspaceTheme;
+
+  const [selectedLayout, setSelectedLayout] = useState('modernWeb');
   const [themeData, setThemeData] = useState({
-    color: '#4f46e5',
-    textColor: '#000000', 
-    header: { title: 'Ahmed', logo: null, visibleTitle: true, visibleLogo: true },
+    color: '',
+    textColor: '', 
+    header: { title: '', logo: null, visibleTitle: true, visibleLogo: true },
     pageProperties: { title: 'Welcome', description: '', visibleTitle: true, visibleDescription: true },
     workspaceProperties: { name: 'Ahmed', description: '' },
     buttonText: 'Book appointment',
@@ -38,27 +46,23 @@ export default function AllLayout() {
       email: '', visibleEmail: true,
     },
   });
-  const isGradient = themeData.color.includes('-');  
-   const [firstColor, secondColor] = isGradient 
-  ? themeData.color.split('-') 
-  : [themeData.color, themeData.color];
- 
   
+  const isGradient = themeData.color.includes('-');  
+  const [firstColor, secondColor] = isGradient 
+    ? themeData.color.split('-') 
+    : [themeData.color, themeData.color];
+ 
   const [isPanelVisible, setIsPanelVisible] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
-  const location = useLocation();
-  const { workspaceId, workspaceTheme } = location.state || {};
  
-  
   useEffect(() => {
-  if (workspaceTheme?.id) {
-    dispatch(getTheme(workspaceTheme.id));
-  }
-}, [dispatch, workspaceTheme]);
+    if (currentTheme?.id) {
+      dispatch(getTheme(currentTheme.id));
+    }
+  }, [dispatch, currentTheme]);
 
   useEffect(() => {
     if (theme) {
-
       console.log('theme.theme من API:', theme.theme); 
       let parsedColors = {};
       try { parsedColors = JSON.parse(theme.colors || '{}'); } catch {}
@@ -66,18 +70,17 @@ export default function AllLayout() {
       const reverseMap = Object.fromEntries(
         Object.entries(LAYOUT_TO_THEME).map(([ui, api]) => [api, ui])
       );
-      const uiLayout = reverseMap[theme.theme] ;
-console.log(uiLayout);
+      const uiLayout = reverseMap[theme.theme];
+      console.log(uiLayout);
 
       const mappedData = {
         layout: uiLayout,
         color: parsedColors.primary || '#4f46e5',
         textColor: parsedColors.text_color || '#000000', 
-        // backgroundImage: parsedColors.background_image ? `data:image/png;base64,${parsedColors.background_image}` : null,
         backgroundOpacity: (parsedColors.background_opacity || 1) * 100,
         header: {
           title: theme.nickname || 'Ahmed',
-          logo: theme.photo ? `data:image/png;base64,${theme.photo}` : null,
+           logo: theme.photo ? theme.photo : null,
           visibleTitle: theme.show_nickname ?? true,
           visibleLogo: theme.show_photo ?? true,
         },
@@ -120,9 +123,7 @@ console.log(uiLayout);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
- 
   const handleThemeChange = useCallback((newTheme) => {
-    
     console.log(newTheme);
     
     setThemeData((prev) => {
@@ -155,7 +156,6 @@ console.log(uiLayout);
     setIsPanelVisible(prev => !prev);
   }, []);
 
-  // Loading State
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -167,10 +167,8 @@ console.log(uiLayout);
     );
   }
 
-
   return (
     <div className="relative">
-      {/* Mobile Toggle */}
       {isCompact && (
         <button
           onClick={togglePanel}
@@ -180,21 +178,21 @@ console.log(uiLayout);
         </button>
       )}
 
-        <div className='border-b p-4 flex items-center gap-2'>
-          <Link to='/layoutDashboard/bookPage'>
-            <FaArrowLeft  className="w-4 h-4 "/>
-          </Link>
-          <span>Booking Page</span> 
-          </div>
+      <div className='border-b p-4 flex items-center gap-2'>
+        <Link to='/layoutDashboard/bookPage'>
+          <FaArrowLeft className="w-4 h-4" />
+        </Link>
+        <span>{isInterview ? 'Interview Page' : 'Booking Page'}</span> 
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
-        {/* Layout Preview */}
         <div
-         style={selectedLayout !== 'fresh' ? { background: secondColor } : {}}
+          style={selectedLayout !== 'fresh' ? { background: secondColor } : {}}
           className={`${
             isPanelVisible && isCompact ? 'opacity-50' : 'opacity-100'
-          } col-span-1 lg:col-span-9 transition-opacity duration-300 border rounded-lg  h-[75%] overflow-y-auto`}
+          } col-span-1 lg:col-span-9 transition-opacity duration-300 border rounded-lg h-[75%] overflow-y-auto`}
         >
-          <div className=" mb-6">
+          <div className="mb-6">
             <div className="flex flex-col items-start gap-3">
               <div className="flex space-x-1 bg-gray-100 w-full py-4 px-4 rounded-t-lg">
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
@@ -202,9 +200,9 @@ console.log(uiLayout);
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
               </div>
               <div className="flex items-center gap-3 px-4 pb-4">
-                {themeData.header.visibleLogo && themeData.header.logo ? (
+                {themeData?.header.visibleLogo && themeData?.header.logo ? (
                   <img
-                    src={themeData.header.logo}
+                    src={themeData?.header.logo}
                     alt="Logo"
                     className="w-10 h-10 rounded-md object-cover shadow-sm"
                     onError={(e) => {
@@ -213,30 +211,31 @@ console.log(uiLayout);
                   />
                 ) : null}
                 {themeData.header.visibleTitle && (
-                  <h1 className="text-xl font-medium " style={{ color: themeData.textColor }}>
+                  <h1 className="text-xl font-medium" style={{ color: themeData.textColor }}>
                     {themeData.header.title}
                   </h1>
                 )}
               </div>
             </div>
           </div>
-          {selectedLayout !== 'fresh' &&(
-              <div className=" mb-8 text-center">
-          {themeData.pageProperties.visibleTitle && (
-          <h2 className="text-2xl font-bold mb-2" style={{ color: themeData.textColor }}>
-            {themeData.pageProperties.title }
-          </h2>
+
+          {selectedLayout !== 'fresh' && (
+            <div className="mb-8 text-center">
+              {themeData.pageProperties.visibleTitle && (
+                <h2 className="text-2xl font-bold mb-2" style={{ color: themeData.textColor }}>
+                  {themeData.pageProperties.title}
+                </h2>
+              )}
+              {themeData.pageProperties.visibleDescription && (
+                <div 
+                  className="text-sm mb-3 px-4" 
+                  style={{ color: themeData.textColor }}
+                  dangerouslySetInnerHTML={{ __html: themeData.pageProperties.description }}
+                />
+              )}
+              <hr className='bg-gray-400 opacity-25 mx-7'/>
+            </div>
           )}
-          {themeData.pageProperties.visibleDescription && (
-          <div 
-            className="text-sm mb-3 px-4" 
-            style={{ color: themeData.textColor }}
-            dangerouslySetInnerHTML={{ __html: themeData.pageProperties.description }}
-          />
-          )}
-        <hr className=' bg-gray-400 opacity-25 mx-7'/>
-        </div>
-      )}
          
           {selectedLayout === 'classic' && <ClassicLayout themeData={themeData} />}
           {selectedLayout === 'fresh' && <FreshLayout themeData={themeData} />}
@@ -245,7 +244,6 @@ console.log(uiLayout);
           <Footer themeData={themeData} />
         </div>
 
-        {/* Theme Panel */}
         {isPanelVisible && (
           <div
             className={`${
@@ -257,14 +255,16 @@ console.log(uiLayout);
             <WorkspaceThemePanel
               onLayoutChange={handleLayoutChange}
               onThemeChange={handleThemeChange}
-              workspaceId={workspaceId}
+              currentId={currentId}
+              isInterview={isInterview}
               workspaceTheme={theme}
+              interview={interviewData}
+              workspace={workspaceData}
             />
           </div>
         )}
       </div>
 
-      {/* Mobile Overlay */}
       {isPanelVisible && isCompact && (
         <div
           className="fixed inset-0 bg-black bg-opacity-20 z-30"

@@ -128,6 +128,8 @@ export function updateInterview(id, formData) {
     dispatch(interviewAction.setLoading(true));
 
     try {
+      console.log(formData);
+      
       const isFile = formData.photo instanceof File;
 
       let response;
@@ -273,14 +275,24 @@ export function updateAvailability(id, formData) {
     dispatch(interviewAction.setLoading(true));
     
     try {
+      console.log('updateAvailability - formData:', formData);
+      
       if (!formData || (!formData.available_times && !formData.available_dates)) {
         throw new Error("Invalid availability data format");
       }
 
+      // بناء requestBody مع time_zone
       const requestBody = {
         available_times: formData.available_times || [],
         available_dates: formData.available_dates || []
       };
+
+      // إضافة time_zone إذا كان موجود
+      if (formData.time_zone) {
+        requestBody.time_zone = formData.time_zone;
+      }
+
+      console.log('updateAvailability - requestBody:', requestBody);
 
       const response = await axiosInstance.post(
         `/interview/availability/update/${id}`,
@@ -334,15 +346,27 @@ export function updateUnAvailability(id, formData) {
       if (!formData) {
         throw new Error("Invalid availability data format");
       }
-      console.log(formData);
+      
+      console.log('updateUnAvailability - formData:', formData);
       
       const requestBody = {};
+      
+      // إضافة un_available_times إذا كان موجود
       if (formData.un_available_times) {
         requestBody.un_available_times = formData.un_available_times;
       }
+      
+      // إضافة un_available_dates إذا كان موجود
       if (formData.un_available_dates) {
         requestBody.un_available_dates = formData.un_available_dates;
       }
+
+      // إضافة time_zone إذا كان موجود
+      if (formData.time_zone) {
+        requestBody.time_zone = formData.time_zone;
+      }
+
+      console.log('updateUnAvailability - requestBody:', requestBody);
 
       const response = await axiosInstance.post(
         `/interview/unavailability/update/${id}`,

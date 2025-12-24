@@ -1,4 +1,4 @@
-import { Calendar, Clock, MapPin, User, ChevronRight, UserRound, Package, Check } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, ChevronRight, UserRound, Package, Check, ChevronDown } from 'lucide-react';
 import logo_icon from '../../../assets/image/logo_icon.png';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Loader from '../../Loader';
@@ -10,6 +10,7 @@ import BookingSummarySidebar2 from './BookingSummarySidebar2';
 import CalendarSection2 from './calender2';
 import TimeSelectionSection2 from './time2';
 import { Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+
 
 
 const AppointmentBooking2 = () => {
@@ -93,7 +94,8 @@ console.log(theme);
     isInterviewMode,
     selectedInterview?.id,
     idCustomer || idSpace || idAdmin,
-    !!idCustomer
+    !!idCustomer,
+    setTheme,theme
   );
 
   // ── Build steps dynamically (with unique key) ───────────────────────────────
@@ -148,10 +150,10 @@ console.log(theme);
       });
     }
 
-    const dateTimeValue = selectedDate && selectedTime ? `${selectedDate} at ${selectedTime}` : null;
+    const dateTimeValue = selectedDate && selectedTime ? `${selectedDate}, ${selectedTime}` : null;
     list.push({
       step: counter++,
-      label: 'Date & Time',
+      label: 'Date, Time & Recruiter',
       icon: Calendar,
       value: dateTimeValue,
       key: 'datetime',
@@ -189,10 +191,22 @@ const hasAnySocial =
     (theme?.show_linkedin === "1" && theme?.footer_linkedin);
   // ── Auto-select single items ───────────────────────────────────────────────
   useEffect(() => {
-    if (availableStaff?.length === 1 && !selectedStaff) setSelectedStaff(availableStaff[0]);
-    if (availableStaffGroups?.length === 1 && !selectedStaffGroup) setSelectedStaffGroup(availableStaffGroups[0]);
-    if (availableResources?.length === 1 && !selectedResource) setSelectedResource(availableResources[0]);
-  }, [availableStaff, availableStaffGroups, availableResources, selectedStaff, selectedStaffGroup, selectedResource]);
+    if (availableStaff?.length === 1 && !selectedStaff) {
+      setSelectedStaff(availableStaff[0]);
+      setSelectedDate(null);
+      setSelectedTime(null);
+    }
+    if (availableStaffGroups?.length === 1 && !selectedStaffGroup) {
+      setSelectedStaffGroup(availableStaffGroups[0]);
+      setSelectedDate(null);
+      setSelectedTime(null);
+    }
+    if (availableResources?.length === 1 && !selectedResource) {
+      setSelectedResource(availableResources[0]);
+      setSelectedDate(null);
+      setSelectedTime(null);
+    }
+  }, [availableStaff, availableStaffGroups, availableResources]);
 
   // ── Load workspaces / interviews ───────────────────────────────────────────
   useEffect(() => {
@@ -211,6 +225,9 @@ const hasAnySocial =
       const res = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
       const data = await res.json();
       if (data.data?.workspaces) {
+        if (data.data?.theme && !theme) {  
+            setTheme(data.data.theme);
+          }
         setWorkspaces(data.data.workspaces);
         setNameProvider(data.data.workspaces[0]?.customer_name);
       }
@@ -234,7 +251,9 @@ const hasAnySocial =
       let interviewsData = [];
       if (idSpace || (idAdmin && selectedWorkspace)) {
         interviewsData = data?.data?.workspace_interviews || [];
-        setTheme(data?.data?.theme);
+        if (data.data?.theme && !theme) {  
+            setTheme(data.data.theme);
+          }
         setNameProvider(data?.data?.workspace_interviews?.[0]?.customer_name);
       } else if (idCustomer) {
         interviewsData = data?.data?.staff_interviews || [];
@@ -335,14 +354,14 @@ const hasAnySocial =
                         <s.icon className={`w-5 h-5 ${s.label === 'Staff Group' ? 'w-6 h-6' : ''}`} style={{color:firstColor}} />
                         <div>
                           <h3 className="font-medium text-sm truncate block max-w-[150px]" style={{color:firstColor}}>
-                            {s.value || s.label}
+                            {s.label}
                           </h3>
-                          {s.key === 'datetime' && s.value && (
+                          {s.value && (
                             <p className="text-xs  mt-1" style={{color:firstColor}}>{s.value}</p>
                           )}
                         </div>
                       </div>
-                      { <ChevronRight className="w-5 h-5" style={{color:firstColor}}/>}
+                      {s.key !== 'datetime' && <ChevronDown className="w-5 h-5" style={{color:firstColor}}/>}
                     </div>
                   </div>
                 );
@@ -721,20 +740,20 @@ const hasAnySocial =
                         selectedDate={selectedDate}
                         onDateSelect={(date) => {
                           setSelectedDate(date);
-                          // if (selectedTime) goToNextStep();
                         }}
                         availableDates={bookingData?.available_dates || []}
                         availableTimes={bookingData?.available_times || []}
                         availableTimesFromAPI={bookingData?.raw_available_times || []}
                         unavailableDates={bookingData?.unavailable_dates || []}
                         unavailableTimes={bookingData?.unavailable_times || []}
-                        disabledTimes={bookingData?.disabled_times || []}
+                        disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
                         durationCycle={parseInt(bookingData?.duration_cycle) || 15}
                         durationPeriod={bookingData?.duration_period || "minutes"}
                         restCycle={parseInt(bookingData?.rest_cycle) || 0}
                         setSelectedTimezone={setSelectedTimezone}
                         selectedTimeZone={selectedTimezone}
                         themeColor={theme?.colors}
+                        workspaceTimezone={bookingData?.workspace_timezone || 'Africa/Cairo'}
                       />
 
         {/*  */}
@@ -747,7 +766,7 @@ const hasAnySocial =
           availableTimes={bookingData?.available_times || []}
           availableTimesFromAPI={bookingData?.raw_available_times || []}
           selectedDate={selectedDate}
-          disabledTimes={bookingData?.disabled_times || []}
+          disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
           unavailableTimes={bookingData?.unavailable_times || []}
           unavailableDates={bookingData?.unavailable_dates || []}
           requireEndTime={bookingData?.require_end_time}

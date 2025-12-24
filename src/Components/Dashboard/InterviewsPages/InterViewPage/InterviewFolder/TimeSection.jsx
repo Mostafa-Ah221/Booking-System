@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, X, Send } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { editInterviewById } from '../../../../../redux/apiCalls/interviewCallApi';
+import TimezoneSelect from 'react-timezone-select';
 import toast from "react-hot-toast";
 
 const TimeSection = ({ 
   timeZone, 
+  onTimeZoneChange,
   weekDays: initialWeekDays, 
   selectedTimeDropdown,
   handleTimeDropdownToggle,
@@ -21,6 +23,7 @@ const TimeSection = ({
   const [isEditMode, setIsEditMode] = useState(true);
   const [displayWeekDays, setDisplayWeekDays] = useState([]);
   const [isSaving, setIsSaving] = useState(false); 
+  const timezoneRef = useRef(null);
   console.log(getWorkspaceData);
   
   const { interview } = useSelector(state => state.interview);
@@ -48,7 +51,13 @@ const TimeSection = ({
       const timeSource = availabilityMode === 'available' 
         ? interview.available_times 
         : interview.un_available_times;
-  
+     const timezoneValue = availabilityMode === 'available' 
+      ? interview.available_times_time_zone 
+      : interview.un_available_times_time_zone;
+
+    if (timezoneValue && onTimeZoneChange) {
+      onTimeZoneChange(timezoneValue);
+    }
       if (timeSource && timeSource.length > 0) {
         const groupedByDay = timeSource.reduce((acc, item) => {
           if (!acc[item.day_id]) {
@@ -95,7 +104,7 @@ const TimeSection = ({
         setWeekDays(defaultWeekDays);
       }
     }
-  }, [interview, availabilityMode]);
+  },[interview, availabilityMode, onTimeZoneChange]);
 
   useEffect(() => {
     if (onUpdateWeekDays) {
@@ -105,6 +114,8 @@ const TimeSection = ({
 
   const handleSaveAndSubmit = async () => {
     try {
+      setIsSaving(true);
+      
       const available_times = weekDays
         .filter(day => day.isChecked)
         .map(day => ({
@@ -118,7 +129,10 @@ const TimeSection = ({
       console.log('available_times:', available_times);
       
       if (handleSave) {
-        const formData = {};
+        const formData = {
+          time_zone: typeof timeZone === 'object' ? timeZone.value : timeZone
+        };
+        
         if (availabilityMode === 'available') {
           formData.available_times = available_times;
         } else {
@@ -136,6 +150,8 @@ const TimeSection = ({
       }
     } catch (error) {
       toast.error(`Error saving times: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -390,6 +406,22 @@ const TimeSection = ({
             </button>
           </div>
         )}
+      </div>
+
+      {/* Timezone Selector */}
+      <div 
+        ref={timezoneRef}
+        className="mb-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-64">
+          <TimezoneSelect
+            value={timeZone}
+            onChange={onTimeZoneChange}
+            className="text-sm"
+            isDisabled={isTimeSectionDisabled || isSaving}
+          />
+        </div>
       </div>
 
       <div className="border rounded-lg p-4">

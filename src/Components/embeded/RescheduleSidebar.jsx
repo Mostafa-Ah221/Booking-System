@@ -4,7 +4,13 @@ import { reschedulePublic,getAppointmentByIdPublic } from '../../redux/apiCalls/
 import { useParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import TimezoneSelect from 'react-timezone-select';
-
+import { 
+  convertDateToISO, 
+  convertDisabledTimesToTimezone,
+  convertDateTimeWithTimezone,
+  isTimePast,
+  timeToMinutes
+} from './timezoneUtils';
 const RescheduleSidebar = ({ 
   isOpen, 
   onClose, 
@@ -32,7 +38,8 @@ const RescheduleSidebar = ({
    const [restTimes, setRestTimes] = useState();
   const calendarRef = useRef(null);
   const dispatch = useDispatch();
-  
+    const WORKSPACE_TIMEZONE = 'Africa/Cairo';
+
   
 console.log(appointmentData?.id);
 
@@ -201,29 +208,47 @@ console.log(appointmentData?.id);
   };
 
   // Calculate effective available times (similar to DateTimeSelector)
-  const calculateEffectiveAvailableTimes = (selectedDate, availableTimesData, disabledTimes, interviewData) => {
-    if (!selectedDate || !availableTimesData || !Array.isArray(availableTimesData)) {
-      return [];
-    }
 
-    const dayId = getDayId(selectedDate);
+const calculateEffectiveAvailableTimes = (selectedDate, availableTimesData, disabledTimes, interviewData) => {
+  if (!selectedDate || !availableTimesData || !Array.isArray(availableTimesData)) {
+    return [];
+  }
+
+  const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;
+  const isoDate = formatDateToYMD(selectedDate);
+  if (!isoDate) return [];
+
+  // ✅ تحويل disabled_times من Cairo → User Timezone
+  const convertedDisabledTimes = convertDisabledTimesToTimezone(
+    disabledTimes || [],
+    userTimezone,
+    WORKSPACE_TIMEZONE
+  );
+
+  // ✅ بناء lookup للـ disabled times
+  const disabledMap = {};
+  convertedDisabledTimes.forEach(d => {
+    if (d.date === isoDate) {
+      const key = d.time.slice(0, 5);
+      disabledMap[key] = true;
+    }
+  });
+
+  // ✅ دالة توليد الأوقات ليوم معين في Cairo timezone
+  const generateTimesForDay = (targetISODate) => {
+    const checkDate = new Date(targetISODate + 'T00:00:00.000Z');
+    const dayOfWeek = checkDate.getUTCDay();
+    const dayId = dayOfWeek === 0 ? 1 : dayOfWeek + 1;
+    
     const dayAvailableTimes = availableTimesData.filter(timeRange => 
       timeRange.day_id.toString() === dayId.toString()
     );
 
-    if (dayAvailableTimes.length === 0) {
-      return [];
-    }
+    if (dayAvailableTimes.length === 0) return [];
 
     const dayUnavailableTimes = unavailableTimes.filter(timeRange => 
       timeRange.day_id.toString() === dayId.toString()
     );
-
-    const timeToMinutes = (timeStr) => {
-      if (!timeStr || !timeStr.includes(':')) return 0;
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
 
     const availableRanges = [];
     
@@ -233,7 +258,6 @@ console.log(appointmentData?.id);
       const availableFromMinutes = timeToMinutes(availableRange.from);
       let availableToMinutes;
 
-      // If to is null, end of day (23:59)
       if (!availableRange.to || availableRange.to === null) {
         availableToMinutes = 23 * 60 + 59;
       } else {
@@ -242,14 +266,13 @@ console.log(appointmentData?.id);
       
       let currentRanges = [{ from: availableFromMinutes, to: availableToMinutes }];
       
-      // Subtract unavailable times from available times
+      // طرح الأوقات غير المتاحة
       dayUnavailableTimes.forEach((unavailableRange) => {
         if (!unavailableRange || !unavailableRange.from) return;
         
         const unavailableFromMinutes = timeToMinutes(unavailableRange.from);
         let unavailableToMinutes;
 
-        // If to is null, end of day
         if (!unavailableRange.to || unavailableRange.to === null) {
           unavailableToMinutes = 23 * 60 + 59;
         } else {
@@ -275,7 +298,6 @@ console.log(appointmentData?.id);
       availableRanges.push(...currentRanges);
     });
 
-    // Generate time slots from available ranges
     const effectiveTimeSlots = [];
     let durationCycle = 15;
     let durationPeriod = "minutes";
@@ -292,9 +314,8 @@ console.log(appointmentData?.id);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const selectedDateObj = new Date(selectedDate);
-    selectedDateObj.setHours(0, 0, 0, 0);
-    const isToday = selectedDateObj.getTime() === today.getTime();
+    const selectedDateObj = new Date(targetISODate + 'T00:00:00.000Z');
+    const isToday = selectedDateObj.toDateString() === today.toDateString();
     const nowMinutes = isToday ? (new Date().getHours() * 60 + new Date().getMinutes()) : -1;
     
     availableRanges.forEach((range) => {
@@ -302,17 +323,9 @@ console.log(appointmentData?.id);
       const endMinutes = range.to;
       
       for (let currentMinutes = startMinutes; currentMinutes + durationInMinutes <= endMinutes; currentMinutes += totalSlotDuration) {
-         const hours = Math.floor(currentMinutes / 60);
+        const hours = Math.floor(currentMinutes / 60);
         const minutes = currentMinutes % 60;
         const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-        
-        const dateISO = formatDateToYMD(selectedDateObj);
-        const isDisabled = disabledTimes && disabledTimes.some(disabledTime => {
-          if (!disabledTime || !disabledTime.date || !disabledTime.time) return false;
-          const disabledDate = disabledTime.date;
-          const disabledTimeFormatted = disabledTime.time.substring(0, 5);
-          return disabledDate === dateISO && disabledTimeFormatted === formattedTime;
-        });
         
         let isPast = false;
         if (isToday) {
@@ -320,7 +333,7 @@ console.log(appointmentData?.id);
           isPast = slotTimeMinutes < nowMinutes;
         }
         
-        if (!isDisabled && !isPast) {
+        if (!isPast) {
           effectiveTimeSlots.push(formattedTime);
         }
       }
@@ -328,6 +341,95 @@ console.log(appointmentData?.id);
 
     return [...new Set(effectiveTimeSlots)].sort();
   };
+
+  // ✅ دالة التحويل والفحص (نفس useBookingLogic)
+  const convertAndCheck = (cairoDateStr, cairoTime, targetDateStr) => {
+    const converted = convertDateTimeWithTimezone(
+      cairoDateStr,
+      cairoTime,
+      WORKSPACE_TIMEZONE,
+      userTimezone
+    );
+
+    if (converted.date !== targetDateStr) return null;
+
+    const timeKey = converted.time.slice(0, 5);
+    const isDisabled = !!disabledMap[timeKey];
+    const isPast = isTimePast(targetDateStr, converted.time);
+
+    return (!isDisabled && !isPast) ? converted.time : null;
+  };
+
+  const allUserTimes = [];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // تحويل selectedDate للصيغة المطلوبة
+  const dateStr = selectedDate.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // 🌍 اليوم الحالي
+  // ══════════════════════════════════════════════════════════════
+  const currentDayTimes = generateTimesForDay(isoDate);
+  currentDayTimes.forEach(time => {
+    const result = convertAndCheck(dateStr, time, dateStr);
+    if (result) allUserTimes.push(result);
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // 🌍 اليوم السابق (للـ timezones المختلفة)
+  // ══════════════════════════════════════════════════════════════
+  if (userTimezone !== WORKSPACE_TIMEZONE) {
+    const prevDate = new Date(isoDate + 'T00:00:00.000Z');
+    prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+    const prevISO = prevDate.toISOString().split('T')[0];
+    const prevTimes = generateTimesForDay(prevISO);
+    
+    const prevDay = String(prevDate.getUTCDate()).padStart(2, '0');
+    const prevMonth = monthNames[prevDate.getUTCMonth()];
+    const prevYear = prevDate.getUTCFullYear();
+    const prevDateStr = `${prevDay} ${prevMonth} ${prevYear}`;
+
+    prevTimes.forEach(time => {
+      const result = convertAndCheck(prevDateStr, time, dateStr);
+      if (result) allUserTimes.push(result);
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 🌍 اليوم التالي
+  // ══════════════════════════════════════════════════════════════
+  if (userTimezone !== WORKSPACE_TIMEZONE) {
+    const nextDate = new Date(isoDate + 'T00:00:00.000Z');
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+    const nextISO = nextDate.toISOString().split('T')[0];
+    const nextTimes = generateTimesForDay(nextISO);
+    
+    const nextDay = String(nextDate.getUTCDate()).padStart(2, '0');
+    const nextMonth = monthNames[nextDate.getUTCMonth()];
+    const nextYear = nextDate.getUTCFullYear();
+    const nextDateStr = `${nextDay} ${nextMonth} ${nextYear}`;
+
+    nextTimes.forEach(time => {
+      const result = convertAndCheck(nextDateStr, time, dateStr);
+      if (result) allUserTimes.push(result);
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ✅ إزالة التكرارات والترتيب
+  // ══════════════════════════════════════════════════════════════
+  const uniqueTimes = [...new Set(allUserTimes)].sort((a, b) => {
+    const [ha, ma] = a.split(':').map(Number);
+    const [hb, mb] = b.split(':').map(Number);
+    return ha * 60 + ma - (hb * 60 + mb);
+  });
+
+  return uniqueTimes;
+};
 
   
 // Check if date is available with new logic
@@ -340,62 +442,58 @@ const isDateAvailable = (date, interview = interviewDetails) => {
   const checkDate = new Date(date);
   checkDate.setHours(0, 0, 0, 0);
   
-  // Check if date is in the past
+  // التاريخ لو في الماضي
   if (checkDate < today) {
     return false;
   }
 
-  const dayId = getDayId(checkDate);
+  const isoDate = formatDateToYMD(checkDate);
+  if (!isoDate) return false;
 
-  // PRIORITY 1: Check if date is in available range
-  const isInDateRange = isDateInAvailableRange(checkDate, interview.available_dates);
-  if (!isInDateRange) {
-    return false;
-  }
+  const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;
 
-  // PRIORITY 2: Check if day has available times configured
-  const hasTimesForDay = interview.available_times.some(time => time.day_id.toString() === dayId.toString());
+  // ══════════════════════════════════════════════════════════════
+  // 🌍 ده الجزء المهم: نجرب نجيب أوقات من اليوم ده
+  // ══════════════════════════════════════════════════════════════
+  const effectiveTimeSlots = calculateEffectiveAvailableTimes(
+    checkDate, 
+    interview.available_times, 
+    interview.disabled_times || [], 
+    interview
+  );
   
-  if (!hasTimesForDay) {
-    return false;
-  }
+  // لو فيه أي وقت متاح في اليوم ده (بعد التحويل)، يبقى اليوم متاح
+  return effectiveTimeSlots.length > 0;
+};
 
-  // PRIORITY 3: Calculate effective available times after subtracting unavailable times
-  // This is the KEY - it will handle the comparison between available and unavailable times
-  const effectiveAvailableTimes = calculateEffectiveAvailableTimes(
+
+
+// ════════════════════════════════════════════════════════════════
+// 🔧 تعديل generateTimeSlots
+// ════════════════════════════════════════════════════════════════
+
+const generateTimeSlots = (date, interview) => {
+  if (!date || !interview) return [];
+
+  const effectiveTimeSlots = calculateEffectiveAvailableTimes(
     date, 
     interview.available_times, 
     interview.disabled_times || [], 
     interview
   );
   
-  // If there are any effective available times, the date is available
-  return effectiveAvailableTimes.length > 0;
-};
-
-  // Generate time slots with rest_cycle support
-  const generateTimeSlots = (date, interview) => {
-    if (!date || !interview) return [];
-
-    const effectiveTimeSlots = calculateEffectiveAvailableTimes(
-      date, 
-      interview.available_times, 
-      interview.disabled_times || [], 
-      interview
-    );
+  return effectiveTimeSlots.map(timeStr => {
+    const [hour, min] = timeStr.split(':').map(Number);
+    const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    const ampm = hour >= 12 ? 'pm' : 'am';
+    const displayTime = `${displayHour}:${min.toString().padStart(2, '0')} ${ampm}`;
     
-    return effectiveTimeSlots.map(timeStr => {
-      const [hour, min] = timeStr.split(':').map(Number);
-      const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      const ampm = hour >= 12 ? 'pm' : 'am';
-      const displayTime = `${displayHour}:${min.toString().padStart(2, '0')} ${ampm}`;
-      
-      return {
-        value: timeStr,
-        display: displayTime
-      };
-    });
-  };
+    return {
+      value: timeStr,
+      display: displayTime
+    };
+  });
+};
 
 const fetchInterviewDetails = async (shareLink, staffResource = null, resource = null) => {
   setIsLoading(true);
@@ -480,10 +578,8 @@ const findFirstAvailableDateTime = (interview) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-
-  const tempUnavailableDates = interview.un_available_dates || [];
-  const tempUnavailableTimes = interview.un_available_times || [];
-
+  const allPossibleDates = [];
+  
   for (const dateRange of interview.available_dates) {
     if (!dateRange?.from) continue;
     
@@ -496,52 +592,30 @@ const findFirstAvailableDateTime = (interview) => {
       const currentDate = new Date(Math.max(fromDate.getTime(), today.getTime()));
       const endDate = new Date(toDate.getTime());
       
+      // اجمع كل الأيام في الـ range ده
       while (currentDate <= endDate) {
-        const dayId = getDayId(currentDate);
-        
-        // تحقق من unavailable مباشرة هنا
-        const isInUnavailableRange = tempUnavailableDates.some(dr => {
-          if (!dr?.from) return false;
-          const fromDateCheck = new Date(dr.from.split(' ')[0]);
-          fromDateCheck.setHours(0, 0, 0, 0);
-          
-          if (dr.to === null) {
-            return currentDate >= fromDateCheck;
-          }
-          
-          const toDateCheck = new Date(dr.to.split(' ')[0]);
-          toDateCheck.setHours(23, 59, 59, 999);
-          return currentDate >= fromDateCheck && currentDate <= toDateCheck;
-        });
-        
-        // إذا كان في unavailable range، تحقق من اليوم
-        if (isInUnavailableRange) {
-          const isDayUnavailable = tempUnavailableTimes.some(
-            time => time.day_id.toString() === dayId.toString()
-          );
-          
-          if (isDayUnavailable) {
-            currentDate.setDate(currentDate.getDate() + 1);
-            continue;
-          }
-        }
-        
-        
-        if (isDateAvailable(currentDate, interview)) {
-          const timeSlots = generateTimeSlots(currentDate, interview);
-          if (timeSlots.length > 0) {
-            setSelectedDate(new Date(currentDate));
-            setSelectedTime(timeSlots[0].value);
-            return;
-          }
-        }
-        
+        allPossibleDates.push(new Date(currentDate));
         currentDate.setDate(currentDate.getDate() + 1);
       }
-      
     } catch (err) {
       console.warn('Error processing date range:', dateRange, err);
       continue;
+    }
+  }
+  allPossibleDates.sort((a, b) => a - b);
+
+  for (const date of allPossibleDates) {
+    const timeSlots = calculateEffectiveAvailableTimes(
+      date,
+      interview.available_times,
+      interview.disabled_times || [],
+      interview
+    );
+    
+    if (timeSlots.length > 0) {
+      setSelectedDate(new Date(date));
+      setSelectedTime(timeSlots[0]);
+      return;
     }
   }
   
@@ -550,24 +624,19 @@ const findFirstAvailableDateTime = (interview) => {
 };
 
   // Memoized available time slots for performance
-  const availableTimeSlots = useMemo(() => {
-    if (!selectedDate || !interviewDetails) return [];
-    return generateTimeSlots(selectedDate, interviewDetails);
-  }, [selectedDate, interviewDetails, disabledTimes, unavailableTimes]);
-
+const availableTimeSlots = useMemo(() => {
+  if (!selectedDate || !interviewDetails) return [];
+  return generateTimeSlots(selectedDate, interviewDetails);
+}, [selectedDate, interviewDetails, selectedTimezone]);
   // Load interview details when component opens
 
 
  useEffect(() => {
-  console.log('🔵 useEffect FIRED!', { isOpen, id: appointmentData?.id });
-  
   if (!isOpen) {
-    console.log('⏸️ Sidebar not open, exiting useEffect');
     return;
   }
   
   if (!appointmentData?.id) {
-    console.log('❌ No appointment ID, exiting useEffect');
     return;
   }
   
@@ -667,6 +736,62 @@ useEffect(() => {
     document.removeEventListener('mousedown', handleClickOutside);
   };
 }, [isCalendarOpen]);
+
+  // Update selected time when date changes
+  useEffect(() => {
+    if (selectedDate && interviewDetails && selectedTimezone) {
+      // Recalculate available time slots for the selected date with new timezone
+      const timeSlots = generateTimeSlots(selectedDate, interviewDetails);
+      
+      // Reset selections if current time is not available in new timezone
+      if (selectedTime && !timeSlots.some(slot => slot.value === selectedTime)) {
+        setSelectedTime(timeSlots.length > 0 ? timeSlots[0].value : '');
+        setSelectedEndTime('');
+      }
+      
+      // Check if the currently selected date is still available in the new timezone
+      if (!isDateAvailable(selectedDate, interviewDetails)) {
+        // Find first available date in new timezone
+        findFirstAvailableDateTime(interviewDetails);
+      }
+    }
+  }, [selectedTimezone, selectedDate, interviewDetails]);
+
+  // Update selected time when date changes
+  useEffect(() => {
+    if (selectedDate && interviewDetails) {
+      const timeSlots = generateTimeSlots(selectedDate, interviewDetails);
+      
+      // Reset selected time if it's not available for the new date
+      if (selectedTime && !timeSlots.some(slot => slot.value === selectedTime)) {
+        setSelectedTime(timeSlots.length > 0 ? timeSlots[0].value : '');
+      }
+    }
+  }, [selectedDate, interviewDetails]);
+
+  // Update selected time when date changes
+  useEffect(() => {
+    if (selectedDate && interviewDetails) {
+      const timeSlots = generateTimeSlots(selectedDate, interviewDetails);
+      
+      // Reset selected time if it's not available for the new date
+      if (selectedTime && !timeSlots.some(slot => slot.value === selectedTime)) {
+        setSelectedTime(timeSlots.length > 0 ? timeSlots[0].value : '');
+      }
+    }
+  }, [selectedDate, interviewDetails]);
+
+  // Update selected time when date changes
+  useEffect(() => {
+    if (selectedDate && interviewDetails) {
+      const timeSlots = generateTimeSlots(selectedDate, interviewDetails);
+      
+      // Reset selected time if it's not available for the new date
+      if (selectedTime && !timeSlots.some(slot => slot.value === selectedTime)) {
+        setSelectedTime(timeSlots.length > 0 ? timeSlots[0].value : '');
+      }
+    }
+  }, [selectedDate, interviewDetails]);
 
   // Update selected time when date changes
   useEffect(() => {

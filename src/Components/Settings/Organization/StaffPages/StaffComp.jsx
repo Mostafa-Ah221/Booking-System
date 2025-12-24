@@ -330,7 +330,7 @@ export default function StaffComp() {
       <ShareBookingModal
         isOpen={isShareModalOpen} 
         onClose={() => setIsShareModalOpen(false)} 
-        shareLink={`s/${selectedStaff?.share_link.share_link}`}
+        shareLink={`s/${selectedStaff?.share_link}`}
         profile={selectedStaff}
         onUpdateLink={handleUpdateShareLink}
         canShowEdit={canEditStaff}

@@ -104,6 +104,45 @@ export function getAppointmentByIdPublic(id) {
       console.error("Failed to fetch appointment:", err);
       dispatch(appointmentActions.setError(err.message));
       
+     
+      return {
+        success: false,
+        message: err.response?.data?.message || err.message
+      };
+      
+    } finally {
+      dispatch(appointmentActions.setLoading(false));
+    }
+  };
+}
+export function getAppointmentByTokenPublic(token) {
+  return async (dispatch) => {
+    dispatch(appointmentActions.setLoading(true));
+    try {
+      const response = await axios.get(
+        `https://backend-booking.appointroll.com/api/appointments/token/${token}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      if (response.data) {
+        console.log(response.data);
+        
+        dispatch(appointmentActions.setAppointment(response.data.data));
+        dispatch(appointmentActions.setError(null));
+        
+        return {
+          success: true,
+          data: response.data.data
+        };
+      }
+    } catch (err) {
+      console.error("Failed to fetch appointment:", err);
+      dispatch(appointmentActions.setError(err.message));
+      
       // ✅ إضافة return للفشل
       return {
         success: false,

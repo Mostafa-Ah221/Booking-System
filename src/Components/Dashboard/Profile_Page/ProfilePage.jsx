@@ -41,7 +41,8 @@ console.log(profile);
     password: '',
     new_password: '',
     new_password_confirmation: '',
-    photo: null
+    photo: null,
+    over_time: 0
   });
 
 
@@ -67,12 +68,13 @@ console.log(profile);
         password: '',
         new_password: '',
         new_password_confirmation: '',
-        photo: null
+        photo: null,
+        over_time: userData.over_time || 0
       });
       
       // Set phone value for PhoneInput component
       if (userData.code_phone && userData.phone) {
-        setPhoneValue(`${userData.code_phone}${userData.phone}`);
+        setPhoneValue(`${userData.phone}`);
       }
       
       // Set display image if exists
@@ -163,7 +165,8 @@ console.log(profile);
         password: '',
         new_password: '',
         new_password_confirmation: '',
-        photo: null
+        photo: null,
+        over_time: userData.over_time || 0
       });
       
       // Reset phone value
@@ -373,7 +376,7 @@ console.log(profile);
                       />
                     ) : (
                       <div className="py-1 rounded-lg">
-                        <p className="text-gray-900">{currentProfile?.user?.name || 'Not provided'}</p>
+                        <p className="text-gray-900 truncate max-w-[150px]">{currentProfile?.user?.name || 'Not provided'}</p>
                       </div>
                     )}
                   </div>
@@ -437,6 +440,8 @@ console.log(profile);
                       </div>
                     )}
                   </div>
+                  
+                  {/* Status Field */}
                   <div>
                     <h2 className="block text-sm font-medium text-gray-500 mb-2">Status</h2>
                     <div
@@ -454,6 +459,38 @@ console.log(profile);
                     </div>
                   </div>
 
+                  {/* Over Time Field - Only for Staff */}
+                  {userType === 'staff' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        Over Time
+                      </label>
+                      {isEditing ? (
+                        <select
+                          value={profileData.over_time || 0}
+                          onChange={(e) => handleInputChange('over_time', parseInt(e.target.value))}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                        >
+                          <option value={1}>Active</option>
+                          <option value={0}>Inactive</option>
+                        </select>
+                      ) : (
+                        <div
+                          className={`py-1 rounded-lg w-fit ${
+                            currentProfile?.user?.over_time == 1 ? "bg-green-100" : "bg-red-100"
+                          }`}
+                        >
+                          <p
+                            className={`px-2 py-1 ${
+                              currentProfile?.user?.over_time == 1 ? "text-green-700" : "text-red-700"
+                            }`}
+                          >
+                            {currentProfile?.user?.over_time == 1 ? "Active" : "Inactive"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Current Password Field - Only show when editing */}
                   {isEditing && (

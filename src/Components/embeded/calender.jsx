@@ -17,11 +17,25 @@ const CalendarModal = ({
   restCycle = 0,
   selectedTimeZone,      
   setSelectedTimezone,      
-  workspaceTimezone = 'Africa/Cairo'  
+  workspaceTimezone   
 }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-console.log(availableTimes);
+  const [currentMonth, setCurrentMonth] = useState(() => {
+  if (selectedDate) {
+    const [day, monthAbbr, year] = selectedDate.split(' ');
+    const monthIndex = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(monthAbbr);
+    return monthIndex !== -1 ? monthIndex : new Date().getMonth();
+  }
+  return new Date().getMonth();
+});
+
+const [currentYear, setCurrentYear] = useState(() => {
+  if (selectedDate) {
+    const year = selectedDate.split(' ').pop();
+    return parseInt(year);
+  }
+  return new Date().getFullYear();
+});
+console.log(disabledTimes);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -375,6 +389,18 @@ const getFirstDayOfMonth = (m, y) => {
     }
     return days;
   };
+
+  // أضف ده فوق الدالة navigateMonth
+useEffect(() => {
+  if (selectedDate && show) {
+    const [day, monthAbbr, year] = selectedDate.split(' ');
+    const monthIndex = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(monthAbbr);
+    if (monthIndex !== -1) {
+      setCurrentMonth(monthIndex);
+      setCurrentYear(parseInt(year));
+    }
+  }
+}, [selectedDate, show]);
 
   const navigateMonth = (dir) => {
     if (dir === 'prev') {

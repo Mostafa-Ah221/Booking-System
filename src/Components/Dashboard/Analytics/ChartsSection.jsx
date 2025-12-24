@@ -191,7 +191,7 @@ export function Chart1({ data, timeFilter }) {
 
             {/* Appointments by Date - Area Chart */}
             <div>
-                <h4 className="text-lg font-medium text-gray-700 mb-3">
+                <h4 className=" font-medium text-gray-700 mb-3">
                     Appointments by Date
                     {chartData.dateData.length === 0 && (
                         <span className="text-sm text-gray-500 ml-2">(No data for selected period)</span>

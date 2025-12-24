@@ -196,13 +196,26 @@ console.log(appointment);
           <div className="flex items-center w-full">
             <div className="flex items-center gap-1 w-1/3">
               <User className="w-5 h-5 text-gray-400" />
-              <div className="text-sm text-gray-600">Customer</div>
+              <div className="text-sm text-gray-600">Organisation</div>
             </div>
             <div className="w-1/3 text-left font-medium truncate  max-w-[150px]">
-              {appointment?.customer || appointment?.name || 'N/A'}
+              {appointment?.customer_name || 'N/A'}
             </div>
             <div className="w-1/3"></div>
           </div>
+          
+            {/* Staff */}
+            {appointment?.staff_name && appointment?.staff !== null && (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+                <div className="flex items-center gap-2 sm:w-1/3">
+                  <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
+                  <div className="text-xs sm:text-sm text-gray-600">Staff</div>
+                </div>
+                <div className="sm:w-2/3 font-medium text-sm sm:text-base pl-6 sm:pl-0 truncate block max-w-[150px]">
+                  {appointment?.staff_name || 'N/A'}
+                </div>
+              </div>
+            )}
 
           {/* Date & Time */}
           <div className="flex items-start w-full">
@@ -212,7 +225,7 @@ console.log(appointment);
             </div>
             <div className="w-1/3 text-left">
               <div className="font-medium">{appointment?.date}</div>
-              <div className="text-sm text-gray-500">{appointment?.time}</div>
+              <div className="text-sm text-gray-500">{appointment?.time} ({appointment?.time_zone})</div>
               <div className="text-sm text-gray-500 flex items-center justify-start">
                 <MapPin className="w-3 h-3 mr-1" />
                 {appointment?.time_zone}
@@ -286,7 +299,7 @@ console.log(appointment);
       </div>
 
       <div className="text-center mt-8 text-sm text-gray-500 no-print">
-        Powered by {appointment?.workspace || 'Booking System'}
+        Powered by Appoint Roll
       </div>
 
       {/* Print Styles */}

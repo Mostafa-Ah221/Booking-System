@@ -193,8 +193,8 @@ const helpItems = [
     icon: Video, 
     label: 'Webinars', 
     action: () => {
-      onClose(); // أقفل الـ panel الأول
-      navigate('/webinars'); // استخدم navigate بدل window.open
+      onClose();
+      navigate('/webinars'); 
     } 
   },
   { 
@@ -265,7 +265,7 @@ const helpItems = [
             
             <h2 
               id="profile-panel-title"
-              className="text-lg sm:text-xl font-semibold mb-1 truncate  max-w-[150px] px-4" 
+              className="text-lg sm:text-xl font-semibold mb-1 truncate  max-w-[150px] px-4 mx-auto" 
               title={profileData?.name || 'Loading...'}
             >
               {profileData?.name || 'User Name'}

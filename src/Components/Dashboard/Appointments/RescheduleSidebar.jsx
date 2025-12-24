@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import {  createAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
 import DateTimeSelector from './DataTimeSections/DateTimeSelector';
 import Select from 'react-select';
-import moment from 'moment-timezone';
+import TimezoneSelect from 'react-timezone-select';
 import toast from "react-hot-toast";
 
 const RescheduleSidebar = ({ 
@@ -25,18 +25,16 @@ const RescheduleSidebar = ({
   const [selectedTime, setSelectedTime] = useState(null);
   const [endTime, setEndTime] = useState(null); 
   const [selectedInterview, setSelectedInterview] = useState(null);
-  const [selectedTimeZone, setSelectedTimeZone] = useState(null);
-  const [showInterviewDropdown, setShowInterviewDropdown] = useState(false);
+const [selectedTimeZone, setSelectedTimeZone] = useState(
+  Intl.DateTimeFormat().resolvedOptions().timeZone
+);  const [showInterviewDropdown, setShowInterviewDropdown] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [isInterviewsLoading, setIsInterviewsLoading] = useState(false);
 
   const dispatch = useDispatch();
 
-  const timeZoneOptions = moment.tz.names().map((tz) => ({
-    value: tz,
-    label: tz,
-  }));
+ const WORKSPACE_TIMEZONE = 'Africa/Cairo';
   
 
   const isRescheduleMode = mode === 'reschedule' && appointment;
@@ -96,9 +94,7 @@ const RescheduleSidebar = ({
     setError(null);
   };
 
-  const handleTimeZoneSelect = (selectedOption) => {
-    setSelectedTimeZone(selectedOption ? selectedOption.value : null);
-  };
+
 console.log(appointment);
 
   const handleSubmit = async () => {
@@ -273,32 +269,49 @@ console.log(appointment);
             </div>
 
             {/* Time Zone */}
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Select Time Zone</h3>
-              <Select
-                options={timeZoneOptions}
-                value={timeZoneOptions.find((option) => option.value === selectedTimeZone)}
-                onChange={handleTimeZoneSelect}
-                placeholder="Select a time zone"
-                className="w-full"
-                classNamePrefix="select"
-                isClearable
-              />
-            </div>
+            {/* Time Zone */}
+<div className="mb-6">
+  <h3 className="text-sm font-medium text-gray-700 mb-3">Select Time Zone</h3>
+  <div className="border border-gray-300 rounded-lg">
+    <TimezoneSelect
+      value={selectedTimeZone}
+      onChange={(timezone) => setSelectedTimeZone(timezone?.value || null)}
+      className="react-timezone-select w-full"
+      classNamePrefix="select"
+      styles={{
+        control: (base) => ({
+          ...base,
+          border: 'none',
+          boxShadow: 'none',
+          width: '100%',
+          '&:hover': {
+            border: 'none',
+          },
+        }),
+        menu: (base) => ({
+          ...base,
+          width: '100%',
+        }),
+      }}
+    />
+  </div>
+</div>
 
-            {selectedInterview && (
-              <DateTimeSelector
-                selectedInterview={selectedInterview}
-                selectedDate={selectedDate}
-                selectedTime={selectedTime}
-                selectedEndTime={endTime} 
-                onDateSelect={setSelectedDate}
-                onTimeSelect={setSelectedTime}
-                onEndTimeSelect={setEndTime} 
-                appointment={appointment}
-                mode={mode}
-              />
-            )}
+           {selectedInterview && (
+            <DateTimeSelector
+              selectedInterview={selectedInterview}
+              selectedDate={selectedDate}
+              selectedTime={selectedTime}
+              selectedEndTime={endTime} 
+              onDateSelect={setSelectedDate}
+              onTimeSelect={setSelectedTime}
+              onEndTimeSelect={setEndTime} 
+              appointment={appointment}
+              mode={mode}
+              selectedTimezone={selectedTimeZone} 
+              WORKSPACE_TIMEZONE={WORKSPACE_TIMEZONE} 
+            />
+          )}
 
             {currentClient && (
               <div className="mb-6">

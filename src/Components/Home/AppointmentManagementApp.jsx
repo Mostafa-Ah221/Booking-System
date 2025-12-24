@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 const AppointmentManagementApp = () => {
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-gray-100 mt-8 sm:mt-12 lg:mt-20 relative overflow-hidden">
-      {/* القسم الأيسر (المحتوى النصي) */}
       <div className="w-full lg:w-1/2 bg-[#1a1a2e] text-white flex flex-col justify-center items-center p-6 sm:p-8 lg:p-12 order-2 lg:order-1">
         <div className="max-w-md text-center lg:text-left">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold mb-4 sm:mb-6 leading-tight">
@@ -15,7 +14,6 @@ const AppointmentManagementApp = () => {
             Gain complete control of your schedule, all just a click away.
           </p>
 
-          {/* أزرار تحميل التطبيقات */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 items-center lg:items-start">
              <Link to="/signup" className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-md font-medium transition-colors">
                          SIGN UP FOR FREE

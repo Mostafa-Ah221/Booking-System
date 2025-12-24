@@ -12,11 +12,9 @@ export default function SliderInterviewPages({ toggleSidebar, id }) {
   const [activeItem, setActiveItem] = useState(location.pathname);
   const [expandedItems, setExpandedItems] = useState({});
   const { interview } = useSelector(state => state.interview);
-console.log(interview?.type);
 
   const ControlInterview = usePermission("control interview");
   
-  // Initialize expanded state and active item based on current location
 useEffect(() => {
   const currentPath = location.pathname;
   
@@ -35,8 +33,6 @@ useEffect(() => {
   }
 }, [location.pathname]);
 
-  // Helper function to determine if we're on a notification route
-// Helper function to determine if we're on a notification route
 const isNotificationRoute = (path) => {
   return path.includes('notifications');
 };

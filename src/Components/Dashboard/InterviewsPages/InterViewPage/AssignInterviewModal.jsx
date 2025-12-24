@@ -9,7 +9,7 @@ import { getAvailableStaffForWorkspace } from "../../../../redux/apiCalls/worksp
 export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, interview }) {
   const dispatch = useDispatch();
   const { id } = useOutletContext();
-  const [selectedStaffIds, setSelectedStaffIds] = useState([]); // Changed to array
+  const [selectedStaffIds, setSelectedStaffIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -26,12 +26,17 @@ export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, 
     ? filteredStaffs.map(staff => staff.id)
     : [];
 
-  // Filter out already assigned staff
-  const availableStaff = Array.isArray(availableStForWorkS)
-    ? availableStForWorkS.filter(staff => !assignedStaffIds.includes(staff.id))
-    : [];
+  // ✅ تعيين الـ staff المعين في selectedStaffIds عند فتح الـ modal
+  useEffect(() => {
+    if (isOpen && assignedStaffIds.length > 0) {
+      setSelectedStaffIds(assignedStaffIds);
+    }
+  }, [isOpen, assignedStaffIds.length]);
 
-  const filteredStaff = availableStaff.filter(staff => {
+  // عرض جميع الـ staff
+  const allStaff = Array.isArray(availableStForWorkS) ? availableStForWorkS : [];
+
+  const filteredStaff = allStaff.filter(staff => {
     if (!staff || typeof staff.name !== 'string') return false;
     if (!searchQuery.trim()) return true;
     return staff.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -39,11 +44,9 @@ export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, 
 
   const handleSelectStaff = (staffId) => {
     setSelectedStaffIds(prev => {
-      // إذا كان الموظف محدد، نشيله من القائمة
       if (prev.includes(staffId)) {
         return prev.filter(id => id !== staffId);
       }
-      // إذا لم يكن محدد، نضيفه للقائمة
       return [...prev, staffId];
     });
   };
@@ -135,13 +138,14 @@ export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, 
               </div>
             ) : filteredStaff.length === 0 ? (
               <div className="py-8 text-center text-sm text-gray-500">
-                {availableStaff.length === 0 
+                {allStaff.length === 0 
                   ? "No recruiter found"
                   : "No recruiter found"}
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
                 {filteredStaff.map((staff) => {
+                  const isAssigned = assignedStaffIds.includes(staff.id);
                   const isSelected = selectedStaffIds.includes(staff.id);
                   
                   return (
@@ -155,7 +159,7 @@ export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, 
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleSelectStaff(staff.id)}
-                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
                       />
                       
                       {typeof staff.photo === 'string' && staff.photo.trim() !== '' ? (
@@ -165,14 +169,25 @@ export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, 
                           alt={staff.name}
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-medium text-sm">
+                        <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-medium text-sm">
                           {staff.name.charAt(0).toUpperCase()}
                         </div>
                       )}
                       
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-800 truncate block max-w-[150px]">{staff.name}</p>
-                        <p className="text-xs text-gray-500 truncate block max-w-[150px]">{staff.email}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-800 truncate block max-w-[150px]">
+                            {staff.name}
+                          </p>
+                          {isAssigned && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Already Assigned
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 truncate block max-w-[150px]">
+                          {staff.email}
+                        </p>
                       </div>
                     </label>
                   );
@@ -190,10 +205,13 @@ export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, 
               <div className="space-y-1">
                 {selectedStaffIds.map(staffId => {
                   const staff = filteredStaff.find(s => s.id === staffId) || 
-                                availableStaff.find(s => s.id === staffId);
+                                allStaff.find(s => s.id === staffId);
+                  const isAlreadyAssigned = assignedStaffIds.includes(staffId);
                   return (
                     <div key={staffId} className="flex items-center justify-between text-xs text-purple-600">
-                      <span className="truncate block max-w-[150px]">• {staff?.name}</span>
+                      <span className="truncate block max-w-[150px]">
+                        {isAlreadyAssigned ? '✓' : '•'} {staff?.name}
+                      </span>
                       <button
                         onClick={() => handleSelectStaff(staffId)}
                         className="text-purple-400 hover:text-purple-600"

@@ -336,20 +336,14 @@ export function getDetailsStaff() {
 
 export function staff_FetchInterviews(queryParams = {}) {
   return async (dispatch, getState) => {
-    const { staff_interviews, loading } = getState().staffApis;
+    const { loading } = getState().staffApis;
     const { force = false } = queryParams;
 
-    if (loading && !force) {
-      console.log('⏳ Already loading interviews...');
-      return { success: false, message: 'Loading in progress' };
-    }
+    const hasWorkspaceFilter = queryParams.work_space_id !== undefined && 
+                               queryParams.work_space_id !== null;
 
-    // ✅ لو في workspace filter، ما تستخدمش الـ cache
-    const hasWorkspaceFilter = queryParams.work_space_id !== undefined && queryParams.work_space_id !== null;
-    
-    if (!force && !hasWorkspaceFilter && staff_interviews && staff_interviews.length > 0) {
-      console.log('✅ Using cached interviews:', staff_interviews.length);
-      return { success: true, data: staff_interviews };
+    if (loading && !force) {
+      return { success: false, message: 'Loading in progress' };
     }
 
     try {
@@ -359,24 +353,21 @@ export function staff_FetchInterviews(queryParams = {}) {
       const Token = localStorage.getItem("access_token");
       let url = "https://backend-booking.appointroll.com/api/staff/interview/index";
 
-      // ✅ بناء الـ query string
       const params = new URLSearchParams();
       
-      if (queryParams.work_space_id !== undefined && queryParams.work_space_id !== null && queryParams.work_space_id !== 0) {
+      if (hasWorkspaceFilter && queryParams.work_space_id !== 0) {
         params.append('work_space_id', queryParams.work_space_id);
       }
       
-      // أضف أي params تانية لو موجودة
       if (queryParams.status) {
         params.append('status', queryParams.status);
       }
       
-      // لو في params، أضفها للـ URL
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
 
-      console.log('📡 Fetching interviews from API...', url);
+      console.log('📡 Fetching interviews from:', url);
 
       const response = await axios.get(url, {
         headers: {
@@ -387,14 +378,12 @@ export function staff_FetchInterviews(queryParams = {}) {
 
       if (response.data.status) {
         const interviews = response?.data?.data?.interviews || [];
-        console.log('✅ Interviews fetched successfully:', interviews.length);
         
         dispatch(staffApisActions.setStaff_interviews(interviews));
         dispatch(staffApisActions.setError(null));
         
         return { success: true, data: interviews };
       } else {
-        console.warn('⚠️ API returned unsuccessful status');
         dispatch(staffApisActions.setStaff_interviews([]));
         dispatch(staffApisActions.setError(response.data.message));
         
@@ -411,6 +400,47 @@ export function staff_FetchInterviews(queryParams = {}) {
     }
   };
 }
+
+export function editInterviewStaffById(id) {
+  return async (dispatch) => {
+    try {
+      dispatch(staffApisActions.setLoading(true)); // ✅ Set loading state
+      
+      const Token = localStorage.getItem("access_token");
+      
+      // ✅ استخدم axios العادي زي باقي الـ functions
+      const response = await axios.get(
+        `https://backend-booking.appointroll.com/api/staff/interview/edit/${id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: Token,
+          },
+        }
+      );
+      
+      console.log("✅ Interview fetched:", response.data);
+      
+      if (response.data.status) {
+        dispatch(staffApisActions.setStaff_interview(response?.data?.data?.interview)); 
+        dispatch(staffApisActions.setError(null));
+        return { success: true, data: response?.data?.data?.interview };
+      } else {
+        throw new Error(response.data.message || "Failed to fetch interview");
+      }
+    } catch (err) {
+      console.error("❌ Failed to fetch interview:", err);
+      
+      const errorMessage = err.response?.data?.message || err.message || "Failed to fetch interview";
+      dispatch(staffApisActions.setError(errorMessage));
+      
+      return { success: false, message: errorMessage };
+    } finally {
+      dispatch(staffApisActions.setLoading(false)); // ✅ Always stop loading
+    }
+  };
+}
+
 export function staff_GetWorkspaces({ force = false } = {}) {
   return async (dispatch, getState) => {
     const { staff_workspaces, loading } = getState().staffApis;
@@ -475,6 +505,8 @@ export function updateAvailabil_DashboardStaff(formData) {
     try {
       const Token = localStorage.getItem("access_token");
       
+      console.log('updateAvailabil_DashboardStaff - formData:', formData);
+      
       if (!formData || (!formData.available_times && !formData.available_dates)) {
         throw new Error("Invalid availability data format");
       }
@@ -483,6 +515,13 @@ export function updateAvailabil_DashboardStaff(formData) {
         available_times: formData.available_times || [],
         available_dates: formData.available_dates || []
       };
+
+      // ✅ إضافة time_zone إذا كان موجود
+      if (formData.time_zone) {
+        requestBody.time_zone = formData.time_zone;
+      }
+
+      console.log('updateAvailabil_DashboardStaff - requestBody:', requestBody);
 
       const response = await axios.post(
         `https://backend-booking.appointroll.com/api/staff/availability/update`,
@@ -496,7 +535,6 @@ export function updateAvailabil_DashboardStaff(formData) {
       );
       
       if (response.data.status) {
-        // await dispatch(getStaffById(id));
         dispatch(staffApisActions.setError(null));
         
         return {
@@ -506,7 +544,6 @@ export function updateAvailabil_DashboardStaff(formData) {
         };
       } else {
         throw new Error(response.data.message || "Failed to update availability");
-        
       }
     } catch (error) {
       console.error("Error updating availability:", error);
@@ -542,21 +579,25 @@ export function updateUnAvailabil_DashboardStaff(formData) {
     try {
       const Token = localStorage.getItem("access_token");
       
-      // Validate formData structure
+      console.log('updateUnAvailabil_DashboardStaff - formData:', formData);
+      
       if (!formData) {
         throw new Error("Invalid availability data format");
       }
 
-     
       const requestBody = {};
+      
       if (formData.un_available_times) {
         requestBody.un_available_times = formData.un_available_times;
       }
+      
       if (formData.un_available_dates) {
         requestBody.un_available_dates = formData.un_available_dates;
       }
 
-      console.log('Request body sent to API:', requestBody); 
+      if (formData.time_zone) {
+        requestBody.time_zone = formData.time_zone;
+      }
 
       const response = await axios.post(
         `https://backend-booking.appointroll.com/api/staff/unavailability/update`,
@@ -570,21 +611,20 @@ export function updateUnAvailabil_DashboardStaff(formData) {
       );
       
       if (response.data.status) {
-        // await dispatch(getStaffById(id));
         dispatch(staffApisActions.setError(null));
         
         return {
           status: true,
-          message: response.data.message || "Un Availability updated successfully",
+          message: response.data.message || "Unavailability updated successfully",
           data: response.data.data || null
         };
       } else {
-        throw new Error(response.data.message || "Failed to update Un availability");
+        throw new Error(response.data.message || "Failed to update unavailability");
       }
     } catch (error) {
-      console.error("Error updating Un availability:", error);
+      console.error("Error updating unavailability:", error);
       
-      let errorMessage = "Failed to update Un availability";
+      let errorMessage = "Failed to update unavailability";
       let errorDetails = null;
       
       if (error.response) {
@@ -648,3 +688,4 @@ export const updateShareLink_DashboardStaff = (newShareLink) => {
     }
   };
 };
+

@@ -6,6 +6,7 @@ import logo from '../../assets/image/Appoint Roll logo-svg.svg';
 const NavBar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const userType = localStorage.getItem('userType');
 
   useEffect(() => {
     // Check if access_token exists in localStorage
@@ -54,7 +55,7 @@ const NavBar = () => {
           <div className="hidden lg:flex items-center space-x-4">
             {isAuthenticated ? (
               <Link
-                to="/layoutDashboard" 
+                to={`${userType === 'staff' ? '/staff_dashboard_layout' : '/layoutDashboard'}`}
                 className="text-red-600 border border-red-600 hover:text-white hover:bg-red-600 font-medium transition-colors duration-200 px-4 py-[6px] rounded"
               >
                 Dashboard
@@ -116,7 +117,7 @@ const NavBar = () => {
               <div className="pt-4 space-y-3">
                 {isAuthenticated ? (
                   <Link
-                    to="/layoutDashboard" 
+                     to={`${userType === 'staff' ? '/staff_dashboard_layout' : '/layoutDashboard'}`}
                     className="block w-full text-center py-3 text-white bg-red-600 hover:bg-red-700 font-semibold text-lg rounded-lg transition-all duration-200"
                   >
                     Dashboard

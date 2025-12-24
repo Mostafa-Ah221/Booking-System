@@ -43,32 +43,29 @@ const AppointmentBooking_3 = () => {
   
   const textColor = colors?.text_color;
 useEffect(() => {
-  if (selectedTimezone) return; // لو المستخدم اختار بنفسه، ما نغيّرش
+  if (selectedTimezone) return;
 
   let detected = null;
 
-  // 1. الأولوية الأولى: Intl (أدق وأسرع)
   try {
     detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (detected && detected.includes('/')) {
       setSelectedTimezone(detected);
-      console.log('🌍 Auto-detected timezone (Intl):', detected);
       return;
     }
   } catch (e) {}
 
-  // 2. Fallback: moment-timezone (شغال حتى في Safari القديم)
   try {
     detected = moment.tz.guess();
     if (detected) {
       setSelectedTimezone(detected);
-      console.log('🌍 Auto-detected timezone (moment):', detected);
     }
   } catch (e) {
     console.log('Timezone auto-detection failed');
   }
-}, []); // مرة واحدة بس
-  // ── Click-outside for dropdowns ─────────────────────────────────────────────
+}, []); 
+
+
   useEffect(() => {
     const handler = (e) => {
       if (staffDropdownRef.current && !staffDropdownRef.current.contains(e.target)) setShowStaffDropdown?.(false);
@@ -258,9 +255,9 @@ useEffect(() => {
         setWorkspaces(data.data.workspaces);
         setNameProvider(data.data.workspaces[0]?.customer_name);
         // Set theme from workspaces data
-        if (data.data?.theme) {
-          setTheme(data.data.theme);
-        }
+        if (data.data?.theme && !theme) {  
+            setTheme(data.data.theme);
+          }
       }
     } catch (e) {
       console.error(e);
@@ -282,11 +279,15 @@ useEffect(() => {
       let interviewsData = [];
       if (idSpace || (idAdmin && selectedWorkspace)) {
         interviewsData = data?.data?.workspace_interviews || [];
-        // setTheme(data?.data?.theme);
+         if (data.data?.theme && !theme) {  
+            setTheme(data.data.theme);
+          }
         setNameProvider(data?.data?.workspace_interviews?.[0]?.customer_name);
       } else if (idCustomer) {
         interviewsData = data?.data?.staff_interviews || [];
-        setTheme(data?.data?.theme);
+         if (data.data?.theme && !theme) {  
+            setTheme(data.data.theme);
+          }
         setNameProvider(data?.data?.staff_interviews?.[0]?.customer_name);
       }
       setInterviews(interviewsData);
@@ -815,41 +816,46 @@ useEffect(() => {
                     </div>
 
                     <div className="p-6">
-                      <CalendarSection2
-  selectedDate={selectedDate}
-  onDateSelect={(date) => setSelectedDate(date)}
-  availableDates={bookingData?.available_dates || []}
-  availableTimes={bookingData?.available_times || []}
-  availableTimesFromAPI={bookingData?.raw_available_times || []}
-  unavailableDates={bookingData?.unavailable_dates || []}
-  unavailableTimes={bookingData?.unavailable_times || []}
-  disabledTimes={bookingData?.disabled_times || []}
-  durationCycle={parseInt(bookingData?.duration_cycle) || 15}
-  durationPeriod={bookingData?.duration_period || 'minutes'}
-  restCycle={parseInt(bookingData?.rest_cycle) || 0}
-  setSelectedTimezone={setSelectedTimezone}
-  selectedTimeZone={selectedTimezone}
-  themeColor={theme?.colors}
-  workspaceTimezone="Africa/Cairo" // ← إضافة هذا
-/>
-
-                      <TimeSelectionSection2
-                        selectedTime={selectedTime}
-                        onTimeSelect={(time) => setSelectedTime(time)}
+                     <CalendarSection2
+                        selectedDate={selectedDate}
+                        onDateSelect={(date) => {
+                          setSelectedDate(date);
+                        }}
+                        availableDates={bookingData?.available_dates || []}
                         availableTimes={bookingData?.available_times || []}
                         availableTimesFromAPI={bookingData?.raw_available_times || []}
-                        selectedDate={selectedDate}
-                        disabledTimes={bookingData?.disabled_times || []}
-                        unavailableTimes={bookingData?.unavailable_times || []}
                         unavailableDates={bookingData?.unavailable_dates || []}
-                        requireEndTime={bookingData?.require_end_time}
-                        selectedEndTime={selectedEndTime}
-                        durationCycle={parseInt(bookingData?.duration_cycle) || 0}
-                        durationPeriod={bookingData?.duration_period || 'minutes'}
+                        unavailableTimes={bookingData?.unavailable_times || []}
+                        disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
+                        durationCycle={parseInt(bookingData?.duration_cycle) || 15}
+                        durationPeriod={bookingData?.duration_period || "minutes"}
                         restCycle={parseInt(bookingData?.rest_cycle) || 0}
-                        setSelectedEndTime={setSelectedEndTime}
+                        setSelectedTimezone={setSelectedTimezone}
+                        selectedTimeZone={selectedTimezone}
                         themeColor={theme?.colors}
+                        workspaceTimezone={bookingData?.workspace_timezone || 'Africa/Cairo'}
                       />
+
+                      <TimeSelectionSection2
+          selectedTime={selectedTime}
+          onTimeSelect={(time) => {
+            setSelectedTime(time);
+            // if (selectedDate) goToNextStep();
+          }}
+          availableTimes={bookingData?.available_times || []}
+          availableTimesFromAPI={bookingData?.raw_available_times || []}
+          selectedDate={selectedDate}
+          disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
+          unavailableTimes={bookingData?.unavailable_times || []}
+          unavailableDates={bookingData?.unavailable_dates || []}
+          requireEndTime={bookingData?.require_end_time}
+          selectedEndTime={selectedEndTime}
+          durationCycle={parseInt(bookingData?.duration_cycle) || 0}
+          durationPeriod={bookingData?.duration_period || 'minutes'}
+          restCycle={parseInt(bookingData?.rest_cycle) || 0}
+          setSelectedEndTime={setSelectedEndTime}
+          themeColor={theme?.colors}
+        />
                     </div>
                   </div>
                 </>

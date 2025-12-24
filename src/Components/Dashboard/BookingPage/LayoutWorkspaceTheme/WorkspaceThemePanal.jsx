@@ -1,30 +1,41 @@
+
 import { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Check, Info, Plus, Upload, EyeOff, Eye, X } from 'lucide-react';
+import { ChevronRight, ChevronDown, Check, Info, Upload, EyeOff, Eye, X } from 'lucide-react';
 import ImageUploadCrop from '../../InterviewsPages/InterViewPage/ImageUploadCrop';
 import { useDispatch, useSelector } from 'react-redux';
-import {  updateTheme } from '../../../../redux/apiCalls/ThemeCallApi';
+import { updateTheme } from '../../../../redux/apiCalls/ThemeCallApi';
 import { LAYOUT_TO_THEME } from './LayoutShapes/themeMapping';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
 
-const WorkspaceThemePanel = ({ onLayoutChange, onThemeChange, workspaceId,workspaceTheme }) => {
+const WorkspaceThemePanel = ({ onLayoutChange, onThemeChange, currentId, isInterview,workspace ,interview }) => {
   const dispatch = useDispatch();
   const theme = useSelector(state => state.themes?.theme?.theme);
+
   const [openSection, setOpenSection] = useState('');
   const [selectedLayout, setSelectedLayout] = useState('');
   const [selectedColor, setSelectedColor] = useState('#4f46e5');
   const [textColor, setTextColor] = useState('');
   const [backgroundImage, setBackgroundImage] = useState(null);
   const [backgroundOpacity, setBackgroundOpacity] = useState(100);
-  const [header, setHeader] = useState({ title: 'Ahmed', logo: null, visibleTitle: true, visibleLogo: true });
+
+  const [header, setHeader] = useState({
+    title: '',
+    logo: null,
+    visibleTitle: true,
+    visibleLogo: true
+  });
+
+  const [logoDeleted, setLogoDeleted] = useState(false);
+
   const [pageProperties, setPageProperties] = useState({
     title: 'Welcome',
     description: 'Book your appointment in a few simple steps: Choose a service, pick your date and time, and fill in your details. See you soon',
     visibleTitle: true,
     visibleDescription: true
   });
+
   const [buttonText, setButtonText] = useState('Book appointment');
   const [preSelect, setPreSelect] = useState(true);
+
   const [socialLinks, setSocialLinks] = useState({
     facebook: '', visibleFacebook: true,
     instagram: '', visibleInstagram: true,
@@ -33,61 +44,68 @@ const WorkspaceThemePanel = ({ onLayoutChange, onThemeChange, workspaceId,worksp
     phone: '', visiblePhone: true,
     email: '', visibleEmail: true,
   });
-  
+
   const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
   const [isBackgroundUploadOpen, setIsBackgroundUploadOpen] = useState(false);
 
- useEffect(() => {
-  if (theme) {
-    const toBool = (val) => val === 1 || val === "1" || val === true;
-    
-    const reverseMap = Object.fromEntries(
-      Object.entries(LAYOUT_TO_THEME).map(([ui, api]) => [api, ui])
-    );
-    const uiLayout = reverseMap[theme.theme];
-    setSelectedLayout(uiLayout);
+  useEffect(() => {
+    if (theme) {
+      const toBool = (val) => val === 1 || val === "1" || val === true;
 
-    let parsedColors = {};
-    try { parsedColors = JSON.parse(theme.colors || '{}'); } catch {}
+      const reverseMap = Object.fromEntries(
+        Object.entries(LAYOUT_TO_THEME).map(([ui, api]) => [api, ui])
+      );
+      const uiLayout = reverseMap[theme.theme];
+      setSelectedLayout(uiLayout || '');
 
-    setSelectedColor(parsedColors.primary);
-    setTextColor(parsedColors.text_color); 
-    setBackgroundImage(parsedColors.background_image ? `data:image/png;base64,${parsedColors.background_image}` : null);
-    setBackgroundOpacity((parsedColors.background_opacity || 1) * 100);
-    setButtonText(theme.book_button || 'Book appointment');
-    
-    setPreSelect(toBool(theme.for_interviews));  // ✅
+      let parsedColors = {};
+      try { parsedColors = JSON.parse(theme.colors || '{}'); } catch {}
 
-    setHeader({
-      title: theme.nickname || 'Ahmed',
-      logo: theme.photo || null,
-      visibleTitle: toBool(theme.show_nickname),  // ✅
-      visibleLogo: toBool(theme.show_photo),      // ✅
-    });
+      setSelectedColor(parsedColors.primary || '#4f46e5');
+      setTextColor(parsedColors.text_color || '');
+      setBackgroundImage(parsedColors.background_image ? `data:image/png;base64,${parsedColors.background_image}` : null);
+      setBackgroundOpacity((parsedColors.background_opacity || 1) * 100);
+      setButtonText(theme.book_button || 'Book appointment');
+      setPreSelect(toBool(theme.for_interviews));
 
-    setPageProperties({
-      title: theme.page_title || 'Welcome',
-      description: theme.page_description || '',
-      visibleTitle: toBool(theme.show_page_title),           // ✅
-      visibleDescription: toBool(theme.show_page_description), // ✅
-    });
+      const hasPhoto = theme.photo && theme.photo.trim() !== '';
+      setLogoDeleted(!hasPhoto);
 
-    setSocialLinks({
-      facebook: theme.footer_facebook || '', 
-      visibleFacebook: toBool(theme.show_facebook),     // ✅
-      instagram: theme.footer_instagram || '', 
-      visibleInstagram: toBool(theme.show_instagram),   // ✅
-      x: theme.footer_x || '', 
-      visibleX: toBool(theme.show_x),                   // ✅
-      linkedin: theme.footer_linkedin || '', 
-      visibleLinkedin: toBool(theme.show_linkedin),     // ✅
-      phone: theme.footer_phone || '', 
-      visiblePhone: toBool(theme.show_phone),           // ✅
-      email: theme.footer_email || '', 
-      visibleEmail: toBool(theme.show_email),           // ✅
-    });
-  }
-}, [theme]);
+      setHeader({
+        title: theme.nickname || 'Ahmed',
+        logo: logoDeleted ? null : (theme.photo || null),
+        visibleTitle: toBool(theme.show_nickname),
+        visibleLogo: toBool(theme.show_photo),
+      });
+
+      setPageProperties({
+        title: theme.page_title || 'Welcome',
+        description: theme.page_description || '',
+        visibleTitle: toBool(theme.show_page_title),
+        visibleDescription: toBool(theme.show_page_description),
+      });
+
+      setSocialLinks({
+        facebook: theme.footer_facebook || '',
+        visibleFacebook: toBool(theme.show_facebook),
+        instagram: theme.footer_instagram || '',
+        visibleInstagram: toBool(theme.show_instagram),
+        x: theme.footer_x || '',
+        visibleX: toBool(theme.show_x),
+        linkedin: theme.footer_linkedin || '',
+        visibleLinkedin: toBool(theme.show_linkedin),
+        phone: theme.footer_phone || '',
+        visiblePhone: toBool(theme.show_phone),
+        email: theme.footer_email || '',
+        visibleEmail: toBool(theme.show_email),
+      });
+    }else {
+      setSelectedLayout('modernWeb');
+      const firstColor = colorOptions[0];
+      setSelectedColor(`${firstColor.color1}-${firstColor.color2}`);
+      setTextColor(firstColor.textColor);
+    }
+  }, [theme]);
 
   useEffect(() => {
     onThemeChange({
@@ -102,49 +120,49 @@ const WorkspaceThemePanel = ({ onLayoutChange, onThemeChange, workspaceId,worksp
       preSelect,
       socialLinks,
     });
-  }, [selectedLayout, selectedColor, backgroundImage, backgroundOpacity, header, pageProperties, buttonText, preSelect, socialLinks, onThemeChange,textColor]);
+  }, [selectedLayout, selectedColor, backgroundImage, backgroundOpacity, header, pageProperties, buttonText, preSelect, socialLinks, textColor, onThemeChange]);
 
   useEffect(() => {
-  return () => {
-    if (header.logo && typeof header.logo === 'string' && header.logo.startsWith('blob:')) {
-      URL.revokeObjectURL(header.logo);
-    }
-    
-    if (backgroundImage && typeof backgroundImage === 'string' && backgroundImage.startsWith('blob:')) {
-      URL.revokeObjectURL(backgroundImage);
-    }
-  };
-}, [header.logo, backgroundImage]);
+    return () => {
+      if (header.logo && typeof header.logo === 'string' && header.logo.startsWith('blob:')) {
+        URL.revokeObjectURL(header.logo);
+      }
+      if (backgroundImage && typeof backgroundImage === 'string' && backgroundImage.startsWith('blob:')) {
+        URL.revokeObjectURL(backgroundImage);
+      }
+    };
+  }, [header.logo, backgroundImage]);
 
   const toggleSection = (section) => {
     setOpenSection(openSection === section ? '' : section);
   };
 
-   const colorOptions = [
-  { color1: '#A6517D', color2: '#F5F5F5', textColor: '#000000', type: 'split' },
-  { color1: '#F6CB45', color2: '#1C3E74', textColor: '#FFFFFF', type: 'split' },
-  { color1: '#F9E062', color2: '#33373A', textColor: '#FFFFFF', type: 'split' },
-  { color1: '#F6CB45', color2: '#3B817B', textColor: '#FFFFFF', type: 'split' },
-  { color1: '#FFC900', color2: '#2651C7', textColor: '#FFFFFF', type: 'split' },
-  { color1: '#EB5380', color2: '#784CBC', textColor: '#FFFFFF', type: 'split' },
-  { color1: '#FF5D6D', color2: '#755B5B', textColor: '#FFFFFF', type: 'split' },
-  { color1: '#E95646', color2: '#F5F5F5', textColor: '#000000', type: 'split' },
-  { color1: '#27D8A1', color2: '#F5F5F5', textColor: '#000000', type: 'split' },
-  { color1: '#FF427F', color2: '#F5F5F5', textColor: '#000000', type: 'split' },
-];
+  const colorOptions = [
+    { color1: '#A6517D', color2: '#F5F5F5', textColor: '#000000', type: 'split' },
+    { color1: '#F6CB45', color2: '#1C3E74', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#F9E062', color2: '#33373A', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#F6CB45', color2: '#3B817B', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#FFC900', color2: '#2651C7', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#EB5380', color2: '#784CBC', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#FF5D6D', color2: '#755B5B', textColor: '#FFFFFF', type: 'split' },
+    { color1: '#E95646', color2: '#F5F5F5', textColor: '#000000', type: 'split' },
+    { color1: '#27D8A1', color2: '#F5F5F5', textColor: '#000000', type: 'split' },
+    { color1: '#FF427F', color2: '#F5F5F5', textColor: '#000000', type: 'split' },
+  ];
 
   const handleLayoutChange = (layout) => {
     setSelectedLayout(layout);
     onLayoutChange(layout);
   };
 
- const handleColorChange = (colorKey, textColor) => {
-  setSelectedColor(colorKey);
-  setTextColor(textColor); 
-};
+  const handleColorChange = (colorKey, textColor) => {
+    setSelectedColor(colorKey);
+    setTextColor(textColor);
+  };
 
   const handleImageUpdate = (imageFile) => {
     setHeader({ ...header, logo: imageFile });
+    setLogoDeleted(false);
     setIsImageUploadOpen(false);
   };
 
@@ -169,12 +187,12 @@ const WorkspaceThemePanel = ({ onLayoutChange, onThemeChange, workspaceId,worksp
   const handleSaveTheme = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const backgroundBase64 = await toBase64(backgroundImage);
-    const apiThemeValue = LAYOUT_TO_THEME[selectedLayout] ; 
+    const apiThemeValue = LAYOUT_TO_THEME[selectedLayout];
 
     const payload = {
-      work_space_id: workspaceId,
+      ...(isInterview ? { interview_id: currentId } : { work_space_id: currentId }),
       theme: apiThemeValue,
       colors: JSON.stringify({
         primary: selectedColor,
@@ -189,79 +207,126 @@ const WorkspaceThemePanel = ({ onLayoutChange, onThemeChange, workspaceId,worksp
     dispatch(updateTheme(payload));
   };
 
-const handleSaveHeader = async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  
-  const formData = new FormData();
-  formData.append('work_space_id', workspaceId);
-  formData.append('nickname', header.title);
-  
-  formData.append('show_nickname', header.visibleTitle ? 1 : 0);
-  formData.append('show_photo', header.visibleLogo ? 1 : 0);
-
-  if (header.logo) {
-    if (typeof header.logo === 'string' && header.logo.startsWith('data:')) {
-      const response = await fetch(header.logo);
-      const blob = await response.blob();
-      const file = new File([blob], 'logo.png', { type: 'image/png' });
-      formData.append('photo', file);
-    } else if (header.logo instanceof File) {
-      formData.append('photo', header.logo);
-    }
-  }
-
-  console.log('FormData contents:');
-  for (let pair of formData.entries()) {
-    console.log(pair[0] + ': ', pair[1]);
-  }
-
-  dispatch(updateTheme(formData));
-};
-
-const handleSaveFooter = (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  
-  const payload = {
-    work_space_id: workspaceId,
-    footer_facebook: socialLinks.facebook,
-    show_facebook: socialLinks.visibleFacebook ? 1 : 0, 
-    footer_instagram: socialLinks.instagram,
-    show_instagram: socialLinks.visibleInstagram ? 1 : 0,
-    footer_x: socialLinks.x,
-    show_x: socialLinks.visibleX ? 1 : 0,
-    footer_linkedin: socialLinks.linkedin,
-    show_linkedin: socialLinks.visibleLinkedin ? 1 : 0,
-    footer_phone: socialLinks.phone,
-    show_phone: socialLinks.visiblePhone ? 1 : 0,
-    footer_email: socialLinks.email,
-    show_email: socialLinks.visibleEmail ? 1 : 0,
-  };
-  dispatch(updateTheme(payload));
-};
-  const handleSavePageProperties = (e) => {
+  const handleSaveHeader = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
+    const formData = new FormData();
+
+    if (isInterview) {
+      formData.append('interview_id', currentId);
+    } else {
+      formData.append('work_space_id', currentId);
+    }
+
+    formData.append('nickname', header.title);
+    formData.append('show_nickname', header.visibleTitle ? 1 : 0);
+    formData.append('show_photo', header.visibleLogo ? 1 : 0);
+
+    if (header.logo) {
+      if (typeof header.logo === 'string' && header.logo.startsWith('data:')) {
+        const response = await fetch(header.logo);
+        const blob = await response.blob();
+        const file = new File([blob], 'logo.png', { type: 'image/png' });
+        formData.append('photo', file);
+      } else if (header.logo instanceof File) {
+        formData.append('photo', header.logo);
+      }
+    } else if (logoDeleted) {
+      formData.append('photo', '');
+      formData.append('remove_photo', '1');
+    }
+
+    await dispatch(updateTheme(formData));
+
+    if (logoDeleted) {
+      setLogoDeleted(false);
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    const formData = new FormData();
+
+    if (isInterview) {
+      formData.append('interview_id', currentId);
+    } else {
+      formData.append('work_space_id', currentId);
+    }
+
+    formData.append('nickname', header.title);
+    formData.append('show_nickname', header.visibleTitle ? 1 : 0);
+    formData.append('show_photo', header.visibleLogo ? 1 : 0);
+    formData.append('photo', '');
+    formData.append('remove_photo', '1');
+
+    await dispatch(updateTheme(formData));
+
+    setHeader({ ...header, logo: null });
+    setLogoDeleted(true);
+  };
+
+  const handleSaveFooter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     const payload = {
-      work_space_id: workspaceId,
-      page_title: pageProperties.title,
-      page_description: pageProperties.description,
-     show_page_title: pageProperties.visibleTitle ? 1 : 0,     
-    show_page_description: pageProperties.visibleDescription ? 1 : 0,
+      ...(isInterview ? { interview_id: currentId } : { work_space_id: currentId }),
+      footer_facebook: socialLinks.facebook,
+      show_facebook: socialLinks.visibleFacebook ? 1 : 0,
+      footer_instagram: socialLinks.instagram,
+      show_instagram: socialLinks.visibleInstagram ? 1 : 0,
+      footer_x: socialLinks.x,
+      show_x: socialLinks.visibleX ? 1 : 0,
+      footer_linkedin: socialLinks.linkedin,
+      show_linkedin: socialLinks.visibleLinkedin ? 1 : 0,
+      footer_phone: socialLinks.phone,
+      show_phone: socialLinks.visiblePhone ? 1 : 0,
+      footer_email: socialLinks.email,
+      show_email: socialLinks.visibleEmail ? 1 : 0,
     };
+
     dispatch(updateTheme(payload));
   };
 
-  // React Quill modules configuration
-  const quillModules = {
-    toolbar: [
-      ['bold', 'italic', 'underline'],
-      [{ 'align': [] }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      ['link']
-    ]
+  const cleanHTML = (html) => {
+    if (!html) return '';
+
+    let cleaned = html;
+
+    cleaned = cleaned.replace(/<span class="ql-cursor">.*?<\/span>/g, '');
+
+    cleaned = cleaned.replace(/\sclass="[^"]*"/g, '');
+
+    for (let i = 0; i < 5; i++) {
+      cleaned = cleaned.replace(/<(\w+)><\/\1>/g, '');
+      cleaned = cleaned.replace(/<(\w+)\s*><\/\1>/g, '');
+    }
+
+    cleaned = cleaned.replace(/<(em|strong|u|i|b)>\s*<\/\1>/g, '');
+
+    cleaned = cleaned.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '');
+    cleaned = cleaned.replace(/\uFEFF/g, '');
+
+    cleaned = cleaned.replace(/>\s+</g, '><');
+
+    cleaned = cleaned.replace(/\s{2,}/g, ' ');
+
+    return cleaned.trim();
+  };
+
+  const handleSavePageProperties = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const payload = {
+      ...(isInterview ? { interview_id: currentId } : { work_space_id: currentId }),
+      page_title: pageProperties.title,
+      page_description: cleanHTML(pageProperties.description),
+      show_page_title: pageProperties.visibleTitle ? 1 : 0,
+      show_page_description: pageProperties.visibleDescription ? 1 : 0,
+    };
+
+    dispatch(updateTheme(payload));
   };
 
   return (
@@ -454,13 +519,22 @@ const handleSaveFooter = (e) => {
                     </div>
                     <span className="text-sm text-gray-600">Logo uploaded</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsImageUploadOpen(true)}
-                    className="text-indigo-600 text-sm hover:underline"
-                  >
-                    Change
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsImageUploadOpen(true)}
+                      className="text-indigo-600 text-sm hover:underline"
+                    >
+                      Change
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteLogo}
+                      className="text-red-600 text-sm hover:underline"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <button
@@ -488,154 +562,153 @@ const handleSaveFooter = (e) => {
 
         {/* Footer Section */}
         <div>
-  <div
-    className="flex justify-between items-center p-4 cursor-pointer"
-    onClick={() => toggleSection('social')}
-  >
-    <span className=" text-sm">Footer</span>
-    {openSection === 'social' ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-  </div>
+          <div
+            className="flex justify-between items-center p-4 cursor-pointer"
+            onClick={() => toggleSection('social')}
+          >
+            <span className="text-sm">Footer</span>
+            {openSection === 'social' ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+          </div>
 
-  {openSection === 'social' && (
-  <div className="p-4 bg-gray-50 space-y-3">
-    {/* Facebook */}
-    <div className="flex flex-col gap-2">
-      <div className='flex justify-between w-full items-center'>
-        <p className="font-sans text-sm text-gray-700">Facebook</p>
-        <button 
-          type="button"
-          className='cursor-pointer text-gray-500 hover:text-gray-700'
-          onClick={() => setSocialLinks({ ...socialLinks, visibleFacebook: !socialLinks.visibleFacebook })}
-        >
-          {socialLinks.visibleFacebook ? <Eye size={17} /> : <EyeOff size={17} />}
-        </button>
-      </div>
-      <input
-        type="url"
-        placeholder="https://facebook.com/yourpage"
-        value={socialLinks.facebook}
-        onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })}
-        className="flex-1 p-2 border rounded-lg text-sm w-full"
-      />
-    </div>
+          {openSection === 'social' && (
+            <div className="p-4 bg-gray-50 space-y-3">
+              {/* Facebook */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="font-sans text-sm text-gray-700">Facebook</p>
+                  <button 
+                    type="button"
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => setSocialLinks({ ...socialLinks, visibleFacebook: !socialLinks.visibleFacebook })}
+                  >
+                    {socialLinks.visibleFacebook ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://facebook.com/yourpage"
+                  value={socialLinks.facebook}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })}
+                  className="flex-1 p-2 border rounded-lg text-sm w-full"
+                />
+              </div>
 
-    {/* Instagram */}
-    <div className="flex flex-col gap-2">
-      <div className='flex justify-between w-full items-center'>
-        <p className="font-sans text-sm text-gray-700">Instagram</p>
-        <button 
-          type="button"
-          className='cursor-pointer text-gray-500 hover:text-gray-700'
-          onClick={() => setSocialLinks({ ...socialLinks, visibleInstagram: !socialLinks.visibleInstagram })}
-        >
-          {socialLinks.visibleInstagram ? <Eye size={17} /> : <EyeOff size={17} />}
-        </button>
-      </div>
-      <input
-        type="url"
-        placeholder="https://instagram.com/yourhandle"
-        value={socialLinks.instagram}
-        onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
-        className="flex-1 p-2 border rounded-lg text-sm w-full"
-      />
-    </div>
+              {/* Instagram */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="font-sans text-sm text-gray-700">Instagram</p>
+                  <button 
+                    type="button"
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => setSocialLinks({ ...socialLinks, visibleInstagram: !socialLinks.visibleInstagram })}
+                  >
+                    {socialLinks.visibleInstagram ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://instagram.com/yourhandle"
+                  value={socialLinks.instagram}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
+                  className="flex-1 p-2 border rounded-lg text-sm w-full"
+                />
+              </div>
 
-    {/* X (Twitter) */}
-    <div className="flex flex-col gap-2">
-      <div className='flex justify-between w-full items-center'>
-        <p className="font-sans text-sm text-gray-700">X</p>
-        <button 
-          type="button"
-          className='cursor-pointer text-gray-500 hover:text-gray-700'
-          onClick={() => setSocialLinks({ ...socialLinks, visibleX: !socialLinks.visibleX })}
-        >
-          {socialLinks.visibleX ? <Eye size={17} /> : <EyeOff size={17} />}
-        </button>
-      </div>
-      <input
-        type="url"
-        placeholder="https://x.com/yourhandle"
-        value={socialLinks.x}
-        onChange={(e) => setSocialLinks({ ...socialLinks, x: e.target.value })}
-        className="flex-1 p-2 border rounded-lg text-sm w-full"
-      />
-    </div>
+              {/* X (Twitter) */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="font-sans text-sm text-gray-700">X</p>
+                  <button 
+                    type="button"
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => setSocialLinks({ ...socialLinks, visibleX: !socialLinks.visibleX })}
+                  >
+                    {socialLinks.visibleX ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://x.com/yourhandle"
+                  value={socialLinks.x}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, x: e.target.value })}
+                  className="flex-1 p-2 border rounded-lg text-sm w-full"
+                />
+              </div>
 
-    {/* LinkedIn */}
-    <div className="flex flex-col gap-2">
-      <div className='flex justify-between w-full items-center'>
-        <p className="font-sans text-sm text-gray-700">LinkedIn</p>
-        <button 
-          type="button"
-          className='cursor-pointer text-gray-500 hover:text-gray-700'
-          onClick={() => setSocialLinks({ ...socialLinks, visibleLinkedin: !socialLinks.visibleLinkedin })}
-        >
-          {socialLinks.visibleLinkedin ? <Eye size={17} /> : <EyeOff size={17} />}
-        </button>
-      </div>
-      <input
-        type="url"
-        placeholder="https://linkedin.com/in/yourprofile"
-        value={socialLinks.linkedin}
-        onChange={(e) => setSocialLinks({ ...socialLinks, linkedin: e.target.value })}
-        className="flex-1 p-2 border rounded-lg text-sm w-full"
-      />
-    </div>
+              {/* LinkedIn */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="font-sans text-sm text-gray-700">LinkedIn</p>
+                  <button 
+                    type="button"
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => setSocialLinks({ ...socialLinks, visibleLinkedin: !socialLinks.visibleLinkedin })}
+                  >
+                    {socialLinks.visibleLinkedin ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://linkedin.com/in/yourprofile"
+                  value={socialLinks.linkedin}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, linkedin: e.target.value })}
+                  className="flex-1 p-2 border rounded-lg text-sm w-full"
+                />
+              </div>
 
-    {/* Phone */}
-    <div className="flex flex-col gap-2">
-      <div className='flex justify-between w-full items-center'>
-        <p className="font-sans text-sm text-gray-700">Phone</p>
-        <button 
-          type="button"
-          className='cursor-pointer text-gray-500 hover:text-gray-700'
-          onClick={() => setSocialLinks({ ...socialLinks, visiblePhone: !socialLinks.visiblePhone })}
-        >
-          {socialLinks.visiblePhone ? <Eye size={17} /> : <EyeOff size={17} />}
-        </button>
-      </div>
-      <input
-        type="tel"
-        placeholder="+1234567890"
-        value={socialLinks.phone}
-        onChange={(e) => setSocialLinks({ ...socialLinks, phone: e.target.value })}
-        className="flex-1 p-2 border rounded-lg text-sm w-full"
-      />
-    </div>
+              {/* Phone */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="font-sans text-sm text-gray-700">Phone</p>
+                  <button 
+                    type="button"
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => setSocialLinks({ ...socialLinks, visiblePhone: !socialLinks.visiblePhone })}
+                  >
+                    {socialLinks.visiblePhone ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="tel"
+                  placeholder="+1234567890"
+                  value={socialLinks.phone}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, phone: e.target.value })}
+                  className="flex-1 p-2 border rounded-lg text-sm w-full"
+                />
+              </div>
 
-    {/* Email */}
-    <div className="flex flex-col gap-2">
-      <div className='flex justify-between w-full items-center'>
-        <p className="font-sans text-sm text-gray-700">Email</p>
-        <button 
-          type="button"
-          className='cursor-pointer text-gray-500 hover:text-gray-700'
-          onClick={() => setSocialLinks({ ...socialLinks, visibleEmail: !socialLinks.visibleEmail })}
-        >
-          {socialLinks.visibleEmail ? <Eye size={17} /> : <EyeOff size={17} />}
-        </button>
-      </div>
-      <input
-        type="email"
-        placeholder="your@email.com"
-        value={socialLinks.email}
-        onChange={(e) => setSocialLinks({ ...socialLinks, email: e.target.value })}
-        className="flex-1 p-2 border rounded-lg text-sm w-full"
-      />
-    </div>
+              {/* Email */}
+              <div className="flex flex-col gap-2">
+                <div className='flex justify-between w-full items-center'>
+                  <p className="font-sans text-sm text-gray-700">Email</p>
+                  <button 
+                    type="button"
+                    className='cursor-pointer text-gray-500 hover:text-gray-700'
+                    onClick={() => setSocialLinks({ ...socialLinks, visibleEmail: !socialLinks.visibleEmail })}
+                  >
+                    {socialLinks.visibleEmail ? <Eye size={17} /> : <EyeOff size={17} />}
+                  </button>
+                </div>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={socialLinks.email}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, email: e.target.value })}
+                  className="flex-1 p-2 border rounded-lg text-sm w-full"
+                />
+              </div>
 
-    {/* Save Button */}
-    <button
-      type="button"
-      onClick={handleSaveFooter}
-      className="py-2 px-5 text-sm rounded-lg w-24 text-white mt-4 bg-[#5646A5]"
-    >
-      Save
-    </button>
-  </div>
-)}
-
-</div>
+              {/* Save Button */}
+              <button
+                type="button"
+                onClick={handleSaveFooter}
+                className="py-2 px-5 text-sm rounded-lg w-24 text-white mt-4 bg-[#5646A5]"
+              >
+                Save
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Page Properties */}
         <div>
@@ -682,14 +755,12 @@ const handleSaveFooter = (e) => {
                     {pageProperties.visibleDescription ? <Eye size={17} /> : <EyeOff size={17} />}
                   </button>
                 </div>
-              <ReactQuill
-                theme="snow"
-                value={pageProperties.description}
-                onChange={(content) => setPageProperties({ ...pageProperties, description: content })}
-                placeholder="Page Description"
-                className="mb-4 bg-white rounded-lg"
-                modules={quillModules}
-              />
+             <textarea
+  value={pageProperties.description}
+  onChange={(e) => setPageProperties({ ...pageProperties, description: e.target.value })}
+  placeholder="Page Description"
+  className="w-full h-32 p-2 border rounded-lg mb-4 text-sm"
+/>
               </div>
               
       {/* Save Button */}

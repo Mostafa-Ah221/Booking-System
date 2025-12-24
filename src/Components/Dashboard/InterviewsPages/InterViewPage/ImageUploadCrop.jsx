@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { IoIosCamera, IoMdClose } from "react-icons/io";
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -271,7 +271,7 @@ const modalRef = useRef(null);
                         onClick={() => handleColorSelect(color)}
                         role="button"
                         tabIndex={0}
-                        aria-label={`اختر اللون ${color}`}
+                        aria-label={`${color}`}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             handleColorSelect(color);

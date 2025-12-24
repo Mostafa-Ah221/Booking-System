@@ -289,7 +289,7 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
                     {/* Left side - Icon + Name */}
                    <Link
                     to="/bookPage/workspace-themes"
-                    state={{ workspaceId: ws.id,
+                    state={{ workspaceData: ws,
                       workspaceTheme:ws.theme
                      }}
                     className="flex items-center gap-3 flex-1"
@@ -371,8 +371,8 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
               ) : (
                 <div className="space-y-3">
                   {filteredInterviews.map((interview, index) => (
-                    <Link  to={`/interview-layout/${interview.id}`}
-
+                    <Link  to="/bookPage/workspace-themes"
+                      state={{ interviewData: interview, interviewTheme:interview.theme }}
                       key={interview.id} 
                       className="flex items-center gap-3 lg:gap-4 p-3 lg:p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group"
                        onClick={(e) => e.stopPropagation()}

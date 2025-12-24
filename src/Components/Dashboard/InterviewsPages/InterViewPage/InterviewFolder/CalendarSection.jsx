@@ -139,13 +139,11 @@ const CalendarSection = ({
   };
 
   const isInSelectedRange = (day, month, year) => {
-    // استخدام displayDates بدلاً من rangeStart/rangeEnd في العرض
     if (!isEditMode && displayDates.length > 0) {
       const dateStr = formatDate(createDate(year, month, day));
       return displayDates.some(d => d.date === dateStr);
     }
     
-    // في وضع التحرير، استخدم rangeStart/rangeEnd
     if (!rangeStart || !rangeEnd) return false;
     const date = createDate(year, month, day);
     const start = new Date(rangeStart);
@@ -375,8 +373,7 @@ const CalendarSection = ({
       const dateToCheck = new Date(year, month, day);
       return dateToCheck.toDateString() === today.toDateString();
     };
-
-    // ✅ التعديل 3: إضافة styling للتواريخ الـ disabled
+    
     const getDateCellStyle = (day) => {
       if (day === null) return 'invisible';
       

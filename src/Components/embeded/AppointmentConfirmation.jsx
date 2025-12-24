@@ -192,7 +192,7 @@ END:VCALENDAR
               <div className="flex-grow">
                 <div className="flex items-center space-x-2 mb-1">
                   <Clock className="w-4 h-4 text-blue-600" />
-                  <span className="text-lg font-semibold text-blue-600">{appointmentData?.date} | {appointmentData?.time} GMT</span>
+                  <span className="text-lg font-semibold text-blue-600">{appointmentData?.date} | {appointmentData?.time} ({appointmentData?.time_zone})</span>
                 </div>
                 <p className="text-gray-600 mb-1 truncate block max-w-[150px]">{appointmentData?.interview_name}</p>
                 <p className="text-sm text-gray-500">{appointmentData?.time_zone}</p>
@@ -230,7 +230,7 @@ END:VCALENDAR
               {showDropdown && (
                 <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
                   <Link 
-                    to={`${basePath}/appointmentConfirmation/summary?appid=${responseData?.id}`}
+                    to={`${basePath}/appointmentConfirmation/summary?apptok=${appointmentData?.token}`}
                     // state={{ appointmentData: responseData }}
                     target="_blank"
                     rel="noopener noreferrer"

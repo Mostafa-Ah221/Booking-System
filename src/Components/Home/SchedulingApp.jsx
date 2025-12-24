@@ -1,15 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import image6 from '../../assets/image/ll.PNG';
+import bookingVideo from '../../assets/image/New folder/Get booked.mp4';
+import smsIntegrationVideo from '../../assets/image/New folder/Appoint Roll - Brave.mp4';
+import remendVideo from '../../assets/image/New folder/Notify and remind.mp4';
+import shareLinkVideo from '../../assets/image/New folder/Share your booking link.mp4';
 
 const menuItems = [
-  { id: 1, title: 'Booking page', icon: '📅', type: 'video', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-booking-page-nw.mp4" },
-  { id: 2, title: 'Team scheduling', icon: '👥', type: 'image', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-team-scheduling.jpg" },
+  { id: 1, title: 'Booking page', icon: '📅', type: 'video', src: bookingVideo },
+  { id: 2, title: 'Intergrate with sms', icon: '👥', type: 'image', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-team-scheduling.jpg" },
   { id: 3, title: 'Scheduling rules', icon: '⚙️', type: 'image', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-scheduling-rules.jpg" }, // تأكد من صحة الرابط
-  { id: 4, title: 'Calendar sync', icon: '🗓️', type: 'video', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-calendar-sync-nw.mp4" },
+  { id: 4, title: 'Sms Integration', icon: '🗓️', type: 'video', src: smsIntegrationVideo },
   { id: 5, title: 'Meet online', icon: '💻', type: 'image', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-meet-online.jpg" },
   { id: 6, title: 'Update your CRM', icon: '📊', type: 'image', src: image6 },
-  { id: 7, title: 'Notify and remind', icon: '🔔', type: 'video', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-notifications-nw.mp4" },
-  { id: 8, title: 'Collect payments', icon: '💳', type: 'video', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-booking-page-nw.mp4" },
+  { id: 7, title: 'Notify and remind', icon: '🔔', type: 'video', src:remendVideo },
+  // { id: 8, title: 'Collect payments', icon: '💳', type: 'video', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-booking-page-nw.mp4" },
 ];
 
 const SchedulingApp = () => {

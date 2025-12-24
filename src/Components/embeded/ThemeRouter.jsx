@@ -5,19 +5,24 @@ import AppointmentBooking2 from './Theme-2/AppointmentBooking2';
 import AppointmentBooking_3 from './Theme-3/AppointmentBooking-3';
 import AppointmentBooking from './AppointmentBooking';
 import Loader from '../Loader';
+import AppointmentBooking_4 from './Theme-4/AppointmentBooking-4';
 
 const ThemeRouter = () => {
-  const { idSpace, idAdmin, idCustomer } = useParams();
+  const { idSpace, idAdmin, idCustomer, id } = useParams(); 
   const [theme, setTheme] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   
   console.log(theme);
+console.log(id);
 
   useEffect(() => {
     const fetchTheme = async () => {
       let apiUrl = '';
-      if (idSpace) {
+      
+      if (id) {
+        apiUrl = `https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${id}`;
+      } else if (idSpace) {
         apiUrl = `https://backend-booking.appointroll.com/api/public/book/resource?workspace_share_link=${idSpace}`;
       } else if (idAdmin) {
         apiUrl = `https://backend-booking.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`;
@@ -54,7 +59,7 @@ const ThemeRouter = () => {
     };
 
     fetchTheme();
-  }, [idSpace, idAdmin, idCustomer]);
+  }, [idSpace, idAdmin, idCustomer, id]); 
 
   if (loading) {
     return (
@@ -68,9 +73,11 @@ const ThemeRouter = () => {
     return <NotFound />;
   }
 
-  // Routing based on theme
   if (theme === 'theme1') {
     return <AppointmentBooking2 />;
+  }
+  if (theme === 'theme3') {
+    return <AppointmentBooking_4 />;
   }
 
   if (theme === 'theme5') {

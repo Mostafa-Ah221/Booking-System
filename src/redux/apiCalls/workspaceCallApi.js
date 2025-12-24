@@ -189,6 +189,8 @@ export function updateAvailabilWorkspace(id, formData) {
     dispatch(workspaceAction.setLoading(true));
     
     try {
+      console.log('updateAvailabilWorkspace - formData:', formData);
+      
       if (!formData || (!formData.available_times && !formData.available_dates)) {
         throw new Error("Invalid availability data format");
       }
@@ -197,6 +199,13 @@ export function updateAvailabilWorkspace(id, formData) {
         available_times: formData.available_times || [],
         available_dates: formData.available_dates || []
       };
+
+      // إضافة time_zone إذا كان موجود
+      if (formData.time_zone) {
+        requestBody.time_zone = formData.time_zone;
+      }
+
+      console.log('updateAvailabilWorkspace - requestBody:', requestBody);
 
       const response = await axiosInstance.post(
         `/workspace/availability/update/${id}`,
@@ -247,6 +256,8 @@ export function updateUnAvailabilWorkspace(id, formData) {
     dispatch(workspaceAction.setLoading(true));
     
     try {
+      console.log('updateUnAvailabilWorkspace - formData:', formData);
+      
       if (!formData || (!formData.un_available_times && !formData.un_available_dates)) {
         throw new Error("Invalid availability data format");
       }
@@ -255,6 +266,13 @@ export function updateUnAvailabilWorkspace(id, formData) {
         un_available_times: formData.un_available_times || [],
         un_available_dates: formData.un_available_dates || []
       };
+
+      // إضافة time_zone إذا كان موجود
+      if (formData.time_zone) {
+        requestBody.time_zone = formData.time_zone;
+      }
+
+      console.log('updateUnAvailabilWorkspace - requestBody:', requestBody);
 
       const response = await axiosInstance.post(
         `/workspace/unavailability/update/${id}`,

@@ -1,14 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Calendar, Layout, FileText, User, ChevronUp, ChevronDown, Trash2, ChartBar, Clock5, Users } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { Calendar, FileText, User, ChevronUp, ChevronDown} from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaCheck } from "react-icons/fa6";
 import { useDispatch, useSelector } from 'react-redux';
 import { workspaceAction } from '../../redux/slices/workspaceSlice';
-import { BsThreeDots } from "react-icons/bs";
-import { FiEdit2 } from "react-icons/fi";
 import { staff_GetWorkspaces } from "../../redux/apiCalls/StaffapiCalls/StaffapiCalls";
 import logo from '../../assets/image/logo.png';
-import logo_icon from '../../assets/image/logo_icon.png';
 
 export default function StaffSideBarDashboard({selectWorkspace}) {
   const location = useLocation();

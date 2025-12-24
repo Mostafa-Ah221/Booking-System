@@ -312,7 +312,7 @@ const handleUpdateShareLink = async (newShareLink,id) => {
        <ShareBookingModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        shareLink={`service/${selectedInterview?.share_link.share_link}`}
+        shareLink={`service/${selectedInterview?.share_link}`}
         profile={selectedInterview}
         onUpdateLink={handleUpdateShareLink}
         loading={loading}

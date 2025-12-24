@@ -86,25 +86,34 @@ const EditCustomer = () => {
     }
   }, [id, dispatch]);
 
-  useEffect(() => {
-    console.log('Customer data from Redux:', customer);
-    if (customer) {
-      const customerData = {
-        name: customer?.client.name || "",
-        email: customer?.client.email || "",
-        phone: customer?.client.phone || "",
-        code_phone: customer?.client.code_phone || "+20"
-      };
-      setEditData(customerData);
-      
-      const fullPhone = customerData.code_phone && customerData.phone 
-        ? `${customerData.code_phone}${customerData.phone}`
-        : "";
-      setPhoneValue(fullPhone);
+ useEffect(() => {
+  if (customer) {
+    const fullPhone = customer?.client?.phone || "";
+    let code = "+20";
+    let phoneNumber = "";
+    
+    if (fullPhone) {
+      const match = fullPhone.match(/^(\+\d{1,4})(.*)$/);
+      if (match) {
+        code = match[1]; 
+        phoneNumber = match[2]; 
+      }
     }
-  }, [customer]);
-
+    
+    const customerData = {
+      name: customer?.client.name || "",
+      email: customer?.client.email || "",
+      phone: phoneNumber,
+      code_phone: code
+    };
+    
+    setEditData(customerData);
+    setPhoneValue(fullPhone); 
+  }
+}, [customer]);
   const handleSave = () => {
+    console.log(editData);
+    
     dispatch(updateCustomer(id, editData));
     setIsEditing(false);
   };
@@ -138,14 +147,16 @@ const EditCustomer = () => {
     }
   };
 
-  const handlePhoneChange = (value, country) => {
-    setPhoneValue(value);
-
-    setEditData(prev => ({
-      ...prev,
-      phone: value.replace(`+${country.dialCode}`, ""),
-      code_phone: `+${country.dialCode}`,
-    }));
+const handlePhoneChange = (value, country) => {
+  setPhoneValue(value);
+  
+  const phoneWithoutCode = value.slice(country.dialCode.length); 
+  
+  setEditData(prev => ({
+    ...prev,
+    phone: phoneWithoutCode, 
+    code_phone: `+${country.dialCode}`,
+  }));
 
     if (!value || value.length <= country.dialCode.length + 1) {
       dispatch(customerAction.setError({
@@ -389,7 +400,7 @@ const EditCustomer = () => {
                       Contact Number
                     </label>
                     <p className="text-gray-900 text-base">
-                      {editData.code_phone && editData.phone ? ` ${editData.phone}` : 'N/A'}
+                      {editData.phone ? `${editData.code_phone} ${editData.phone}` : 'N/A'}
                     </p>
                   </div>
                 </div>

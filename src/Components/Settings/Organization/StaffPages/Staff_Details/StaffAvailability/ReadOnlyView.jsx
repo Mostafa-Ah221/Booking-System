@@ -13,6 +13,7 @@ const ReadOnlyView = ({
   isEditing,
   activeSection,
   timeZone,
+  onTimeZoneChange, 
   weekDays,
   selectedTimeDropdown,
   handleTimeDropdownToggle,
@@ -157,8 +158,8 @@ const ReadOnlyView = ({
             )}
 
             {/* Header */}
-            <div className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-2">
+            <div className={`flex items-center justify-between ${!isEditing ? 'p-4' : 'p-0'}`}>
+             {!isEditing &&( <div className="flex items-center gap-2">
                 {showContent ? (
                   <ChevronDown size={16} className="text-gray-400" />
                 ) : (
@@ -168,7 +169,8 @@ const ReadOnlyView = ({
                   <h3 className="font-medium">{section.title}</h3>
                   <p className="text-sm text-gray-500">{section.description}</p>
                 </div>
-              </div>
+              </div>)}
+             
               
               {/* Buttons */}
               {section.id === 'working-hours' && !isEditing && (
@@ -182,19 +184,20 @@ const ReadOnlyView = ({
               )}
               
               {section.id === 'unavailability' && (
-                <button
+                !isEditing ? ( <button
                   onClick={handleUnavailabilityAdd}
                   className="px-3 py-1 border border-red-600 text-red-600 rounded-md hover:bg-red-50 flex items-center text-sm"
                 >
                   <Plus size={14} className="mr-1" />
                   Add
-                </button>
+                </button>) : null
+                
               )}
             </div>
 
             {/* Content Area */}
             {showContent && (
-              <div ref={sectionRef} className="border-t p-4">
+              <div ref={sectionRef} className="p-4">
                 {/* Time Sections */}
                 {(activeTab === 'available-times' || activeTab === 'unavailable-times') && (
                   <div>
@@ -203,6 +206,7 @@ const ReadOnlyView = ({
                     </p>
                     <TimeSection
                       timeZone={timeZone}
+                      onTimeZoneChange={onTimeZoneChange}
                       weekDays={weekDays}
                       selectedTimeDropdown={selectedTimeDropdown}
                       handleTimeDropdownToggle={handleTimeDropdownToggle}

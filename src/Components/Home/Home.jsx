@@ -19,7 +19,7 @@ export default function Home() {
             backgroundImage: "url('https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-bottom-cta-img.svg')",
             backgroundPosition: "center",
             height: "100%", 
-            width: "100%" // ✅ بدلاً من 100vw
+            width: "100%" 
         }}>
             <Trusted/>
             <Slider/>

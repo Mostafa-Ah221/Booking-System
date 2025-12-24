@@ -50,8 +50,6 @@ export function addResource(resourceData) {
                     },
                 });
 
-                // لو الـ resource موجود في الـ response، ضيفه للـ list
-                // لو مش موجود، يبقى Backend مش بيرجعه
                 const newResource = response.data.data?.resource;
                 if (newResource) {
                     console.log("New resource to add:", newResource);
@@ -65,28 +63,55 @@ export function addResource(resourceData) {
                 dispatch(resourceAction.setLoading(false));
                 return { success: false, message: "Response status is false" };
             }
-        } catch (error) {
-            console.log("Error in addResource:", error);
-            console.log("Error response:", error?.response?.data);
-            
-            console.error("Error creating resource:", error);
-            dispatch(resourceAction.setLoading(false));
-            dispatch(resourceAction.setError(error.response?.data?.message));
+       } catch (error) {
+    console.log("Error in addResource:", error);
+    console.log("Error response:", error?.response?.data);
 
-            const errorMessage = error?.response?.data?.message || "Failed to add resource";
+    dispatch(resourceAction.setLoading(false));
 
-            toast.error(errorMessage, {
-                position: "top-center",
-                duration: 5000,
-                style: { 
-                    borderRadius: "8px", 
-                    background: "#c00", 
-                    color: "#fff" 
-                },
+    const errorData = error?.response?.data;
+
+    // لو فيه errors (Validation errors)
+    if (errorData?.errors) {
+        Object.keys(errorData.errors).forEach((field) => {
+            errorData.errors[field].forEach((msg) => {
+                toast.error(msg, {
+                    position: "top-center",
+                    duration: 5000,
+                    style: { 
+                        borderRadius: "8px", 
+                        background: "#c00", 
+                        color: "#fff",
+                        padding: "12px 16px",
+                        fontWeight: "500"
+                    },
+                });
             });
+        });
 
-            return { success: false, error };
-        }
+        dispatch(resourceAction.setError(errorData.errors));
+
+        return { success: false, error: errorData.errors };
+    }
+
+    // في حالة مفيش errors لكن فيه message عام
+    const generalMessage = errorData?.message || "Failed to add resource";
+
+    toast.error(generalMessage, {
+        position: "top-center",
+        duration: 5000,
+        style: { 
+            borderRadius: "8px", 
+            background: "#c00", 
+            color: "#fff" 
+        },
+    });
+
+    dispatch(resourceAction.setError({ general: generalMessage }));
+
+    return { success: false, error };
+}
+
     };
 }
 

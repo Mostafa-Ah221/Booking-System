@@ -21,11 +21,14 @@ const Signup = () => {
   const [registerData, setRegisterData] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState(null);
-  
+  const isMobile = /Android|iPhone/i.test(navigator.userAgent);
+
+const handleOpenApp = () => {
+  window.location.href = window.location.href;
+};
   let navigate = useNavigate();
   const { token } = useParams();
   
-  // Check if this is staff registration
   const isStaffRegistration = !!token;
 
   const validationSchema = Yup.object().shape({
@@ -270,6 +273,7 @@ const Signup = () => {
   if (isStaffRegistration && dataError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -350,6 +354,15 @@ const Signup = () => {
 
       {/* Right Side - Scrollable Form Section */}
       <div className="w-full lg:w-1/2 ml-auto">
+       {isMobile && (
+          <button
+            type="button"
+            onClick={handleOpenApp}
+            className="w-full mb-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
+          >
+            Open in App
+          </button>
+        )}
         <div className="p-8 lg:p-12 flex flex-col justify-center min-h-screen">
           <div className="max-w-md mx-auto w-full">
             

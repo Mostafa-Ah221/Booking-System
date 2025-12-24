@@ -28,7 +28,6 @@ console.log(profile);
   // === Extract orgBase safely (string only) ===
   useEffect(() => {
     let base = '';
-    
     if (profileData?.user?.share_link) {
       const link = profileData.user.share_link;
       base = typeof link === 'string' ? link : (link?.slug || link?.share_link || '');
