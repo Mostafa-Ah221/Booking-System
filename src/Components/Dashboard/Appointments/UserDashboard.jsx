@@ -16,7 +16,7 @@ import { FiLayout } from "react-icons/fi";
 import ColumnManagerSidebar from './ColumnManagerSidebar';
 import { useConfirmationToast } from './useConfirmationToast'; 
 import { getCustomers} from "../../../redux/apiCalls/CustomerCallApi";
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('');
@@ -35,7 +35,6 @@ const UserDashboard = () => {
   const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchParams, setSearchParams] = useSearchParams();
-  const appointmentsPerPage = 11;
 
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('appointmentColumns');
@@ -90,58 +89,108 @@ const UserDashboard = () => {
 
   const dispatch = useDispatch();
   const { showConfirmationToast } = useConfirmationToast();
-   const { interviews = [] } = useSelector(state => state.interview);
-  const { appointments = [], loading = false, error } = useSelector(state => state.appointments || {});
+  const { interviews = [] } = useSelector(state => state.interview);
+  const { appointments = [], loading = false, error, pagination } = useSelector(state => state.appointments || {});
   const { workspace, workspaces } = useSelector(state => state.workspace);
   const workspaceId = workspace ? workspace.id : 0;
-  
+  const location = useLocation();
+console.log(pagination?.data);
+
   const { customers = [] } = useSelector(state => state.customers || {});
 
+  // Handle appointmentId from URL/State
   useEffect(() => {
-    const queryParams = {};
+    const appointmentId = location.state?.appointmentId || searchParams.get('appointmentId');
+    
+    if (appointmentId && appointments.length > 0) {
+      const appointment = appointments.find(
+        app => app.id === parseInt(appointmentId)
+      );
+      
+      if (appointment) {
+        handleAppointmentClick(appointment);
+        
+        if (location.state?.appointmentId) {
+          window.history.replaceState({}, document.title);
+        }
+        if (searchParams.get('appointmentId')) {
+          searchParams.delete('appointmentId');
+          setSearchParams(searchParams, { replace: true });
+        }
+      } else {
+        fetchAndOpenAppointment(parseInt(appointmentId));
+      }
+    } else if (appointmentId && appointments.length === 0) {
+      console.log('⏳ Appointments not loaded yet, will retry...');
+    }
+  }, [location.state, searchParams, appointments]);
+
+  const fetchAndOpenAppointment = async (appointmentId) => {
+    try {
+      setLoadingAppointmentDetails(true);
+      setDetailsError(null);
+      
+      const response = await dispatch(getAppointmentById(appointmentId));
+      
+      const appointmentData = 
+        response?.data?.data?.appointment || 
+        response?.data?.appointment || 
+        response?.appointment || 
+        null;
+      
+      if (appointmentData) {
+        setSelectedAppointment({ ...appointmentData, detailsLoaded: true });
+        setIsDetailsOpen(true);
+        
+        if (location.state?.appointmentId) {
+          window.history.replaceState({}, document.title);
+        }
+        if (searchParams.get('appointmentId')) {
+          searchParams.delete('appointmentId');
+          setSearchParams(searchParams, { replace: true });
+        }
+      } else {
+        setDetailsError('Failed to load appointment');
+      }
+    } catch (error) {
+      console.error('❌ Error:', error);
+      setDetailsError(error.message);
+    } finally {
+      setLoadingAppointmentDetails(false);
+    }
+  };
+
+  // Fetch appointments with pagination
+  useEffect(() => {
+    const queryParams = { page: currentPage };
+    
     if (workspaceId !== 0) {
       queryParams.work_space_id = workspaceId;
     }
     if (hasActiveFilters(currentFilters)) {
       Object.assign(queryParams, buildQueryParams(currentFilters));
     }
+    
     dispatch(fetchAppointments(queryParams));
-  }, [dispatch, workspaceId, currentFilters]);
+  }, [dispatch, workspaceId, currentFilters, currentPage]);
 
   useEffect(() => {
     dispatch(fetchInterviews(workspaceId));
   }, [workspaceId]);
-  useEffect(() => {
-  dispatch(fetchInterviews(workspaceId));
-}, [workspaceId]);
-
-// Handle appointmentId from URL
-useEffect(() => {
-  const appointmentIdFromUrl = searchParams.get('appointmentId');
-  if (appointmentIdFromUrl && appointments.length > 0) {
-    const appointment = appointments.find(app => app.id === parseInt(appointmentIdFromUrl));
-    if (appointment) {
-      handleAppointmentClick(appointment);
-      // Remove the parameter from URL after opening
-      searchParams.delete('appointmentId');
-      setSearchParams(searchParams, { replace: true });
-    }
-  }
-}, [searchParams, appointments]);
 
   useEffect(() => {
-  const handleClickOutside = (event) => {
-    const clickedInsideDropdown = event.target.closest('.dropdown-container');
-    if (!clickedInsideDropdown && openDropdown !== null) {
-      setOpenDropdown(null);
-    }
-  };
-  
-  document.addEventListener('mousedown', handleClickOutside);
-  return () => {
-    document.removeEventListener('mousedown', handleClickOutside);
-  };
-}, [openDropdown]);
+    const handleClickOutside = (event) => {
+      const clickedInsideDropdown = event.target.closest('.dropdown-container');
+      if (!clickedInsideDropdown && openDropdown !== null) {
+        setOpenDropdown(null);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
 
   const handleRescheduleFromSidebar = (appointment) => {
     setAppointmentToReschedule(appointment);
@@ -159,12 +208,11 @@ useEffect(() => {
   };
 
   const handleRescheduleSuccess = () => {
+    const queryParams = { page: currentPage };
     if (Object.keys(currentFilters).length > 0 && hasActiveFilters(currentFilters)) {
-      const queryParams = buildQueryParams(currentFilters);
-      dispatch(fetchAppointments(queryParams));
-    } else {
-      dispatch(fetchAppointments());
+      Object.assign(queryParams, buildQueryParams(currentFilters));
     }
+    dispatch(fetchAppointments(queryParams));
   };
 
   const hasActiveFilters = (filters) => {
@@ -194,6 +242,8 @@ useEffect(() => {
   };
 
   const appointmentsArray = Array.isArray(appointments) ? appointments : [];
+  
+  // Filter appointments locally only if needed
   const filteredAppointments = appointmentsArray.filter(app => {
     if (!hasActiveFilters(currentFilters)) {
       if (activeTab === 'Upcoming') {
@@ -212,11 +262,11 @@ useEffect(() => {
     return matches;
   });
 
-  // Pagination Logic
-  const indexOfLastAppointment = currentPage * appointmentsPerPage;
-  const indexOfFirstAppointment = indexOfLastAppointment - appointmentsPerPage;
-  const currentAppointments = filteredAppointments.slice(indexOfFirstAppointment, indexOfLastAppointment);
-  const totalPages = Math.ceil(filteredAppointments.length / appointmentsPerPage);
+  // Pagination from backend
+  const totalPages = pagination?.last_page || 1;
+  const totalAppointments = pagination?.total || 0;
+  const fromAppointment = pagination?.from || 0;
+  const toAppointment = pagination?.to || 0;
 
   const paginate = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages) {
@@ -295,12 +345,12 @@ useEffect(() => {
           if (!result || !result.success) {
             throw new Error(result?.message || 'Failed to cancel appointment');
           }
+          const queryParams = { page: currentPage };
           if (hasActiveFilters(currentFilters)) {
-            const queryParams = buildQueryParams(currentFilters);
-            await dispatch(fetchAppointments(queryParams));
-          } else {
-            await dispatch(fetchAppointments());
+            Object.assign(queryParams, buildQueryParams(currentFilters));
           }
+          await dispatch(fetchAppointments(queryParams));
+          
           if (selectedAppointment && selectedAppointment.id === appointment.id) {
             setIsDetailsOpen(false);
             setSelectedAppointment(null);
@@ -327,12 +377,12 @@ useEffect(() => {
           if (!result || !result.success) {
             throw new Error(result?.message || 'Failed to delete appointment');
           }
+          const queryParams = { page: currentPage };
           if (hasActiveFilters(currentFilters)) {
-            const queryParams = buildQueryParams(currentFilters);
-            await dispatch(fetchAppointments(queryParams));
-          } else {
-            await dispatch(fetchAppointments());
+            Object.assign(queryParams, buildQueryParams(currentFilters));
           }
+          await dispatch(fetchAppointments(queryParams));
+          
           if (selectedAppointment && selectedAppointment.id === appointment.id) {
             setIsDetailsOpen(false);
             setSelectedAppointment(null);
@@ -360,13 +410,12 @@ useEffect(() => {
 
   const handleApplyFilters = (filters) => {
     setCurrentFilters(filters);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1); 
+    const queryParams = { page: 1 };
     if (hasActiveFilters(filters)) {
-      const queryParams = buildQueryParams(filters);
-      dispatch(fetchAppointments(queryParams));
-    } else {
-      dispatch(fetchAppointments());
+      Object.assign(queryParams, buildQueryParams(filters));
     }
+    dispatch(fetchAppointments(queryParams));
     setIsFilterOpen(false);
   };
 
@@ -376,8 +425,8 @@ useEffect(() => {
 
   const handleClearFilters = () => {
     setCurrentFilters({});
-    setCurrentPage(1); // Reset to first page when clearing filters
-    dispatch(fetchAppointments());
+    setCurrentPage(1); 
+    dispatch(fetchAppointments({ page: 1 }));
   };
 
   const canAddAppointment = usePermission("add appointment");
@@ -411,9 +460,9 @@ useEffect(() => {
   };
 
   const renderAppointments = () => {
-    if (currentAppointments.length > 0) {
+    if (filteredAppointments.length > 0) {
       if (!columnOrder || !Array.isArray(columnOrder) || columnOrder.length === 0) {
-        return <div className="p-4 text-center">Loading columns...</div>;
+        return <div className="p-4 text-center text-sm">Loading columns...</div>;
       }
 
       const orderedVisibleColumns = columnOrder
@@ -422,213 +471,249 @@ useEffect(() => {
         .filter(name => name);
 
       if (orderedVisibleColumns.length === 0) {
-        return <div className="p-4 text-center text-gray-500">No columns selected</div>;
+        return <div className="p-4 text-center text-gray-500 text-sm">No columns selected</div>;
       }
 
       const needsHorizontalScroll = orderedVisibleColumns.length > 7;
-      const minWidth = needsHorizontalScroll ? `${orderedVisibleColumns.length * 150}px` : '800px';
+      const minWidth = needsHorizontalScroll ? `${orderedVisibleColumns.length * 150}px` : '100%';
 
       return (
-        <div className="bg-white border rounded-lg overflow-x-auto">
-          <div 
-            className="text-xs font-medium bg-gray-50 border-b px-6 py-4 gap-4 relative"
-            style={{ 
-              display: 'grid',
-              gridTemplateColumns: `repeat(${orderedVisibleColumns.length}, 1fr) auto`,
-              alignItems: 'center',
-              minWidth: minWidth
-            }}
-          >
-            {orderedVisibleColumns.map(columnName => (
-              <div key={columnName} className="text-gray-600 capitalize w-full">
-                {columnName}
-              </div>
-            ))}
-          </div>
-
-          {currentAppointments.map((item, index) => (
-            <div key={item.id} className="border-b last:border-b-0">
-              <div className="bg-gray-50 px-6 py-3 border-b" style={{ minWidth: minWidth }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays size={16} className="text-gray-600" />
-                    <span className="text-xs font-medium">{formatDate(item.date)}</span>
-                  </div>
-                  <span className="text-xs text-gray-500">{indexOfFirstAppointment + index + 1} appointment</span>
-                </div>
-              </div>
-
-              <div
-                className={`items-center px-6 py-4 text-sm hover:bg-gray-50 cursor-pointer transition-colors gap-4 ${
-                  loadingAppointmentDetails ? 'opacity-50 pointer-events-none' : ''
-                }`}
+        <div className="w-full border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <div style={{ minWidth: minWidth }}>
+              <div 
+                className="text-xs font-medium bg-gray-50 border-b px-3 md:px-6 py-3 md:py-4 gap-2 md:gap-4 md:w-full w-fit"
                 style={{ 
                   display: 'grid',
-                  gridTemplateColumns: `repeat(${orderedVisibleColumns.length}, 1fr) auto`,
-                  alignItems: 'center',
-                  minWidth: minWidth
+                  gridTemplateColumns: `repeat(${orderedVisibleColumns.length}, minmax(120px, 1fr))`,
+                  alignItems: 'center'
                 }}
-                onClick={() => handleAppointmentClick(item)}
               >
-                {orderedVisibleColumns.map(columnName => {
-                  switch(columnName) {
-                    case 'Time':
-                      return (
-                        <div key={columnName} className="flex items-center gap-2">
-                          <Clock size={16} className="text-gray-600" />
-                          <span className="text-xs">{formatTime(item.time)}</span>
-                        </div>
-                      );
-                    case 'Interview':
-                      return (
-                        <div key={columnName} className="flex items-center gap-2">
-                          <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs">
-                            {item.interview_name ? item.interview_name.substring(0, 2).toUpperCase() : 'N/A'}
-                          </span>
-                          <span className="text-xs truncate max-w-[80px] tooltip whitespace-nowrap" title={item.interview_name}>
-                            {item.interview_name || 'N/A'}
-                          </span>
-                        </div>
-                      );
-                    case 'Workspace':
-                      return (
-                        <div key={columnName} className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-xs text-blue-600">
-                              {item.work_space_name ? item.work_space_name.substring(0, 1).toUpperCase() : 'N/A'}
-                            </span>
-                          </div>
-                          <span className="text-xs truncate max-w-[150px] tooltip whitespace-nowrap" title={item.work_space_name}>
-                            {item.work_space_name || 'N/A'}
-                          </span>
-                        </div>
-                      );
-                    case 'Client':
-                      return (
-                        <div key={columnName} className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                            <span className="text-xs text-gray-600 font-medium">
-                              {item.name ? item.name.substring(0, 1).toUpperCase() : 'N/A'}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="font-medium max-w-[100px] text-xs truncate tooltip whitespace-nowrap" title={item.name}>
-                              {item.name || 'N/A'}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    case 'Phone':
-                      return (
-                        <span key={columnName} className="text-gray-600 text-xs truncate max-w-[150px] tooltip whitespace-nowrap" title={item.phone}>
-                          {item.phone || 'N/A'}
-                        </span>
-                      );
-                    case 'Status':
-                      return (
-                        <span
-                          key={columnName}
-                          className={`w-fit px-2 py-1 rounded-full text-xs font-medium ${
-                            item.status === 'upcoming'
-                              ? 'bg-green-100 text-green-800'
-                              : item.status === 'past'
-                              ? 'bg-gray-200 text-gray-800'
-                              : item.status === 'rescheduled'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : item.status === 'cancel'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}
-                        >
-                          {item.status === 'upcoming'
-                            ? 'Scheduled'
-                            : item.status === 'past'
-                            ? 'Completed'
-                            : item.status === 'rescheduled'
-                            ? 'Rescheduled'
-                            : item.status === 'cancel'
-                            ? 'Cancelled'
-                            : item.status || 'N/A'}
-                        </span>
-                      );
-                    case 'Action':
-                      return (
-                        <div key={columnName} className="relative dropdown-container" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            className="border border-gray-300 px-3 py-1 rounded flex items-center gap-1 text-sm hover:bg-gray-50"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleDropdown(item.id);
-                            }}
-                          >
-                            <span className="text-xs">Review</span>
-                            <ChevronDown
-                              size={14}
-                              className={`transition-transform duration-200 ${openDropdown === item.id ? 'rotate-180' : ''}`}
-                            />
-                          </button>
-                          {openDropdown === item.id && (
-                            <div className={`absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10 ${
-                              index === currentAppointments.length - 1 ? 'bottom-full mb-1' : 'top-full'
-                            }`}>
-                              <div className="py-1">
-                               
+                {orderedVisibleColumns.map(columnName => (
+                  <div key={columnName} className="text-gray-600 capitalize whitespace-nowrap">
+                    {columnName}
+                  </div>
+                ))}
+              </div>
 
+              <div>
+                {filteredAppointments.map((item, index) => (
+                  <div key={item.id} className="border-b last:border-b-0 w-fit md:w-full">
+                    <div className="bg-gray-50 px-3 md:px-6 py-2 md:py-3 border-b sticky top-0 z-10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CalendarDays size={14} className="text-gray-600 md:w-4 md:h-4" />
+                          <span className="text-xs font-medium">{formatDate(item.date)}</span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {fromAppointment +index+1} appointment
+                        </span>
+                      </div>
+                    </div>
 
-                                {canControlAppointment && (
-                                  <button
-                                    className="w-full text-right px-4 py-2 text-sm text-blue-600 hover:bg-gray-50 flex items-center justify-end gap-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDropdownOption('reschedule', item);
-                                    }}
+                    <div
+                      className={`items-center px-3 md:px-6 py-3 md:py-4 text-sm hover:bg-gray-50 cursor-pointer transition-colors gap-2 md:gap-4 ${
+                        loadingAppointmentDetails ? 'opacity-50 pointer-events-none' : ''
+                      }`}
+                      style={{ 
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${orderedVisibleColumns.length}, minmax(120px, 1fr))`,
+                        alignItems: 'center'
+                      }}
+                      onClick={() => handleAppointmentClick(item)}
+                    >
+                      {orderedVisibleColumns.map(columnName => {
+                        switch(columnName) {
+                          case 'Time':
+                            return (
+                              <div key={columnName} className="flex items-center gap-1 md:gap-2">
+                                <Clock size={14} className="text-gray-600 flex-shrink-0 md:w-4 md:h-4" />
+                                <span className="text-xs whitespace-nowrap">{formatTime(item.time)}</span>
+                              </div>
+                            );
+                          case 'Interview':
+                            return (
+                              <div key={columnName} className="flex items-center gap-1 md:gap-2 min-w-0">
+                                <span className="bg-purple-600 text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs flex-shrink-0">
+                                  {item.interview_name ? item.interview_name.substring(0, 2).toUpperCase() : 'N/A'}
+                                </span>
+                                <span 
+                                  className="text-xs truncate max-w-[80px] md:max-w-[120px] tooltip whitespace-nowrap" 
+                                  title={item.interview_name}
+                                >
+                                  {item.interview_name || 'N/A'}
+                                </span>
+                              </div>
+                            );
+                          case 'Workspace':
+                            return (
+                              <div key={columnName} className="flex items-center gap-1 md:gap-2 min-w-0">
+                                <div className="w-6 h-6 md:w-8 md:h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <span className="text-xs text-blue-600">
+                                    {item.work_space_name ? item.work_space_name.substring(0, 1).toUpperCase() : 'N/A'}
+                                  </span>
+                                </div>
+                                <span 
+                                  className="text-xs truncate max-w-[80px] md:max-w-[120px] tooltip whitespace-nowrap" 
+                                  title={item.work_space_name}
+                                >
+                                  {item.work_space_name || 'N/A'}
+                                </span>
+                              </div>
+                            );
+                          case 'Client':
+                            return (
+                              <div key={columnName} className="flex items-center gap-1 md:gap-2 min-w-0">
+                                <div className="w-6 h-6 md:w-8 md:h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <span className="text-xs text-gray-600 font-medium">
+                                    {item.name ? item.name.substring(0, 1).toUpperCase() : 'N/A'}
+                                  </span>
+                                </div>
+                                <div className="min-w-0">
+                                  <div 
+                                    className="font-medium max-w-[80px] md:max-w-[120px] text-xs truncate tooltip whitespace-nowrap" 
+                                    title={item.name}
                                   >
-                                    <span className="text-xs">Reschedule</span>
-                                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                  </button>
-                                )}
-                                {canEditAppointment && (
-                                  <button
-                                    className="w-full text-right px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center justify-end gap-2"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDropdownOption('cancel', item);
-                                    }}
+                                    {item.name || 'N/A'}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          case 'Phone':
+                            return (
+                              <span 
+                                key={columnName} 
+                                className="text-gray-600 text-xs truncate max-w-[80px] md:max-w-[120px] tooltip whitespace-nowrap" 
+                                title={item.phone}
+                              >
+                                {item.phone || 'N/A'}
+                              </span>
+                            );
+                          case 'Status':
+                            return (
+                              <span
+                                key={columnName}
+                                className={`w-fit px-1.5 md:px-2 py-0.5 md:py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                                  item.status === 'upcoming'
+                                    ? 'bg-green-100 text-green-800'
+                                    : item.status === 'past'
+                                    ? 'bg-gray-200 text-gray-800'
+                                    : item.status === 'rescheduled'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : item.status === 'cancel'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}
+                              >
+                                {item.status === 'upcoming'
+                                  ? 'Scheduled'
+                                  : item.status === 'past'
+                                  ? 'Completed'
+                                  : item.status === 'rescheduled'
+                                  ? 'Rescheduled'
+                                  : item.status === 'cancel'
+                                  ? 'Cancelled'
+                                  : item.status || 'N/A'}
+                              </span>
+                            );
+                          case 'Action':
+                            return (
+                              <div 
+                                key={columnName} 
+                                className="relative dropdown-container" 
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  className="border border-gray-300 px-2 md:px-3 py-1 rounded flex items-center gap-1 text-sm hover:bg-gray-50 whitespace-nowrap"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleDropdown(item.id);
+                                  }}
+                                >
+                                  <span className="text-xs">Review</span>
+                                  <ChevronDown
+                                    size={12}
+                                    className={`transition-transform duration-200 md:w-3.5 md:h-3.5 ${
+                                      openDropdown === item.id ? 'rotate-180' : ''
+                                    }`}
+                                  />
+                                </button>
+                                {openDropdown === item.id && (
+                                  <div 
+                                    className={`absolute right-0 mt-1 w-36 md:w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20 ${
+                                      index === filteredAppointments.length - 1 ? 'bottom-full mb-1' : 'top-full'
+                                    }`}
                                   >
-                                    <span className="text-xs">Cancel</span>
-                                    <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-                                  </button>
+                                    <div className="py-1">
+                                      {canControlAppointment && (
+                                        <button
+                                          className="w-full text-right px-3 md:px-4 py-2 text-sm text-blue-600 hover:bg-gray-50 flex items-center justify-end gap-2"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDropdownOption('reschedule', item);
+                                          }}
+                                        >
+                                          <span className="text-xs">Reschedule</span>
+                                          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                                        </button>
+                                      )}
+                                      {canEditAppointment && (
+                                        <button
+                                          className="w-full text-right px-3 md:px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center justify-end gap-2"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDropdownOption('cancel', item);
+                                          }}
+                                        >
+                                          <span className="text-xs">Cancel</span>
+                                          <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    case 'Created at':
-                      return (
-                        <span key={columnName} className="text-gray-600 text-xs truncate max-w-[150px] tooltip whitespace-nowrap" title={item.created_at}>
-                          {item.created_at || 'N/A'}
-                        </span>
-                      );
-                    case 'Time Zone':
-                      return (
-                        <span key={columnName} className="text-gray-600 text-xs truncate max-w-[150px] tooltip whitespace-nowrap" title={item.time_zone}>
-                          {item.time_zone || 'N/A'}
-                        </span>
-                      );
-                    case 'Email':
-                      return (
-                        <span key={columnName} className="text-gray-600 text-xs truncate max-w-[150px] tooltip whitespace-nowrap" title={item.email}>
-                          {item.email || 'N/A'}
-                        </span>
-                      );
-                    default:
-                      return null;
-                  }
-                })}
+                            );
+                          case 'Created at':
+                            return (
+                              <span 
+                                key={columnName} 
+                                className="text-gray-600 text-xs truncate max-w-[80px] md:max-w-[120px] tooltip whitespace-nowrap" 
+                                title={item.created_at}
+                              >
+                                {item.created_at || 'N/A'}
+                              </span>
+                            );
+                          case 'Time Zone':
+                            return (
+                              <span 
+                                key={columnName} 
+                                className="text-gray-600 text-xs truncate max-w-[80px] md:max-w-[120px] tooltip whitespace-nowrap" 
+                                title={item.time_zone}
+                              >
+                                {item.time_zone || 'N/A'}
+                              </span>
+                            );
+                          case 'Email':
+                            return (
+                              <span 
+                                key={columnName} 
+                                className="text-gray-600 text-xs truncate max-w-[80px] md:max-w-[120px] tooltip whitespace-nowrap" 
+                                title={item.email}
+                              >
+                                {item.email || 'N/A'}
+                              </span>
+                            );
+                          default:
+                            return null;
+                        }
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          </div>
         </div>
       );
     }
@@ -636,17 +721,25 @@ useEffect(() => {
   };
 
   const renderPagination = () => {
-    if (filteredAppointments.length <= appointmentsPerPage) return null;
+    if (totalPages <= 1) return null;
 
     const pageNumbers = [];
-    for (let i = 1; i <= totalPages; i++) {
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
       pageNumbers.push(i);
     }
 
     return (
       <div className="flex justify-between items-center mt-4">
         <div className="text-sm text-gray-600">
-          Showing {indexOfFirstAppointment + 1} to {Math.min(indexOfLastAppointment, filteredAppointments.length)} of {filteredAppointments.length} appointments
+          Showing {fromAppointment} to {toAppointment} of {totalAppointments} appointments
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -660,6 +753,19 @@ useEffect(() => {
           >
             Previous
           </button>
+          
+          {startPage > 1 && (
+            <>
+              <button
+                onClick={() => paginate(1)}
+                className="px-3 py-1 text-sm rounded-md bg-white text-gray-600 hover:bg-gray-100"
+              >
+                1
+              </button>
+              {startPage > 2 && <span className="px-2 text-gray-500">...</span>}
+            </>
+          )}
+          
           {pageNumbers.map(number => (
             <button
               key={number}
@@ -673,6 +779,19 @@ useEffect(() => {
               {number}
             </button>
           ))}
+          
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="px-2 text-gray-500">...</span>}
+              <button
+                onClick={() => paginate(totalPages)}
+                className="px-3 py-1 text-sm rounded-md bg-white text-gray-600 hover:bg-gray-100"
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+          
           <button
             onClick={() => paginate(currentPage + 1)}
             disabled={currentPage === totalPages}
@@ -718,11 +837,7 @@ useEffect(() => {
 
         <div className="border-b border-gray-200 mb-6 flex justify-between items-center">
           <nav className="flex gap-6">
-            {[
-              // { key: 'Upcoming', label: 'Upcoming' },
-              // { key: 'Past', label: 'Past' },
-              // { key: 'Custom Date', label: 'Custom Date' }
-            ].map(tab => (
+            {[].map(tab => (
               <button
                 key={tab.key}
                 className={`py-2 px-1 -mb-px transition-all text-sm ${
@@ -770,29 +885,37 @@ useEffect(() => {
           </div>
         ) : (
           <>
-            {renderAppointments()}
-            {renderPagination()}
-            {!loading && filteredAppointments.length === 0 && (
-              <div className="text-center py-16">
-                <div className="inline-block mb-6">
-                  <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CalendarDays size={48} className="text-gray-400" />
-                  </div>
-                </div>
-                <h3 className="font-semibold mb-2 text-sm">
-                  No {activeTab === 'Upcoming' ? 'upcoming' : 'past'} appointments
-                </h3>
-                <p className="text-gray-500 mb-6">Organize your schedule by adding appointments here.</p>
-                {canAddAppointment && (
-                  <button
-                    onClick={handleOpenAddAppointment}
-                    className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto"
-                  >
-                    <Plus size={18} />
-                    New Appointment
-                  </button>
-                )}
+            {loading ? (
+              <div className="flex justify-center items-center py-16">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
               </div>
+            ) : (
+              <>
+                {renderAppointments()}
+                {renderPagination()}
+                {!loading && filteredAppointments.length === 0 && (
+                  <div className="text-center py-16">
+                    <div className="inline-block mb-6">
+                      <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CalendarDays size={48} className="text-gray-400" />
+                      </div>
+                    </div>
+                    <h3 className="font-semibold mb-2 text-sm">
+                      No {activeTab === 'Upcoming' ? 'upcoming' : 'past'} appointments
+                    </h3>
+                    <p className="text-gray-500 mb-6">Organize your schedule by adding appointments here.</p>
+                    {canAddAppointment && (
+                      <button
+                        onClick={handleOpenAddAppointment}
+                        className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto"
+                      >
+                        <Plus size={18} />
+                        New Appointment
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -814,8 +937,6 @@ useEffect(() => {
         onClose={handleCloseAddAppointment}
         mode="schedule"
       />
-      
-   
       
       <AppointmentDetailsSidebar 
         appointment={selectedAppointment}

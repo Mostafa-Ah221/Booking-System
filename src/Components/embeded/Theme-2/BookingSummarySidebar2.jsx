@@ -26,6 +26,7 @@ const BookingSummarySidebar2 = ({
       : ""
   );
   const [phoneError, setPhoneError] = useState("");
+console.log(bookingData?.payment_details);
 
 const colors = themeColor ? JSON.parse(themeColor) : {};
   const primary = colors?.primary || "";
@@ -34,9 +35,11 @@ const colors = themeColor ? JSON.parse(themeColor) : {};
   const handlePhoneChange = (value, country) => {
     setPhoneValue(value);
 
-    // Update form data with separated phone code and phone number
-    onFormChange('phone', value.replace(`+${country.dialCode}`, ""));
-    onFormChange('code_phone', `+${country.dialCode}`);
+    const phoneWithoutCode = value.replace(country.dialCode, '').trim();
+
+    // Update form data
+    onFormChange('phone', phoneWithoutCode);  
+    onFormChange('code_phone', `+${country.dialCode}`); 
 
     // Validate phone number
     if (!value || value.length <= country.dialCode.length + 1) {
@@ -52,6 +55,29 @@ const colors = themeColor ? JSON.parse(themeColor) : {};
       setPhoneError("");
     }
   };
+const renderPaymentDetails = (text) => {
+  if (!text) return null;
+
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 underline break-all"
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
 
   return (
     <div className=" rounded-lg p-5">
@@ -145,7 +171,7 @@ const colors = themeColor ? JSON.parse(themeColor) : {};
             <div className="block text-sm font-medium text-gray-700 mb-2 border border-gray-300 rounded-sm p-4 bg-black/15">
               <div className="flex  justify-between items-center">
                 <span style={{color:textColor}}>Payment Amount</span>
-                <span className="font-bold " style={{color:firstColor}}>
+                <span className="font-bold " style={{color:textColor}}>
                   {bookingData?.require_end_time && totalPrice > 0 
                     ? `${totalPrice} ${bookingData.currency}` 
                     : `${bookingData.price} ${bookingData.currency}`
@@ -158,6 +184,17 @@ const colors = themeColor ? JSON.parse(themeColor) : {};
                   {numberOfSlots} slot{numberOfSlots > 1 ? 's' : ''} × {bookingData.price} {bookingData.currency} per slot
                 </div>
               )}
+            </div>
+          </div>
+        )}
+       {bookingData?.payment_details && (
+          <div className="block text-sm font-medium text-gray-700 mb-2 border border-gray-300 rounded-sm p-4 bg-black/15">
+            <div className="flex justify-center flex-col gap-2 items-start">
+              <span style={{ color: textColor }}>Payment Details</span>
+              <span className="font-bold" style={{ color: textColor }}>
+                {renderPaymentDetails(bookingData?.payment_details)}
+              </span>
+
             </div>
           </div>
         )}
@@ -182,9 +219,9 @@ const colors = themeColor ? JSON.parse(themeColor) : {};
       !formData.email || 
       phoneError || 
       ((bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && !formData.address)
-      ? `${firstColor}88`  
+      ? firstColor  
       : firstColor,        
-    color: secondColor,
+    color: textColor,
     filter: isBooking || 
       !formData.name || 
       !formData.email || 

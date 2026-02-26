@@ -6,7 +6,7 @@ const CalendarAnalytics = ({data}) => {
   const [currentDate, setCurrentDate] = useState(new Date()); 
   const [selectedDate, setSelectedDate] = useState(null);
   const navigate = useNavigate(); 
-  
+  const userType = localStorage.getItem("userType");
   const appointments = data?.data?.recent_appointments || [];
 
   const monthNames = [
@@ -43,9 +43,17 @@ const CalendarAnalytics = ({data}) => {
     return appointments.filter(app => app.date === dayStr);
   };
 
-  const handleAppointmentClick = (appointmentId) => {
-    navigate(`/layoutDashboard/userDashboard?appointmentId=${appointmentId}`);
-  };
+ const handleAppointmentClick = (appointmentId) => {
+  setSelectedDate(null);
+  
+  const basePath = userType === 'staff' 
+    ? '/staff_dashboard_layout/Staff_Appointment' 
+    : '/layoutDashboard/userDashboard';
+  
+  navigate(basePath, { 
+    state: { appointmentId: appointmentId }
+  });
+};
 
   const navigateMonth = (direction) => {
     const newDate = new Date(currentDate);

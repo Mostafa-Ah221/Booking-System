@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react';
 import * as Yup from 'yup';
@@ -7,6 +7,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { getPermissions } from '../../../redux/apiCalls/RolesCallApli';
 import { authActions } from '../../../redux/slices/authSlice';
+import { requestForToken } from '../../../firebase';
+import { sendFCMToken } from '../../../redux/apiCalls/NotificationsCallApi';
+import { useFirebaseNotifications } from '../../../firebase/firebaseNotifications';
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -16,6 +19,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  useFirebaseNotifications();
 
   const access_token = location.state?.access_token || '';
 
@@ -30,14 +34,17 @@ const Login = () => {
   const handleLogin = async (values) => {
     setIsLoading(true);
     setApiError(null);
-
+    
     try {
+      // 1️⃣ إرسال بيانات تسجيل الدخول
       const formData = new FormData();
       formData.append("identify", values.identify);
       formData.append("password", values.password);
-      if(access_token) {
+      
+      if (access_token) {
         formData.append("token", access_token);
       }
+      
       const apiEndpoint = userType === 'customer' 
         ? "https://backend-booking.appointroll.com/api/login"
         : "https://backend-booking.appointroll.com/api/staff/login";
@@ -52,19 +59,32 @@ const Login = () => {
         }
       );
 
-
-     const accessToken = response?.data?.data?.user?.original?.access_token;
-      if(accessToken){
+      // 2️⃣ حفظ التوكن وتسجيل المستخدم
+      const accessToken = response?.data?.data?.user?.original?.access_token;
+      if (accessToken) {
         localStorage.setItem("userType", userType);
         localStorage.setItem("access_token", accessToken);
         dispatch(authActions.setToken(accessToken));
         
-        if(userType === 'customer') {
+        if (userType === 'customer') {
           await dispatch(getPermissions());
         }
       }
 
-      if(userType === 'customer') {
+      // 3️⃣ طلب وإرسال FCM Token بعد نجاح تسجيل الدخول
+      try {
+        const fcmToken = await requestForToken();
+        if (fcmToken) {
+          await dispatch(sendFCMToken(fcmToken));
+          console.log('✅ FCM Token sent successfully after login');
+        }
+      } catch (fcmError) {
+        // عدم إيقاف عملية تسجيل الدخول في حالة فشل FCM
+        console.warn('⚠️ FCM token failed, but login successful:', fcmError);
+      }
+
+      // 4️⃣ التوجيه للصفحة المناسبة
+      if (userType === 'customer') {
         navigate("/layoutDashboard");
       } else {
         navigate("/staff_dashboard_layout");
@@ -73,6 +93,7 @@ const Login = () => {
     } catch (error) {
       console.error("Login Error:", error);
       let errorMessage = "Login failed. Please try again.";
+      
       if (error.response) {
         const status = error.response.status;
         const message = error.response.data.message;
@@ -85,15 +106,14 @@ const Login = () => {
           });
           return; 
         }
-  
-  // Handle other errors
-  if (error.response.data.errors) {
-    const firstError = Object.values(error.response.data.errors)[0]?.[0];
-    errorMessage = firstError || errorMessage;
-  } else {
-    errorMessage = message || errorMessage;
-  }
-}
+
+        if (error.response.data.errors) {
+          const firstError = Object.values(error.response.data.errors)[0]?.[0];
+          errorMessage = firstError || errorMessage;
+        } else {
+          errorMessage = message || errorMessage;
+        }
+      }
 
       setApiError(errorMessage);
     } finally {
@@ -116,13 +136,11 @@ const Login = () => {
         
         {/* Left Side - Image Section */}
         <div className="hidden lg:flex bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-700 p-12 items-center justify-center relative overflow-hidden">
-          {/* Background decorative elements */}
           <div className="absolute top-0 left-0 w-40 h-40 bg-white opacity-10 rounded-full -translate-x-20 -translate-y-20"></div>
           <div className="absolute bottom-0 right-0 w-60 h-60 bg-white opacity-5 rounded-full translate-x-20 translate-y-20"></div>
           <div className="absolute top-1/2 left-1/4 w-20 h-20 bg-yellow-300 opacity-20 rounded-full"></div>
           
           <div className="text-center text-white z-10">
-            {/* Logo/Icon */}
             <div className="mb-8">
               <div className="w-20 h-20 mx-auto bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-sm">
                 <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +159,6 @@ const Login = () => {
               Join thousands of businesses streamlining their operations.
             </p>
             
-            {/* Features list */}
             <div className="space-y-4 text-left max-w-sm mx-auto">
               {[
                 "Smart Scheduling System", 
@@ -344,17 +361,16 @@ const Login = () => {
               </button>
 
               {/* Forgot Password */}
-               <div className="text-center">
+              <div className="text-center">
                 <button
                   type="button"
                   onClick={() => 
-                        navigate("/forget-password", {
-                          state: {
-                            from: {userType},
-                          },
-                        })
-                      }
-
+                    navigate("/forget-password", {
+                      state: {
+                        from: { userType },
+                      },
+                    })
+                  }
                   className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors duration-200 hover:underline"
                 >
                   Forgot your password?
@@ -369,21 +385,19 @@ const Login = () => {
                 <button
                   type="button"
                   onClick={() => navigate("/signup")}
-                  className="w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-md flex items-center justify-center space-x-2"
-                >
+                  className="w-full bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] hover:shadow-md flex items-center justify-center space-x-2">
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                   </svg>
                   <span>Create New Account</span>
                 </button>
               </div>
-
             </form>
 
             {/* Footer */}
-             <div className="text-center  mt-8">
+            <div className="text-center mt-8">
               <p className="text-gray-600 text-sm leading-relaxed">
-                <span className="font-medium text-gray-800">© 2025 Appointroll</span>
+                <span className="font-medium text-gray-800">© 2026 Appointroll</span>
                 <span className="mx-2">•</span>
                 All Rights Reserved
               </p>

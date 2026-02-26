@@ -6,16 +6,19 @@ import axios from "axios";
 export function fetchAppointments(queryParams = {}, force = false) {
   return async (dispatch, getState) => {
     const { appointments, loading } = getState().appointments;
-
-    if (appointments && appointments.length > 0 && !force && loading) {
+    if (loading) {
       return;
     }
 
     dispatch(appointmentActions.setLoading(true));
     try {
       const searchParams = new URLSearchParams();
+      
+      searchParams.append('page', queryParams.page || 1);
+      
       Object.keys(queryParams).forEach((key) => {
         if (
+          key !== 'page' && 
           queryParams[key] !== null &&
           queryParams[key] !== undefined &&
           queryParams[key] !== ""
@@ -25,12 +28,14 @@ export function fetchAppointments(queryParams = {}, force = false) {
       });
 
       const queryString = searchParams.toString();
-      const url = queryString ? `/customer/appointments?${queryString}` : '/customer/appointments';
+      const url = `/customer/appointments?${queryString}`;
 
       const response = await axiosInstance.get(url);
 
       if (response.data) {
-        dispatch(appointmentActions.setAppointments(response.data.data));
+        
+        dispatch(appointmentActions.setAppointments(response?.data.data));
+        dispatch(appointmentActions.setPagination(response?.data.data.pagination));
         dispatch(appointmentActions.setError(null));
       }
     } catch (err) {
@@ -488,7 +493,7 @@ export function deleteAppointment(id) {
         dispatch(appointmentActions.removeAppointment(id));
         return { success: true, message: response.data.message };
       } else {
-        throw new Error(response.data.message || "فشل في حذف الموعد");
+        throw new Error(response.data.message);
       }
     } catch (error) {
       console.error("Error deleting appointment:", error);

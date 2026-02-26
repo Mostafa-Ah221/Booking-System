@@ -316,6 +316,8 @@ export default function EditRecruiters({ isOpen, onCancel, recruiterId }) {
                             enableSearch={true}
                             searchPlaceholder="Search country"
                             disabled={loading}
+                            disableCountryCode={false}
+                             countryCodeEditable={false}
                             inputProps={{
                                 name: "phone",
                                 className: "!pl-16 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50",

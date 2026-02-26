@@ -33,8 +33,10 @@ const [selectedTimeZone, setSelectedTimeZone] = useState(
   const [isInterviewsLoading, setIsInterviewsLoading] = useState(false);
 
   const dispatch = useDispatch();
+console.log(appointment);
 
- const WORKSPACE_TIMEZONE = 'Africa/Cairo';
+ const WORKSPACE_TIMEZONE = 'UTC' ;
+  console.log(clientData);
   
 
   const isRescheduleMode = mode === 'reschedule' && appointment;
@@ -129,8 +131,9 @@ console.log(appointment);
           end_time: selectedInterview?.type === "resource" ? endTime : null,
           interview_id: selectedInterview.id,
           time_zone: selectedTimeZone,
+          staff_id: clientData?.id
         };
-        result = await dispatch(createAppointment(clientData.id, scheduleData));
+        result = await dispatch(createAppointment(clientData?.id, scheduleData));
       }
 
       if (result && result.success) {
@@ -268,7 +271,7 @@ console.log(appointment);
               </div>
             </div>
 
-            {/* Time Zone */}
+    
             {/* Time Zone */}
 <div className="mb-6">
   <h3 className="text-sm font-medium text-gray-700 mb-3">Select Time Zone</h3>

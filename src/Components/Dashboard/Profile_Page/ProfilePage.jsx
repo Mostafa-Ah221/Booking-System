@@ -301,7 +301,7 @@ console.log(profile);
         {activeTab === "details" && (
           <div>
             <div className="flex flex-col sm:flex-row items-center justify-between mb-6 text-sm">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 mb-3">
                 <div 
                   className={`relative w-24 h-24 bg-indigo-100 rounded-xl flex items-center justify-center mr-2 text-indigo-700 font-bold shadow-sm overflow-hidden transition-all duration-200 ${isEditing ? 'cursor-pointer hover:bg-indigo-200' : ''}`}
                   onClick={handleImageClick}

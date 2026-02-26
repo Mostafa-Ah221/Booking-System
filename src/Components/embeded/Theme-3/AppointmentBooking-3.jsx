@@ -1,4 +1,4 @@
-import { Calendar, Clock, MapPin, User, ChevronRight, UserRound, Package, Check, Building2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, ChevronRight, UserRound, Package, Check, Building2, ArrowLeft, Wifi } from 'lucide-react';
 import logo_icon from '../../../assets/image/logo_icon.png';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Loader from '../../Loader';
@@ -9,8 +9,8 @@ import { PiBaseballCap, PiUsersThreeLight } from 'react-icons/pi';
 import BookingSummarySidebar2 from '../Theme-2/BookingSummarySidebar2';
 import CalendarSection2 from '../Theme-2/calender2';
 import TimeSelectionSection2 from '../Theme-2/time2';
-import { Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
-import { FaUserTie } from 'react-icons/fa';
+import { FaBuilding, FaHome, FaUserTie } from 'react-icons/fa';
+import BookingFooter from '../BookingFooter';
 
 const AppointmentBooking_3 = () => {
   const { id, idAdmin, idCustomer, idSpace } = useParams();
@@ -345,11 +345,12 @@ useEffect(() => {
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex" >
-      {/* ═══════════════════════════════════════════════════════════════════════ */}
+    <div className="min-h-screen flex flex-col md:flex-row" >
+      {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* LEFT SIDEBAR */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="w-1/3 flex flex-col border-r border-gray-100 border-opacity-10" style={{ background: secondColor, color: "white" }}>
+      <div className="relative w-[100%]  md:w-1/4 flex flex-col border-r border-gray-500 border-opacity-10 " style={{ background: secondColor, color: "white" }}>
+       <div className="absolute inset-0 bg-black/5 pointer-events-none" />
         {/* Logo and Name */}
         <div className="p-6">
           <div className="flex items-center gap-3 mb-6">
@@ -360,120 +361,103 @@ useEffect(() => {
               <h1 className="text-lg font-bold" style={{color:textColor}}>{theme?.nickname}</h1>
             )}
           </div>
-          {theme?.show_page_description === '1' && theme?.page_description && (
-            <p className="text-sm" style={{color:textColor}}>{theme?.page_description}</p>
-          )}
+          
           {/* Staff Profile (Show selected staff or first available) */}
            <div className="flex flex-col items-center">
-                      <div className="w-20 mt-24 h-20 md:w-32 md:h-32 bg-white  rounded-full mb-4 flex items-center justify-center">      
-                        <FaUserTie className="w-10 h-10 md:w-16 md:h-16 text-gray-400" />
-                      </div>
-                      <h2 className="text-lg md:text-xl" style={{color:textColor}}>{theme?.customer_name}</h2>
-                    </div>
+              <div className="w-20 mt-10 md:mt-24 h-20 md:w-28 md:h-28 bg-white rounded-3xl mb-4 flex items-center justify-center overflow-hidden">
+                
+                {theme?.customer_photo ? (
+                  <img
+                    src={theme.customer_photo}
+                    alt={theme?.customer_name || "Customer"}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <FaUserTie className="w-10 h-10 md:w-16 md:h-16 text-gray-400" />
+                )}
+
+              </div>
+
+              <h2 className="text-lg text-center" style={{ color: textColor }}>
+                {theme?.customer_name}
+              </h2>
+            </div>
+
         </div>
 
-        {/* Footer - Spacer to push to bottom */}
-        <div className="mt-auto p-6">
-          <div className="text-center space-y-4">
-            {hasAnySocial && (
-              <div className="flex gap-3 items-center justify-center flex-wrap">
-                {theme?.show_facebook === "1" && theme?.footer_facebook && (
-                  <>
-                    <a 
-                      href={theme.footer_facebook} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="hover:opacity-70 transition-opacity"
-                      style={{color:textColor}}
-                    >
-                      <Facebook className="w-4 h-4" />
-                    </a>
-                    <span className="text-xs">|</span>
-                  </>
-                )}
-                
-                {theme?.show_email === "1" && theme?.footer_email && (
-                    <>
-                        <a 
-                            href={`mailto:${theme.footer_email}`} 
-                            className="hover:opacity-70 transition-opacity"
-                             style={{color:textColor}}
-                        >
-                            <Mail className="w-4 h-4" />
-                        </a>
-                        <span className="text-xs">|</span>
-                    </>
-                )}
-                
-                {theme?.show_phone === "1" && theme?.footer_phone && (
-                    <>
-                        <a 
-                            href={`tel:${theme.footer_phone}`} 
-                            className="hover:opacity-70 transition-opacity"
-                            style={{color:textColor}}
-                        >
-                            <Phone className="w-4 h-4" />
-                        </a>
-                        <span className="text-xs">|</span>
-                    </>
-                )}
-                
-                {theme?.show_x === "1" && theme?.footer_x && (
-                    <>
-                        <a 
-                            href={theme.footer_x} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="hover:opacity-70 transition-opacity"
-                            style={{color:textColor}}
-                        >
-                            <Twitter className="w-4 h-4" />
-                        </a>
-                        <span className="text-xs">|</span>
-                    </>
-                )}
-                
-                {theme?.show_instagram === "1" && theme?.footer_instagram && (
-                    <>
-                        <a 
-                            href={theme.footer_instagram} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="hover:opacity-70 transition-opacity"
-                            style={{color:textColor}}
-                        >
-                            <Instagram className="w-4 h-4" />
-                        </a>
-                        <span className="text-xs">|</span>
-                    </>
-                )}
-                
-                {theme?.show_linkedin === "1" && theme?.footer_linkedin && (
-                    <>
-                        <a 
-                            href={theme.footer_linkedin} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="hover:opacity-70 transition-opacity"
-                            style={{color:textColor}}
-                        >
-                            <Linkedin className="w-4 h-4" />
-                        </a>
-                        <span className="text-xs">|</span>
-                    </>
-                )}
-              </div>
-            )}
-            <div className="text-xs opacity-80" style={{color:textColor}}>Powered by Appoint Roll</div>
-          </div>
-        </div>
+      {/* footer */}
+<BookingFooter theme={theme} textColor={textColor} />
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {/* MAIN CONTENT */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 p-8 overflow-y-auto" style={{background:`${secondColor}E6`}}>
+      <div className="flex-1 p-4 overflow-y-auto pb-12" style={{background:`${secondColor}E6`}}>
+        <div className='flex items-center gap-5'>
+        <div
+            title="Back"
+            onClick={() => {
+              if (currentStep === 1) return; 
+
+              const prevStep = steps.find(
+                (s) => s.step === currentStep - 1
+              );
+              if (prevStep) setCurrentStep(prevStep.step);
+            }}
+            className={`
+              mb-5 rounded-lg w-11 h-11 flex items-center justify-center
+              transition-all
+              ${
+                currentStep === 1
+                  ? 'bg-black/20 cursor-not-allowed'
+                  : 'bg-black/30 cursor-pointer hover:bg-black/40'
+              }
+            `}
+          >
+            <ArrowLeft
+              size={30}
+              color={currentStep === 1 ? '#9CA3AF' : '#FFFFFF'}
+            />
+          </div>
+           <div className="mb-6">
+            {steps.filter(s => s.value && s.step < currentStep).length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap px-4 py-1.5 rounded-lg" 
+                  style={{ background: firstColor + '10' }}>
+                {steps
+                  .filter(s => s.value && s.step < currentStep)
+                  .map((step, index, array) => (
+                    <div key={step.key} className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-md"
+                          style={{ background: secondColor, color: textColor }}>
+                        <step.icon className="w-4 h-4" style={{ color: firstColor }} />
+                        <span className="text-sm font-medium">{step.value}</span>
+                      </div>
+                      {index < array.length - 1 && (
+                        <ChevronRight className="w-4 h-4" style={{ color: firstColor }} />
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+        
         <div className="max-w-5xl mx-auto">
+          {theme?.show_page_title === '1' && theme?.page_title && (
+            <p className="mb-2 text-2xl text-center font-semibold" style={{color:textColor}}>{theme?.page_title}</p>
+          )}
+          {theme?.show_page_description === '1' && (() => {
+              const interviewStep = steps.find((s) => s.key === 'interview')?.step;
+              const showInterviewDesc = interviewStep && currentStep >= interviewStep && selectedInterview?.page_description;
+              const description = showInterviewDesc ? selectedInterview.page_description : theme?.page_description;
+              
+              return description && (
+                <p className="text-sm mb-4 text-center" style={{color:textColor}}>
+                  {description}
+                </p>
+              );
+            })()}
 
           {/* ────────────────────────────────────────────────────────────────── */}
           {/* Step 0: Workspace Selection (if idAdmin) */}
@@ -512,7 +496,7 @@ useEffect(() => {
                         <div className={`flex-1 flex justify-between border-b border-gray-50 ${
                         selectedWorkspace?.id === workspace.id ? ' border-opacity-30' : ' border-opacity-10'
                       }`}>
-                          <h3 className=" mb-7 truncate block max-w-[150px]" style={{ color: selectedWorkspace?.id === workspace.id ? firstColor : textColor,}}>{workspace.name}</h3>
+                          <h3 className=" mb-7 line-clamp-5 break-words max-w-[150px] md:max-w-[200px]" style={{ color: selectedWorkspace?.id === workspace.id ? firstColor : textColor,}}>{workspace.name}</h3>
                           {workspace.description && (
                             <p className="text-sm text-gray-600">{workspace.description}</p>
                           )}
@@ -540,7 +524,7 @@ useEffect(() => {
                 </h2>
 
                 {interviewsLoading ? (
-                <div className="text-center py-12"><Loader /></div>
+                <div className="text-center py-12 my-auto"><Loader /></div>
                 ) : interviews?.length > 0 ? (
                 <div className="space-y-4">
                     {interviews.map((interview) => (
@@ -568,7 +552,7 @@ useEffect(() => {
                             borderOpacity: selectedInterview?.id === interview.id ? 0.3 : 0.1
                         }}>
                             <div className="mb-7">
-                            <h3 className='truncate  max-w-[150px]' style={{ color: selectedInterview?.id === interview.id ? firstColor : textColor }}>
+                            <h3 className='line-clamp-5 break-words' style={{ color: selectedInterview?.id === interview.id ? firstColor : textColor }}>
                             {interview.name}
                             </h3>
                             {interview.duration_cycle && (
@@ -676,7 +660,7 @@ useEffect(() => {
                             </div>
                         )}
                         <div className="flex-1 flex justify-between border-b">
-                            <h3 className="w-full font-semibold  pb-5 truncate  max-w-[150px]" style={{ color: selectedStaff?.id === staff.id ? firstColor : textColor }}>
+                            <h3 className="w-full font-semibold  pb-5 line-clamp-5 break-words" style={{ color: selectedStaff?.id === staff.id ? firstColor : textColor }}>
                             {staff.name}
                             </h3>
                                 {selectedStaff?.id === staff.id && (
@@ -726,7 +710,7 @@ useEffect(() => {
                         </div>
                         <div className="flex-1 flex justify-between border-b border-gray-50" style={{ borderOpacity: selectedResource?.id === resource.id ? 0.3 : 0.1 }}>
                         <div className="mb-7">
-                            <h3 className='truncate  max-w-[150px]' style={{ color: selectedResource?.id === resource.id ? firstColor : textColor }}>
+                            <h3 className='line-clamp-5 break-words' style={{ color: selectedResource?.id === resource.id ? firstColor : textColor }}>
                             {resource.name}
                             </h3>
                             {resource.description && (
@@ -748,50 +732,77 @@ useEffect(() => {
 
             {/* ────────────── Type Selection ────────────── */}
             {currentStep === steps.find((s) => s.key === 'type')?.step && bookingData?.mode === 'online/inperson' && (
-            <div className="space-y-6">
-                <h2 className="text-2xl font-bold mb-6" style={{ color: firstColor }}>
-                Select Type
-                </h2>
+           <div className="space-y-6">
+  <h2
+    className="text-2xl font-bold mb-6"
+    style={{ color: firstColor }}
+  >
+    Select Type
+  </h2>
 
-                <div className="space-y-4">
-                {[
-                    { value: 'online', label: 'Online' },
-                    { value: 'inhouse', label: 'In House' },
-                    { value: 'athome', label: 'At Home' },
-                ].map((type) => (
-                    <div
-                    key={type.value}
-                    className="mx-2 p-6 cursor-pointer transition-all hover:shadow-md"
-                    style={{
-                        background: selectedType === type.value ? firstColor + "20" : "transparent",
-                        borderRadius: '0.5rem',
-                    }}
-                    onClick={() => setSelectedType(type.value)}
-                    >
-                    <div className="flex items-center gap-4">
-                        <div
-                        className="w-12 h-12 border rounded-lg flex items-center justify-center font-semibold text-lg"
-                        style={{
-                            background: 'transparent',
-                            color: selectedType === type.value ? firstColor : textColor,
-                            border: '1px solid ' + textColor,
-                        }}
-                        >
-                        {type.value === 'online' ? 'O' : type.value === 'inhouse' ? 'IH' : 'AH'}
-                        </div>
-                        <div className="flex-1 flex justify-between border-b border-gray-50" style={{ borderOpacity: selectedType === type.value ? 0.3 : 0.1 }}>
-                        <h3 style={{ color: selectedType === type.value ? firstColor : textColor }}>
-                            {type.label}
-                        </h3>
-                        {selectedType === type.value && (
-                            <Check className="w-5 h-5" style={{ color: firstColor }} />
-                        )}
-                        </div>
-                    </div>
-                    </div>
-                ))}
-                </div>
+  <div className="space-y-4">
+    {[
+      { value: "online", label: "Online", icon: Wifi },
+      { value: "inhouse", label: "In House", icon: FaBuilding },
+      { value: "athome", label: "At Home", icon: FaHome },
+    ].map((type) => {
+      const Icon = type.icon;
+
+      return (
+        <div
+          key={type.value}
+          className="mx-2 p-6 cursor-pointer transition-all hover:shadow-md"
+          style={{
+            background:
+              selectedType === type.value
+                ? firstColor + "20"
+                : "transparent",
+            borderRadius: "0.5rem",
+          }}
+          onClick={() => setSelectedType(type.value)}
+        >
+          <div className="flex items-center gap-4">
+            {/* Icon Box */}
+            <div
+              className="w-12 h-12 border rounded-lg flex items-center justify-center"
+              style={{
+                color:
+                  selectedType === type.value
+                    ? firstColor
+                    : textColor,
+                border: "1px solid " + textColor,
+              }}
+            >
+              <Icon size={22} />
             </div>
+
+            {/* Label + Check */}
+            <div className="flex-1 flex justify-between items-center border-b border-gray-50">
+              <h3
+                style={{
+                  color:
+                    selectedType === type.value
+                      ? firstColor
+                      : textColor,
+                }}
+              >
+                {type.label}
+              </h3>
+
+              {selectedType === type.value && (
+                <Check
+                  className="w-5 h-5"
+                  style={{ color: firstColor }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</div>
+
             )}
 
 
@@ -889,54 +900,71 @@ useEffect(() => {
           {/* ────────────────────────────────────────────────────────────────── */}
           {/* Navigation Buttons */}
           {/* ────────────────────────────────────────────────────────────────── */}
-          <div className="mt-8 flex justify-between items-center">
-            {currentStep > 1 && (
-              <button
-                onClick={() => {
-                  const prevStep = steps.find((s) => s.step === currentStep - 1);
-                  if (prevStep) setCurrentStep(prevStep.step);
-                }}
-                className="px-6 py-2 rounded-lg border transition-all hover:shadow-md"
-                style={{
-                  borderColor: firstColor,
-                  color: firstColor,
-                }}
-              >
-                Previous
-              </button>
-            )}
-            
-            {currentStep < steps.length && (
-              <button
-                onClick={goToNextStep}
-                disabled={!canGoToStep(currentStep + 1)}
-                className="px-6 py-2 rounded-lg transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
-                style={{
-                  background: firstColor,
-                  color: textColor,
-                }}
-              >
-                Next
-              </button>
-            )}
-          </div>
+          {/* Navigation Buttons - Fixed at bottom with Progress in center */}
+            <div   
+              className={`fixed left-0 right-0 bottom-0 p-4 transition-all duration-500 ease-out ${
+                canGoToStep(currentStep + 1) 
+                  ? 'translate-y-0 opacity-100' 
+                  : 'translate-y-full opacity-0 pointer-events-none'
+              }`}
+              style={{
+                background: `linear-gradient(to top, ${secondColor || '#ffffff'} 80%, transparent)`,
+                zIndex: 50
+              }}
+            >
+              <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+                {/* Previous Button or Empty Space */}
+                {currentStep > 1 ? (
+                  <button
+                    onClick={() => {
+                      const prevStep = steps.find((s) => s.step === currentStep - 1);
+                      if (prevStep) setCurrentStep(prevStep.step);
+                    }}
+                    className="px-3 py-2  border transition-all hover:shadow-lg hover:scale-105"
+                    style={{
+                      borderColor: firstColor,
+                      color: firstColor,
+                      background: secondColor || '#ffffff'
+                    }}
+                  >
+                    Previous
+                  </button>
+                ) : (
+                  <div className="w-24"></div>
+                )}
 
-          {/* ────────────────────────────────────────────────────────────────── */}
-          {/* Progress Indicator */}
-          {/* ────────────────────────────────────────────────────────────────── */}
-          <div className="mt-8 flex items-center justify-center gap-2">
-            {steps.map((step) => (
-              <div
-                key={step.key}
-                className={`h-2 rounded-full transition-all ${
-                  step.step === currentStep ? 'w-8' : 'w-2'
-                }`}
-                style={{
-                  background: step.step <= currentStep ? firstColor : '#e5e7eb',
-                }}
-              />
-            ))}
-          </div>
+                {/* Progress Indicator in Center */}
+                <div className="flex items-center justify-center gap-2 flex-1">
+                  {steps.map((step) => (
+                    <div
+                      key={step.key}
+                      className={`h-2 rounded-full transition-all ${
+                        step.step === currentStep ? 'w-8' : 'w-2'
+                      }`}
+                      style={{
+                        background: step.step <= currentStep ? firstColor : '#e5e7eb',
+                      }}
+                    />
+                  ))}
+                </div>
+                
+                {/* Next Button */}
+                {currentStep < steps.length && (
+                  <button
+                    onClick={goToNextStep}
+                    disabled={!canGoToStep(currentStep + 1)}
+                    className="px-6 py-2 border transition-all hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    style={{
+                      borderColor: firstColor,
+                      color: firstColor,
+                      background: secondColor || '#ffffff'
+                    }}
+                  >
+                    Next
+                  </button>
+                )}
+              </div>
+            </div>
         </div>
       </div>
     </div>

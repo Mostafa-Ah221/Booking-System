@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Facebook, Instagram, Twitter, Linkedin, Phone, Mail } from 'lucide-react';
-import { FaUserTie } from "react-icons/fa";
+import { FaSnapchat, FaUserTie } from "react-icons/fa";
 import { CiUser } from "react-icons/ci";
-import { transform } from 'framer-motion';
-
-const ThemeBody = ({ layout = 'default', themeColor, header, pageProperties, footer }) => {
+import { RiSnapchatLine } from "react-icons/ri";
+import { PiTiktokLogoLight } from "react-icons/pi";
+import { FaXTwitter } from 'react-icons/fa6';
+import { MdWhatsapp } from 'react-icons/md';
+const ThemeBody = ({ layout = 'default', themeColor, header, pageProperties, footer,themeData }) => {
   const [selectedDate, setSelectedDate] = useState('25');
   const [selectedTime, setSelectedTime] = useState('09:00 am');
   
@@ -43,81 +45,107 @@ console.log(themeColor);
       textColor = firstColor;
     }
   }
-function invertColor(hex) {
-  hex = hex.replace('#','');
-
-  let r = (255 - parseInt(hex.substring(0, 2), 16)).toString(16).padStart(2, '0');
-  let g = (255 - parseInt(hex.substring(2, 4), 16)).toString(16).padStart(2, '0');
-  let b = (255 - parseInt(hex.substring(4, 6), 16)).toString(16).padStart(2, '0');
-
-  return `#${r}${g}${b}`;
-}
 
   // Footer Component
-  const FooterSection = () => (
-    <div className="mt-8 pt-6 border-t">
-      <div className="flex flex-wrap gap-1 justify-center items-center">
-        {footer?.visibleFacebook && footer?.facebook && (
-          <>
-            <a href={footer.facebook} target="_blank" rel="noopener noreferrer" 
-               className="text-gray-600 hover:text-indigo-600 transition-colors">
-              <Facebook className="w-4 h-4" />
-            </a>
-            <span>|</span>
-          </>
-        )}
-        
-        {footer?.visibleInstagram && footer?.instagram && (
-          <> 
-            <a href={footer.instagram} target="_blank" rel="noopener noreferrer"
-              className="text-gray-600 hover:text-indigo-600 transition-colors">
-              <Instagram className="w-4 h-4" />
-            </a>
-            <span>|</span>
-          </>
-        )}
-        
-        {footer?.visibleX && footer?.x && (
-          <>
-            <a href={footer.x} target="_blank" rel="noopener noreferrer"
-              className="text-gray-600 hover:text-indigo-600 transition-colors">
-              <Twitter className="w-4 h-4" />
-            </a>
-            <span>|</span>
-          </>
-        )}
-        
-        {footer?.visibleLinkedin && footer?.linkedin && (
-          <>
-            <a href={footer.linkedin} target="_blank" rel="noopener noreferrer"
-              className="text-gray-600 hover:text-indigo-600 transition-colors">
-              <Linkedin className="w-4 h-4" />
-            </a>
-            <span>|</span>
-          </>
-        )}
-        
-        {footer?.visiblePhone && footer?.phone && (
-          <>
-            <a href={`tel:${footer.phone}`}
-              className="text-gray-600 hover:text-indigo-600 transition-colors flex items-center gap-1">
-              <Phone className="w-4 h-4"/>
-              <span className="text-sm">{footer.phone}</span>
-            </a>
-            <span>|</span>
-          </>
-        )}
-        
-        {footer?.visibleEmail && footer?.email && (
-          <a href={`mailto:${footer.email}`}
-             className="text-gray-600 hover:text-indigo-600 transition-colors flex items-center gap-1">
-            <Mail className="w-4 h-4" />
+const FooterSection = () => (
+  <div className="p-6 block md:relative bottom-0 left-0 md:left-[4%] w-[100%] ">
+    <div className="flex flex-wrap gap-1 justify-center items-center">
+      {footer?.visibleFacebook && footer?.facebook && (
+        <>
+          <a href={footer.facebook} target="_blank" rel="noopener noreferrer" 
+             className="text-gray-600 hover:text-indigo-600 transition-colors">
+            <Facebook className="w-4 h-4" style={{color:textColor}} />
           </a>
-        )}
-      </div>
-      <p className='text-xs text-center' style={{ color: "black" }}>Powered by Appoint Roll</p>
+          <span style={{color:textColor}}>|</span>
+        </>
+      )}
+      
+      {footer?.visibleInstagram && footer?.instagram && (
+        <> 
+          <a href={footer.instagram} target="_blank" rel="noopener noreferrer"
+            className="text-gray-600 hover:text-indigo-600 transition-colors">
+            <Instagram className="w-4 h-4" style={{color:textColor}} />
+          </a>
+          <span style={{color:textColor}}>|</span>
+        </>
+      )}
+      
+      {footer?.visibleX && footer?.x && (
+        <>
+          <a href={footer.x} target="_blank" rel="noopener noreferrer"
+            className="text-gray-600 hover:text-indigo-600 transition-colors">
+            <FaXTwitter className="w-4 h-4" style={{color:textColor}} />
+          </a>
+          <span style={{color:textColor}}>|</span>
+        </>
+      )}
+      
+      {footer?.visibleLinkedin && footer?.linkedin && (
+        <>
+          <a href={footer.linkedin} target="_blank" rel="noopener noreferrer"
+            className="text-gray-600 hover:text-indigo-600 transition-colors">
+            <Linkedin className="w-4 h-4" style={{color:textColor}} />
+          </a>
+          <span style={{color:textColor}}>|</span>
+        </>
+      )}
+      
+      {/* TikTok - جديد */}
+      {footer?.visibleTiktok && footer?.tiktok && (
+        <>
+          <a href={footer.tiktok} target="_blank" rel="noopener noreferrer"
+            className="text-gray-600 hover:text-indigo-600 transition-colors">
+            <PiTiktokLogoLight className="w-4 h-4" style={{color:textColor}} />
+          </a>
+          <span style={{color:textColor}}>|</span>
+        </>
+      )}
+      
+      {/* Snapchat -  */}
+      {footer?.visibleSnapchat && footer?.snapchat && (
+        <>
+          <a href={footer.snapchat} target="_blank" rel="noopener noreferrer"
+            className="text-gray-600 hover:text-indigo-600 transition-colors">
+            <RiSnapchatLine className="w-4 h-4" style={{color:textColor}} />
+          </a>
+          <span style={{color:textColor}}>|</span>
+        </>
+      )}
+      {/* WhatsApp -  */}
+{footer?.visibleWhatsapp && footer?.whatsapp && (
+  <>
+    <a 
+      href={`https://wa.me/${footer.whatsapp.replace(/[^0-9]/g, '')}`} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="text-gray-600 hover:text-indigo-600 transition-colors"
+    >
+      <MdWhatsapp style={{ color: textColor }} className="w-4 h-4"/>
+    </a>
+    <span style={{ color: textColor }}>|</span>
+  </>
+)}
+      {footer?.visiblePhone && footer?.phone && (
+        <>
+          <a href={`tel:${footer.phone}`}
+            className="text-gray-600 hover:text-indigo-600 transition-colors flex items-center gap-1">
+            <Phone className="w-4 h-4" style={{color:textColor}} />
+            <span className="text-sm" style={{color:textColor}}>{footer.phone}</span>
+          </a>
+          <span style={{color:textColor}}>|</span>
+        </>
+      )}
+      
+      {footer?.visibleEmail && footer?.email && (
+        <a href={`mailto:${footer.email}`}
+           className="text-gray-600 hover:text-indigo-600 transition-colors flex items-center gap-1">
+          <Mail className="w-4 h-4" style={{color:textColor}} />
+        </a>
+      )}
     </div>
-  );
+    <p className='text-xs text-center' style={{color:textColor}}>Powered by Appoint Roll</p>
+  </div>
+);
 
   if (layout === 'sleek') {
     return (
@@ -142,15 +170,19 @@ function invertColor(hex) {
                     </div>
                   )}
             {header?.visibleTitle && (
-              <h1 className="text-xl md:text-xl font-semibold mb-4 md:mb-8">{header.title}</h1>
+              <h1 style={{color:textColor}} className="text-xl md:text-xl font-semibold mb-4 md:mb-8">{header.title}</h1>
             )}
           </div>
           <div className="flex flex-col items-center">
             <div className="w-20 h-20 md:w-32 md:h-32 bg-white rounded-full mb-4 flex items-center justify-center">      
               <FaUserTie className="w-10 h-10 md:w-16 md:h-16 text-gray-400" />
             </div>
-            <h2 className="text-lg md:text-xl">Kris Marrier</h2>
+            <h2 className="text-lg md:text-xl"
+            style={{color:textColor}}
+            >{themeData?.customer_name}</h2>
           </div>
+           {/* Footer */}
+            <FooterSection />
         </div>
 
         {/* Main Content */}
@@ -161,7 +193,9 @@ function invertColor(hex) {
         >
           <div className="max-w-xl mx-auto">
             {pageProperties?.visibleTitle && (
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">{pageProperties.title}</h1>
+              <h1 
+                style={{color:textColor}}  
+              className="text-2xl md:text-3xl font-bold mb-2 text-center">{pageProperties.title}</h1>
             )}
             {pageProperties?.visibleDescription && (
               <div 
@@ -200,7 +234,7 @@ function invertColor(hex) {
                     <button className="p-1  rounded" >
                       <ChevronLeft className="w-5 h-5"  style={{color:textColor}}/>
                     </button>
-                    <span className="font-medium" style={{color:textColor}}>February 2025</span>
+                    <span className="font-medium" style={{color:textColor}}>February 2026</span>
                     <button className="p-1  rounded">
                       <ChevronRight className="w-5 h-5"  style={{color:textColor}}/>
                     </button>
@@ -258,8 +292,7 @@ function invertColor(hex) {
               </div>
             </div>
 
-            {/* Footer */}
-            <FooterSection />
+           
           </div>
         </div>
       </div>
@@ -343,7 +376,7 @@ function invertColor(hex) {
             className="text-sm md:text-base font-medium mb-3 md:mb-4"
             style={{ color: textColor }}
           >
-            25 Feb 2025 | 09:00 am
+            25 Feb 2026 | 09:00 am
           </p>
         </div>
 
@@ -353,7 +386,7 @@ function invertColor(hex) {
               <button className="p-1 hover:bg-gray-100 rounded">
                 <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
               </button>
-              <span className="text-sm md:text-base font-medium">February 2025</span>
+              <span className="text-sm md:text-base font-medium">February 2026</span>
               <button className="p-1 hover:bg-gray-100 rounded">
                 <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
               </button>

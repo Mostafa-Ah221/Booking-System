@@ -31,35 +31,37 @@ export const convertDateTimeWithTimezone = (dateStr, timeStr, fromTimezone, toTi
     const isoDate = convertDateToISO(dateStr);
     if (!isoDate) return { date: dateStr, time: timeStr };
 
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const correctDate = new Date(isoDate + 'T00:00:00');
-    correctDate.setHours(hours, minutes, 0, 0);
-    
-    const toFormatter = new Intl.DateTimeFormat('en-CA', {
+    const utcDateTimeStr = `${isoDate}T${timeStr}Z`; 
+
+    const date = new Date(utcDateTimeStr);
+
+    if (isNaN(date.getTime())) {
+      return { date: dateStr, time: timeStr };
+    }
+
+    const formatter = new Intl.DateTimeFormat('en-GB', {
       timeZone: toTimezone,
       year: 'numeric',
-      month: '2-digit',
+      month: 'short',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
     });
 
-    const toParts = toFormatter.formatToParts(correctDate);
-    
-    const year = toParts.find(p => p.type === 'year')?.value;
-    const month = toParts.find(p => p.type === 'month')?.value;
-    const day = toParts.find(p => p.type === 'day')?.value;
-    const hour = toParts.find(p => p.type === 'hour')?.value || '00';
-    const minute = toParts.find(p => p.type === 'minute')?.value || '00';
+    const parts = formatter.formatToParts(date);
 
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const newDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
-    const newTime = `${hour}:${minute}`;
+    const partMap = parts.reduce((acc, part) => {
+      acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+    const newDate = `${partMap.day} ${partMap.month} ${partMap.year}`;
+    const newTime = `${partMap.hour.padStart(2, '0')}:${partMap.minute.padStart(2, '0')}:00`;
 
     return { date: newDate, time: newTime };
   } catch (err) {
-    console.error('❌ Conversion failed:', err);
+    console.error('Conversion failed:', err);
     return { date: dateStr, time: timeStr };
   }
 };

@@ -353,7 +353,7 @@ const IndustriesPage = () => {
       <div className="border-t border-gray-200 py-8">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p className="text-gray-500 text-sm">
-            © 2025 Appoint Roll. All rights reserved.
+            © 2026 Appoint Roll. All rights reserved.
           </p>
         </div>
       </div>

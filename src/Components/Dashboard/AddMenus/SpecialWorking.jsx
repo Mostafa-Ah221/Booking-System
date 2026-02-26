@@ -5,8 +5,8 @@ const SpecialWorking = ({ isOpen, onClose }) => {
   const [type, setType] = useState('Business');
   const [isAllDay, setIsAllDay] = useState(false);
   const [reason, setReason] = useState('');
-  const [fromDate, setFromDate] = useState('13-Feb-2025');
-  const [toDate, setToDate] = useState('13-Feb-2025');
+  const [fromDate, setFromDate] = useState('13-Feb-2026');
+  const [toDate, setToDate] = useState('13-Feb-2026');
 
   const handleSubmit = (e) => {
     e.preventDefault();

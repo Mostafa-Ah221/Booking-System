@@ -6,9 +6,11 @@ import { getWorkspace } from '../../../../../redux/apiCalls/workspaceCallApi';
 import { usePermission } from "../../../../hooks/usePermission";
 import InterviewDetailsEdit from './InterviewDetailsEdit';
 import InterviewDetailsShow from './InterviewDetailsShow';
+import Loader from '../../../../Loader';
 
 const InterviewDetails = () => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // أضفنا state جديد
   const navigate = useNavigate();
 
   const { id } = useOutletContext();
@@ -22,19 +24,25 @@ const InterviewDetails = () => {
   useEffect(() => {
     if (!id) return;
     
-    if (id === prevIdRef.current) return;
+    // لو الـ ID اتغير، نشغل الـ loading
+    if (id !== prevIdRef.current) {
+      setIsInitialLoading(true);
+    }
     
     if (fetchTimeoutRef.current) {
       clearTimeout(fetchTimeoutRef.current);
     }
     
-    fetchTimeoutRef.current = setTimeout(() => {
+    fetchTimeoutRef.current = setTimeout(async () => {
       prevIdRef.current = id;
-      dispatch(getWorkspace());
-      dispatch(editInterviewById(id));
+      await Promise.all([
+        dispatch(getWorkspace()),
+        dispatch(editInterviewById(id))
+      ]);
+      // بعد ما الـ data ترجع، نوقف الـ loading
+      setIsInitialLoading(false);
     }, 300); 
     
-    // Cleanup
     return () => {
       if (fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current);
@@ -56,17 +64,12 @@ const InterviewDetails = () => {
     navigate('/layoutDashboard/interviews');
   };
 
-  if (!loading && !interview) {
+  // نعرض الـ Loader لو احنا في الـ initial loading أو لو مفيش interview
+  if (isInitialLoading || loading || !interview) {
     return (
       <div className="min-h-screen bg-gray-50 flex justify-center items-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Loading Interview...</p>
-          <button 
-            onClick={handleBack}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Back to Interview
-          </button>
+        <div className="flex items-center justify-center py-20">
+          <Loader />
         </div>
       </div>
     );

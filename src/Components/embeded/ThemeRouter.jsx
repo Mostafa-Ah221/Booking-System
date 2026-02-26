@@ -76,8 +76,11 @@ console.log(id);
   if (theme === 'theme1') {
     return <AppointmentBooking2 />;
   }
-  if (theme === 'theme3') {
-    return <AppointmentBooking_4 />;
+  // if (theme === 'theme3') {
+  //   return <AppointmentBooking_4 />;
+  // }
+  if (theme === 'theme2') {
+    return <AppointmentBooking />;
   }
 
   if (theme === 'theme5') {

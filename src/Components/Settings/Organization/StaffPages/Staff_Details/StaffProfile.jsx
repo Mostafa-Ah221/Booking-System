@@ -28,7 +28,7 @@ export default function StaffProfile({ staff: staffResponse }) {
   const [formData, setFormData] = useState({
     name: staff?.name || '',
     email: staff?.email || '',
-    code_phone: staff?.code_phone || '+20',
+    code_phone: staff?.code_phone || '',
     phone: staff?.phone || '',
     status: staff?.status || 1,
     over_time: staff?.over_time !== undefined ? staff?.over_time : 1,
@@ -110,7 +110,7 @@ export default function StaffProfile({ staff: staffResponse }) {
     setFormData({
       name: staff?.name || '',
       email: staff?.email || '',
-      code_phone: staff?.code_phone || '+20',
+      code_phone: staff?.code_phone || '',
       phone: staff?.phone || '',
       status: staff?.status || 1,
       over_time: staff?.over_time !== undefined ? staff?.over_time : 1,
@@ -131,7 +131,7 @@ export default function StaffProfile({ staff: staffResponse }) {
     setFormData({
       name: staff?.name || '',
       email: staff?.email || '',
-      code_phone: staff?.code_phone || '+20',
+      code_phone: staff?.code_phone || '',
       phone: staff?.phone || '',
       status: staff?.status || 1,
       over_time: staff?.over_time !== undefined ? staff?.over_time : 1,
@@ -240,11 +240,11 @@ export default function StaffProfile({ staff: staffResponse }) {
       <div className="flex flex-col items-center justify-center w-full h-full">
         {isEditing ? (
           <>
-            <IoIosCamera className="text-3xl mb-1 text-blue-600" />
-            <div className="text-xs text-center text-blue-600 font-medium">Add Photo</div>
+            <IoIosCamera className="text-2xl sm:text-3xl mb-1 text-blue-600" />
+            <div className="text-xs text-center text-blue-600 font-medium px-2">Add Photo</div>
           </>
         ) : (
-          <User className="w-8 h-8 text-gray-400" />
+          <User className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
         )}
       </div>
     );
@@ -253,21 +253,21 @@ export default function StaffProfile({ staff: staffResponse }) {
   // If no staff data after extraction
   if (!staff) {
     return (
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <p className="text-gray-500 text-center">No recruiter data available</p>
+      <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+        <p className="text-gray-500 text-center text-sm sm:text-base">No recruiter data available</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
       {/* Staff Info Card */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-6">
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
             {/* Avatar */}
             <div
-              className={`relative w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden ${
+              className={`relative w-14 h-14 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 ${
                 isEditing ? 'cursor-pointer hover:opacity-80' : ''
               }`}
               onClick={handleImageClick}
@@ -276,39 +276,43 @@ export default function StaffProfile({ staff: staffResponse }) {
             </div>
 
             {/* Name, Email, Role */}
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h2 className="text-xl font-semibold text-gray-900 truncate block max-w-[150px]">{staff?.name}</h2>
-                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-1">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900  truncate max-w-[200px]">
+                  {staff?.name}
+                </h2>
+                <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 sm:px-3 py-1 rounded-full w-fit">
                   {staff?.role || 'Recruiter'}
                 </span>
               </div>
-              <p className="text-gray-600">{staff?.email}</p>
+              <p className="text-sm sm:text-base text-gray-600 truncate">{staff?.email}</p>
             </div>
           </div>
 
           {/* Edit/Save/Cancel Buttons */}
           {!isEditing ? (
-            canEditStaff && (<button
-              onClick={handleEditClick}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Edit className="w-4 h-4" />
-              Edit
-            </button>) 
+            canEditStaff && (
+              <button
+                onClick={handleEditClick}
+                className="flex items-center justify-center gap-2 text-gray-600 hover:text-gray-800 font-medium px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto text-sm sm:text-base"
+              >
+                <Edit className="w-4 h-4" />
+                Edit
+              </button>
+            ) 
           ) : (
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               <button
                 onClick={handleSaveClick}
                 disabled={loading}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
               >
                 <Save className="w-4 h-4" />
                 {loading ? 'Saving...' : 'Save'}
               </button>
               <button
                 onClick={handleCancelClick}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-800 font-medium px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-gray-600 hover:text-gray-800 font-medium px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
               >
                 <X className="w-4 h-4" />
                 Cancel
@@ -317,18 +321,18 @@ export default function StaffProfile({ staff: staffResponse }) {
           )}
         </div>
         {getErrorMessage('photo') && (
-          <p className="text-red-500 text-sm mt-1">{getErrorMessage('photo')}</p>
+          <p className="text-red-500 text-xs sm:text-sm mt-1">{getErrorMessage('photo')}</p>
         )}
       </div>
 
       {/* Personal Information */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Personal Information</h3>
+      <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Personal Information</h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-x-12 sm:gap-y-6">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-500 mb-2">Name</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">Name</label>
             {isEditing ? (
               <div>
                 <input
@@ -336,22 +340,22 @@ export default function StaffProfile({ staff: staffResponse }) {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     getErrorMessage('name') ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
                 {getErrorMessage('name') && (
-                  <p className="text-red-500 text-sm mt-1">{getErrorMessage('name')}</p>
+                  <p className="text-red-500 text-xs sm:text-sm mt-1">{getErrorMessage('name')}</p>
                 )}
               </div>
             ) : (
-              <p className="text-gray-900 font-medium truncate block max-w-[150px]">{staff?.name || '-'}</p>
+              <p className="text-sm sm:text-base text-gray-900 font-medium truncate max-w-[200px]">{staff?.name || '-'}</p>
             )}
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-500 mb-2">Email</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">Email</label>
             {isEditing ? (
               <div>
                 <input
@@ -359,22 +363,22 @@ export default function StaffProfile({ staff: staffResponse }) {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     getErrorMessage('email') ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
                 {getErrorMessage('email') && (
-                  <p className="text-red-500 text-sm mt-1">{getErrorMessage('email')}</p>
+                  <p className="text-red-500 text-xs sm:text-sm mt-1">{getErrorMessage('email')}</p>
                 )}
               </div>
             ) : (
-              <p className="text-gray-900 font-medium">{staff?.email || '-'}</p>
+              <p className="text-sm sm:text-base text-gray-900 font-medium break-all">{staff?.email || '-'}</p>
             )}
           </div>
 
           {/* Phone Number with PhoneInput */}
           <div>
-            <label className="block text-sm font-medium text-gray-500 mb-2">Phone Number</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">Phone Number</label>
             {isEditing ? (
               <div>
                 <PhoneInput
@@ -383,24 +387,26 @@ export default function StaffProfile({ staff: staffResponse }) {
                   onChange={handlePhoneChange}
                   enableSearch={true}
                   searchPlaceholder="Search country"
+                  disableCountryCode={false}
+                  countryCodeEditable={false}
                   inputProps={{
                     name: "phone",
-                    className: "!pl-16 w-full py-2 px-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+                    className: "!pl-12 sm:!pl-16 w-full py-2 px-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base",
                     placeholder: "Enter phone number"
                   }}
                   containerClass="w-full"
-                  buttonClass="!border-r !bg-gray-50 !px-3 !py-2 !rounded-l-lg !border-gray-300"
-                  dropdownClass="!bg-white !border !shadow-lg !rounded-lg !mt-1"
-                  searchClass="!p-3 !border-b !border-gray-200"
+                  buttonClass="!border-r !bg-gray-50 !px-2 sm:!px-3 !py-2 !rounded-l-lg !border-gray-300"
+                  dropdownClass="!bg-white !border !shadow-lg !rounded-lg !mt-1 !max-h-48 !overflow-y-auto"
+                  searchClass="!p-2 sm:!p-3 !border-b !border-gray-200"
                 />
                 {(phoneError || getErrorMessage('phone')) && (
-                  <p className="text-red-500 text-sm mt-1">
+                  <p className="text-red-500 text-xs sm:text-sm mt-1">
                     {phoneError || getErrorMessage('phone')}
                   </p>
                 )}
               </div>
             ) : (
-              <p className="text-gray-900 font-medium">
+              <p className="text-sm sm:text-base text-gray-900 font-medium">
                 {staff?.phone ? `${staff?.code_phone}${staff?.phone}` : '-'}
               </p>
             )}
@@ -408,13 +414,13 @@ export default function StaffProfile({ staff: staffResponse }) {
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-500 mb-2">Status</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">Status</label>
             {isEditing ? (
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value={1}>Active</option>
                 <option value={0}>Inactive</option>
@@ -432,13 +438,13 @@ export default function StaffProfile({ staff: staffResponse }) {
 
           {/* Over Time */}
           <div>
-            <label className="block text-sm font-medium text-gray-500 mb-2">Over Time</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">Over Time</label>
             {isEditing ? (
               <select
                 name="over_time"
                 value={formData.over_time}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value={1}>Active</option>
                 <option value={0}>Inactive</option>
@@ -458,8 +464,8 @@ export default function StaffProfile({ staff: staffResponse }) {
           {isEditing && (
             <>
               {/* Current Password */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-500 mb-2">
+              <div className="lg:col-span-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">
                   Current Password <span className="text-xs text-gray-400">(Required only when changing password)</span>
                 </label>
                 <input
@@ -468,47 +474,47 @@ export default function StaffProfile({ staff: staffResponse }) {
                   autoComplete="new-password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     getErrorMessage('password') ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="••••••••"
                 />
                 {getErrorMessage('password') && (
-                  <p className="text-red-500 text-sm mt-1">{getErrorMessage('password')}</p>
+                  <p className="text-red-500 text-xs sm:text-sm mt-1">{getErrorMessage('password')}</p>
                 )}
               </div>
 
               {/* New Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-2">New Password</label>
+                <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">New Password</label>
                 <input
                   type="password"
                   name="new_password"
                   value={formData.new_password}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     getErrorMessage('new_password') ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
                 {getErrorMessage('new_password') && (
-                  <p className="text-red-500 text-sm mt-1">{getErrorMessage('new_password')}</p>
+                  <p className="text-red-500 text-xs sm:text-sm mt-1">{getErrorMessage('new_password')}</p>
                 )}
               </div>
 
               {/* Confirm New Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-2">Confirm New Password</label>
+                <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">Confirm New Password</label>
                 <input
                   type="password"
                   name="new_password_confirmation"
                   value={formData.new_password_confirmation}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     getErrorMessage('new_password_confirmation') ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
                 {getErrorMessage('new_password_confirmation') && (
-                  <p className="text-red-500 text-sm mt-1">{getErrorMessage('new_password_confirmation')}</p>
+                  <p className="text-red-500 text-xs sm:text-sm mt-1">{getErrorMessage('new_password_confirmation')}</p>
                 )}
               </div>
             </>

@@ -15,14 +15,44 @@ const TimeSelectionModal = ({
   selectedEndTime = '',
   durationCycle = 0,
   durationPeriod = 'minutes',
-  setSelectedEndTime
+  setSelectedEndTime,
+  themeColor
 }) => {
-  console.log(disabledTimes);
-  
   const [showStartDropdown, setShowStartDropdown] = useState(false);
   const [showEndDropdown, setShowEndDropdown] = useState(false);
   const startDropdownRef = useRef(null);
   const endDropdownRef = useRef(null);
+
+const DEFAULT_COLORS = {
+  primary: "#ffffff-rgb(241 82 179)",
+  text_color: "#111827",
+};
+
+let apiColors = {};
+
+try {
+  apiColors = themeColor?.colors ? JSON.parse(themeColor.colors) : {};
+} catch {
+  apiColors = {};
+}
+
+
+const colors =
+  themeColor?.theme === "theme2"
+    ? { ...DEFAULT_COLORS, ...apiColors }
+    : DEFAULT_COLORS;
+
+const primary = colors.primary ?? DEFAULT_COLORS.primary;
+
+const [firstColor, secondColor] =
+  primary?.includes("-")
+    ? primary.split("-")
+    : [primary, primary];
+
+
+const textColor = colors.text_color;
+
+
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -40,18 +70,19 @@ const TimeSelectionModal = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-useEffect(() => {
-  if (requireEndTime && selectedTime && setSelectedEndTime) {
-    const endOptions = generateEndTimeOptions();
-    
-    const firstAvailableEndTime = endOptions.find(time => 
-      !isTimeBooked(selectedDate, time)
-    );
-        if (firstAvailableEndTime) {
-      setSelectedEndTime(firstAvailableEndTime);
+
+  useEffect(() => {
+    if (requireEndTime && selectedTime && setSelectedEndTime) {
+      const endOptions = generateEndTimeOptions();
+      const firstAvailableEndTime = endOptions.find(time => 
+        !isTimeBooked(selectedDate, time)
+      );
+      if (firstAvailableEndTime) {
+        setSelectedEndTime(firstAvailableEndTime);
+      }
     }
-  }
-}, [selectedTime, requireEndTime, selectedDate]);
+  }, [selectedTime, requireEndTime, selectedDate]);
+
   const timeToMinutes = (timeStr) => {
     if (!timeStr || !timeStr.includes(':')) return 0;
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -251,11 +282,9 @@ useEffect(() => {
         return false;
       }
       
-      const isUnavailable = isTimeUnavailable(selectedDate, time);
       const isPast = isTimePast(selectedDate, time);
-      const isValid = !isUnavailable && !isPast;
       
-      return isValid;
+      return !isPast;
     });
     
     return filtered;
@@ -287,36 +316,47 @@ useEffect(() => {
     return { morning, afternoon, evening };
   };
 
-  // Generate end time options based on selected start time
   const generateEndTimeOptions = () => {
     if (!selectedTime) return [];
     
     const startMinutes = timeToMinutes(selectedTime);
-    
-    // Get all filtered times (same as start time options)
     const allFilteredTimes = getFilteredTimes(availableTimes);
     
-    // Filter to only show times AFTER the selected start time
     const endTimeOptions = allFilteredTimes
       .map(timeSlot => typeof timeSlot === 'string' ? timeSlot : timeSlot?.time)
       .filter(time => {
         if (!time) return false;
         const timeMinutes = timeToMinutes(time);
-        // Only show times that are after the start time
         return timeMinutes > startMinutes;
       });
     
     return endTimeOptions;
   };
 
-  const { morning, afternoon, evening } = groupTimesByPeriod(availableTimes);
+  // Don't render if not shown
+  if (!show) return null;
 
-  const TimeSection = ({ title, times, bgColor = "bg-gray-50" }) => {
+  const { morning, afternoon, evening } = groupTimesByPeriod(availableTimes);
+  const filteredTimes = getFilteredTimes(availableTimes);
+  const totalFilteredTimes = filteredTimes.length;
+  const bookedCount = filteredTimes.filter(timeSlot => {
+    const time = typeof timeSlot === 'string' ? timeSlot : timeSlot?.time;
+    return isTimeBooked(selectedDate, time);
+  }).length;
+  const availableCount = totalFilteredTimes - bookedCount;
+  const hiddenUnavailableCount = availableTimes.length - filteredTimes.length;
+  const endTimeOptions = generateEndTimeOptions();
+
+  // TimeSection Component
+  const TimeSection = ({ title, times }) => {
     if (times.length === 0) return null;
     
     return (
       <div className="mb-6">
-        <h3 className={`text-sm font-medium text-gray-600 mb-3 ${bgColor} p-2 rounded`}>
+        <h3 
+          className="text-sm font-semibold mb-3 p-2 rounded-lg"
+          style={{ background: `${textColor}10`, color: textColor }}
+        >
           {title}
         </h3>
         <div className="grid grid-cols-3 gap-2">
@@ -324,19 +364,31 @@ useEffect(() => {
             const isBooked = isTimeBooked(selectedDate, time);
             const [hours, minutes] = time.split(':');
             const displayTime = `${hours}:${minutes}`;
-            const endTime = requireEndTime ? calculateEndTime(time) : null;
             
             return (
               <button
                 key={time}
                 disabled={isBooked}
-                className={`p-3 text-sm border rounded-lg transition-all duration-200 relative ${
+                className={`p-3 text-sm rounded-lg transition-all duration-200 ${
                   isBooked
-                    ? 'border-red-300 bg-red-50 text-red-600 cursor-not-allowed opacity-75 hover:bg-red-50'
+                    ? 'cursor-not-allowed opacity-60'
                     : selectedTime === time 
-                      ? 'border-blue-500 bg-blue-50 text-blue-600 font-semibold shadow-sm' 
-                      : 'border-gray-300 hover:bg-gray-50 hover:border-gray-400 text-gray-700 hover:shadow-sm'
+                      ? 'font-semibold shadow-md' 
+                      : 'hover:shadow-sm'
                 }`}
+                style={{
+                  background: isBooked 
+                    ? '#fee2e2' 
+                    : selectedTime === time 
+                      ? secondColor 
+                      : `${textColor}10`,
+                  color: isBooked 
+                    ? '#ef4444' 
+                    : selectedTime === time 
+                      ? '#ffffff' 
+                      : textColor,
+                  border: `1px solid ${isBooked ? '#fecaca' : selectedTime === time ? firstColor : `${textColor}20`}`
+                }}
                 onClick={() => {
                   if (!isBooked) {
                     onTimeSelect(time);
@@ -351,12 +403,12 @@ useEffect(() => {
                     {displayTime}
                   </span>
                   {isBooked && (
-                    <span className="text-[10px] text-red-500 mt-1 font-medium bg-red-100 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] mt-1 font-medium bg-red-200 px-2 py-0.5 rounded-full">
                       Booked
                     </span>
                   )}
                   {selectedTime === time && !isBooked && (
-                    <span className="text-[10px] text-blue-500 mt-1 font-medium">
+                    <span className="text-[10px] mt-1 font-medium opacity-80">
                       Selected
                     </span>
                   )}
@@ -369,64 +421,68 @@ useEffect(() => {
     );
   };
 
-  if (!show) return null;
-
-  const filteredTimes = getFilteredTimes(availableTimes);
-  const totalFilteredTimes = filteredTimes.length;
-  const bookedCount = filteredTimes.filter(timeSlot => {
-    const time = typeof timeSlot === 'string' ? timeSlot : timeSlot?.time;
-    return isTimeBooked(selectedDate, time);
-  }).length;
-  const availableCount = totalFilteredTimes - bookedCount;
-  const hiddenUnavailableCount = availableTimes.length - filteredTimes.length;
-  const endTimeOptions = generateEndTimeOptions();
-
   // If requireEndTime is true, show dropdowns UI
   if (requireEndTime) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="rounded-lg shadow-xl w-full max-w-lg overflow-hidden" style={{ background: firstColor }}>
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-800">Select Time Range</h2>
+              <h2 className="text-lg font-semibold" style={{ color: textColor }}>
+                Select Time Range
+              </h2>
               <button
                 onClick={onClose}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                className="p-2 rounded-lg hover:bg-black/10 transition-colors"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="w-5 h-5" style={{ color: textColor }} />
               </button>
             </div>
 
             {selectedDate && (
-              <div className="mb-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center text-blue-700">
+              <div className="mb-6 p-3 rounded-lg" style={{ background: `${firstColor}20`, border: `1px solid ${firstColor}40` }}>
+                <div className="flex items-center" style={{ color: textColor }}>
                   <Calendar className="w-4 h-4 mr-2" />
                   <span className="font-medium text-sm">Selected Date: {selectedDate}</span>
                 </div>
               </div>
             )}
 
-            <div className=" flex gap-3">
+            <div className="flex gap-3">
               {/* Start Time Dropdown */}
-              <div ref={startDropdownRef} className="relative m-0 flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div ref={startDropdownRef} className="relative flex-1">
+                <label className="block text-sm font-medium mb-2" style={{ color: textColor }}>
                   <Clock className="w-4 h-4 inline mr-2" />
                   Start Time
                 </label>
                 <div
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors flex items-center justify-between bg-white"
+                  className="w-full px-4 py-3 rounded-lg cursor-pointer transition-all flex items-center justify-between"
+                  style={{ 
+                    background: `${textColor}10`,
+                    border: `1px solid ${textColor}20`
+                  }}
                   onClick={() => setShowStartDropdown(!showStartDropdown)}
                 >
-                  <span className={selectedTime ? 'text-gray-800 font-medium' : 'text-gray-400'}>
+                  <span style={{ color: selectedTime ? textColor : `${textColor}60` }}>
                     {selectedTime || 'Select start time'}
                   </span>
-                  <ChevronDown className={`w-5 h-5 text-gray-600 transition-transform ${showStartDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown 
+                    className={`w-5 h-5 transition-transform ${showStartDropdown ? 'rotate-180' : ''}`}
+                    style={{ color: firstColor }}
+                  />
                 </div>
                 
                 {showStartDropdown && (
-                  <div className="absolute -top-20 left-0 right-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                  <div 
+                    className="absolute left-0 right-0 mt-2 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto"
+                    style={{ 
+                      background: firstColor,
+                      border: `1px solid ${textColor}20`,
+                      top: '100%'
+                    }}
+                  >
                     {filteredTimes.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500 text-sm">
+                      <div className="p-4 text-center text-sm" style={{ color: `${textColor}` }}>
                         No available times
                       </div>
                     ) : (
@@ -437,15 +493,19 @@ useEffect(() => {
                         return (
                           <div
                             key={time}
-                            className={`p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ${
-                              isBooked ? 'opacity-50 cursor-not-allowed bg-red-50' : ''
-                            } ${selectedTime === time ? 'bg-blue-50 text-blue-600 font-medium' : ''}`}
+                            className={`p-3 cursor-pointer border-b transition-colors ${
+                              isBooked ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            style={{
+                              borderColor: `${textColor}10`,
+                              background: selectedTime === time ? `${firstColor}20` : 'transparent',
+                              color: selectedTime === time ? secondColor : textColor
+                            }}
                             onClick={() => {
                               if (!isBooked) {
                                 onTimeSelect(time);
                                 setShowStartDropdown(false);
                                 
-                                // Set end time to the next available time slot
                                 const startMinutes = timeToMinutes(time);
                                 const nextAvailableTime = filteredTimes
                                   .map(timeSlot => typeof timeSlot === 'string' ? timeSlot : timeSlot?.time)
@@ -460,9 +520,19 @@ useEffect(() => {
                                 }
                               }
                             }}
+                            onMouseEnter={(e) => {
+                              if (!isBooked && selectedTime !== time) {
+                                e.currentTarget.style.background = `${textColor}10`;
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isBooked && selectedTime !== time) {
+                                e.currentTarget.style.background = 'transparent';
+                              }
+                            }}
                           >
                             <div className="flex items-center justify-between">
-                              <span>{time}</span>
+                              <span className={selectedTime === time ? 'font-semibold' : ''}>{time}</span>
                               {isBooked && (
                                 <span className="text-xs text-red-500 bg-red-100 px-2 py-1 rounded">
                                   Booked
@@ -478,27 +548,41 @@ useEffect(() => {
               </div>
 
               {/* End Time Dropdown */}
-              <div ref={endDropdownRef} className="relative flex-1 m-0">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div ref={endDropdownRef} className="relative flex-1">
+                <label className="block text-sm font-medium mb-2" style={{ color: textColor }}>
                   <Clock className="w-4 h-4 inline mr-2" />
                   End Time
                 </label>
                 <div
-                  className={`w-full px-4 py-3 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors flex items-center justify-between bg-white ${
+                  className={`w-full px-4 py-3 rounded-lg cursor-pointer transition-all flex items-center justify-between ${
                     !selectedTime ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
+                  style={{ 
+                    background: `${textColor}10`,
+                    border: `1px solid ${textColor}20`
+                  }}
                   onClick={() => selectedTime && setShowEndDropdown(!showEndDropdown)}
                 >
-                  <span className={selectedEndTime ? 'text-gray-800 font-medium' : 'text-gray-400'}>
+                  <span style={{ color: selectedEndTime ? textColor : `${textColor}60` }}>
                     {selectedEndTime || 'Select end time'}
                   </span>
-                  <ChevronDown className={`w-5 h-5 text-gray-600 transition-transform ${showEndDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown 
+                    className={`w-5 h-5 transition-transform ${showEndDropdown ? 'rotate-180' : ''}`}
+                    style={{ color: secondColor }}
+                  />
                 </div>
                 
                 {showEndDropdown && selectedTime && (
-                  <div className="absolute  left-0 right-0 -top-20 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                  <div 
+                    className="absolute left-0 right-0 mt-2 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto"
+                    style={{ 
+                      background: firstColor,
+                      border: `1px solid ${textColor}20`,
+                      top: '100%'
+                    }}
+                  >
                     {endTimeOptions.length === 0 ? (
-                      <div className="p-4 text-center text-gray-500 text-sm">
+                      <div className="p-4 text-center text-sm" style={{ color: `${textColor}60` }}>
                         No available end times after {selectedTime}
                       </div>
                     ) : (
@@ -508,13 +592,14 @@ useEffect(() => {
                         return (
                           <div
                             key={time}
-                            className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ${
-                              isBooked 
-                                ? 'opacity-50 cursor-not-allowed bg-red-50' 
-                                : selectedEndTime === time 
-                                  ? 'bg-blue-50 text-blue-600 font-medium'
-                                  : 'hover:bg-gray-50'
+                            className={`p-3 cursor-pointer border-b transition-colors ${
+                              isBooked ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
+                            style={{
+                              borderColor: `${textColor}10`,
+                              background: selectedEndTime === time ? `${firstColor}20` : 'transparent',
+                              color: selectedEndTime === time ? secondColor : textColor
+                            }}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!isBooked) {
@@ -524,9 +609,19 @@ useEffect(() => {
                                 setShowEndDropdown(false);
                               }
                             }}
+                            onMouseEnter={(e) => {
+                              if (!isBooked && selectedEndTime !== time) {
+                                e.currentTarget.style.background = `${textColor}10`;
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isBooked && selectedEndTime !== time) {
+                                e.currentTarget.style.background = 'transparent';
+                              }
+                            }}
                           >
                             <div className="flex items-center justify-between">
-                              <span>{time}</span>
+                              <span className={selectedEndTime === time ? 'font-semibold' : ''}>{time}</span>
                               {isBooked && (
                                 <span className="text-xs text-red-500 bg-red-100 px-2 py-1 rounded">
                                   Booked
@@ -543,11 +638,12 @@ useEffect(() => {
             </div>
 
             {/* Confirm Button */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="mt-6 pt-4" style={{ borderTop: `1px solid ${textColor}20` }}>
               <button
                 onClick={onClose}
                 disabled={!selectedTime || !selectedEndTime}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="w-full px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-white"
+                style={{ background: secondColor }}
               >
                 Confirm Time Selection
               </button>
@@ -560,27 +656,29 @@ useEffect(() => {
 
   // Original popup UI for when requireEndTime is false
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden" style={{ background: firstColor }}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-800">Select Time</h2>
+            <h2 className="text-lg font-semibold" style={{ color: textColor }}>
+              Select Time
+            </h2>
             <button
               onClick={onClose}
-              className="p-1 hover:bg-gray-100 rounded transition-colors"
+              className="p-2 rounded-lg hover:bg-black/10 transition-colors"
             >
-              <X className="w-5 h-5 text-gray-600" />
+              <X className="w-5 h-5" style={{ color: textColor }} />
             </button>
           </div>
 
           {selectedDate && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="mb-4 p-3 rounded-lg" style={{ background: `${secondColor}20`, border: `1px solid ${secondColor}40` }}>
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center text-blue-700">
+                <div className="flex items-center" style={{ color: textColor }}>
                   <Calendar className="w-4 h-4 mr-2" />
                   <span className="font-medium">Selected Date: {selectedDate}</span>
                 </div>
-                <div className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                <div className="text-xs px-2 py-1 rounded" style={{ background: `${firstColor}30`, color: textColor }}>
                   {availableCount} available
                   {bookedCount > 0 && `, ${bookedCount} booked`}
                   {hiddenUnavailableCount > 0 && ` (${hiddenUnavailableCount} hidden)`}
@@ -590,14 +688,16 @@ useEffect(() => {
           )}
 
           <div className="max-h-80 overflow-y-auto">
-            <TimeSection title="Morning (6:00 AM - 12:00 PM)" times={morning} bgColor="bg-yellow-50" />
-            <TimeSection title="Afternoon (12:00 PM - 5:00 PM)" times={afternoon} bgColor="bg-orange-50" />
-            <TimeSection title="Evening (5:00 PM - 11:00 PM)" times={evening} bgColor="bg-purple-50" />
+            <TimeSection title="Morning (6:00 AM - 12:00 PM)" times={morning} />
+            <TimeSection title="Afternoon (12:00 PM - 5:00 PM)" times={afternoon} />
+            <TimeSection title="Evening (5:00 PM - 11:00 PM)" times={evening} />
             
             {filteredTimes.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium mb-2">No Available Times</p>
+              <div className="text-center py-8" style={{ color: `${textColor}60` }}>
+                <Clock className="w-12 h-12 mx-auto mb-4" style={{ color: `${textColor}30` }} />
+                <p className="text-lg font-medium mb-2" style={{ color: textColor }}>
+                  No Available Times
+                </p>
                 <p className="text-sm">
                   {selectedDate 
                     ? hiddenUnavailableCount > 0
@@ -611,14 +711,14 @@ useEffect(() => {
           </div>
 
           {filteredTimes.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${textColor}20` }}>
+              <div className="flex items-center justify-between text-xs" style={{ color: `${textColor}60` }}>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-blue-50 border border-blue-300 rounded mr-2"></div>
+                  <div className="w-3 h-3 rounded mr-2" style={{ background: `${firstColor}30`, border: `1px solid ${firstColor}` }}></div>
                   <span>Available for booking</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-red-50 border border-red-300 rounded mr-2"></div>
+                  <div className="w-3 h-3 bg-red-100 border border-red-300 rounded mr-2"></div>
                   <span>Already booked</span>
                 </div>
               </div>

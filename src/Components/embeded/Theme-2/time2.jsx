@@ -14,7 +14,7 @@ const TimeSelectionSection2 = ({
   setSelectedEndTime,
   themeColor
 }) => {
-  const [activeSelection, setActiveSelection] = useState('start'); // 'start' or 'end'
+  const [activeSelection, setActiveSelection] = useState('start');
 
   // Theme
   const colors = themeColor ? JSON.parse(themeColor) : {};
@@ -37,9 +37,13 @@ const TimeSelectionSection2 = ({
     return disabledTimes.some(t => t.date === formatted && t.time.startsWith(clean));
   };
 
-  const getFilteredTimes = () => availableTimes
-    .map(t => typeof t === 'string' ? t : t?.time)
-    .filter(t => t && !isTimeBooked(selectedDate, t));
+  const getFilteredTimes = () => {
+    const filtered = availableTimes
+      .map(t => typeof t === 'string' ? t : t?.time)
+      .filter(t => t && !isTimeBooked(selectedDate, t));
+    
+    return filtered;
+  };
 
   const generateEndOptions = () => {
     if (!selectedTime) return [];
@@ -59,55 +63,63 @@ const TimeSelectionSection2 = ({
   });
 
   if (!selectedDate) {
-    return <div className="text-center py-12 text-gray-500">Please select a date first</div>;
+    return (
+      <div className="text-center py-8 sm:py-12 px-4 text-gray-500">
+        Please select a date first
+      </div>
+    );
   }
 
   return (
-    <div className="mt-8">
+    <div className="mt-4 sm:mt-6 md:mt-8 px-2 sm:px-4">
 
-      {/* Start & End Time Display (قابل للنقر) */}
+      {/* Start & End Time Display */}
       {requireEndTime && (
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div 
-            className="grid grid-cols-2 border  overflow-hidden w-10/12"
+            className="grid grid-cols-2 border overflow-hidden w-full sm:w-11/12 md:w-10/12 mx-auto"
             style={{ 
-              borderColor: textColor ,
+              borderColor: textColor,
               backgroundColor: 'transparent'
             }}
           >
-            {/* Start Time - Clickable */}
+            {/* Start Time */}
             <div 
               onClick={() => setActiveSelection('start')}
-              className="px-3 border-r flex items-center justify-between cursor-pointer transition-all hover:bg-white/5"
+              className="px-2 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-r flex flex-col sm:flex-row items-center justify-between cursor-pointer transition-all hover:bg-white/5 gap-1 sm:gap-0"
               style={{ 
-                borderColor: textColor ,
+                borderColor: textColor,
                 backgroundColor: activeSelection === 'start' ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
               }}
             >
-              <span className="font-semibold opacity-90" style={{ color: textColor }}>Start Time</span>
+              <span className="font-semibold opacity-90 text-xs sm:text-sm md:text-base" style={{ color: textColor }}>
+                Start Time
+              </span>
               <span 
-                className="font-bold px-4 py-1 rounded-lg"
+                className="font-bold px-2 sm:px-3 md:px-4 py-0.5 sm:py-1 rounded-lg text-sm sm:text-base md:text-lg"
                 style={{ 
-                  color: selectedTime ? firstColor : '#ffffff80'
+                  color: selectedTime ? textColor : '#ffffff80'
                 }}
               >
                 {selectedTime || '--:--'}
               </span>
             </div>
 
-            {/* End Time - Clickable */}
+            {/* End Time */}
             <div 
               onClick={() => selectedTime && setActiveSelection('end')}
-              className={`px-6 py-5 flex items-center justify-between transition-all ${selectedTime ? 'cursor-pointer hover:bg-white/5' : 'cursor-not-allowed opacity-50'}`}
+              className={`px-2 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 flex flex-col sm:flex-row items-center justify-between transition-all gap-1 sm:gap-0 ${selectedTime ? 'cursor-pointer hover:bg-white/5' : 'cursor-not-allowed opacity-50'}`}
               style={{ 
                 backgroundColor: activeSelection === 'end' ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
               }}
             >
-              <span className="font-semibold  opacity-90" style={{ color: textColor }}>End Time</span>
+              <span className="font-semibold opacity-90 text-xs sm:text-sm md:text-base" style={{ color: textColor }}>
+                End Time
+              </span>
               <span 
-                className="font-bold t px-4 py-1 rounded-lg"
+                className="font-bold px-2 sm:px-3 md:px-4 py-0.5 sm:py-1 rounded-lg text-sm sm:text-base md:text-lg"
                 style={{ 
-                  color: selectedEndTime ? firstColor : '#ffffff80'
+                  color: selectedEndTime ? textColor : '#ffffff80'
                 }}
               >
                 {selectedEndTime || '--:--'}
@@ -117,8 +129,8 @@ const TimeSelectionSection2 = ({
         </div>
       )}
 
-      {/* الأوقات في grid (Morning / Afternoon / Evening) */}
-      <div className="space-y-10">
+      {/* Time Grid */}
+      <div className="space-y-6 sm:space-y-8 md:space-y-10">
         {['morning', 'afternoon', 'evening'].map(period => {
           const times = groups[period];
           if (times.length === 0) return null;
@@ -134,10 +146,10 @@ const TimeSelectionSection2 = ({
 
           return (
             <div key={period}>
-              <h3 className="text-center  font-semibold mb-6" style={{ color: textColor }}>
+              <h3 className="text-center font-semibold mb-4 sm:mb-5 md:mb-6 text-sm sm:text-base md:text-lg" style={{ color: textColor }}>
                 {titles[period]}
               </h3>
-              <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-2.5 md:gap-3">
                 {displayTimes.map(time => {
                   const booked = isTimeBooked(selectedDate, time);
                   
@@ -167,15 +179,22 @@ const TimeSelectionSection2 = ({
                           onTimeSelect(time);
                         }
                       }}
-                      className={`py-3 px-4 text-sm transition-all border
+                      className={`py-2 sm:py-2.5 md:py-3 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base transition-all border rounded
                         ${booked ? 'bg-gray-700/30 text-gray-500 line-through border-gray-600/20 cursor-not-allowed' : 'hover:scale-105'}
                         ${isSelected ? 'shadow-lg scale-105' : 'shadow-sm hover:shadow-md'}
                       `}
-                      style={{
-                        backgroundColor: isSelected ? (firstColor) : '',
-                        color: isSelected ? textColor : booked ? '#9ca3af' : firstColor,
-                        borderColor: isSelected ? (firstColor) : firstColor,
+                     style={{
+                        backgroundColor: isSelected
+                          ? secondColor
+                          : `${secondColor}20`, 
+                        color: isSelected
+                          ? textColor
+                          : booked
+                            ? '#9ca3af'
+                            : textColor,
+                        borderColor: isSelected ? secondColor : firstColor,
                       }}
+
                     >
                       {time}
                     </button>
@@ -188,9 +207,9 @@ const TimeSelectionSection2 = ({
       </div>
 
       {filteredTimes.length === 0 && (
-        <div className="text-center py-16" style={{color: textColor || '#ffffff'}}>
-          <Clock className="w-16 h-16 mx-auto mb-4 opacity-30" />
-          <p className="text-xl font-medium">No Available Times</p>
+        <div className="text-center py-12 sm:py-14 md:py-16 px-4" style={{color: textColor || '#ffffff'}}>
+          <Clock className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 mx-auto mb-3 sm:mb-4 opacity-30" />
+          <p className="text-base sm:text-lg md:text-xl font-medium">No Available Times</p>
         </div>
       )}
     </div>

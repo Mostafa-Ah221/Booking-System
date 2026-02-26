@@ -18,8 +18,8 @@ export default function PermissionRoute({ permission, children }) {
 
   if (loading || initialLoad) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <Loader />
+      <div className="p-6 text-gray-600 bg-gray-50 min-h-screen flex items-center justify-center">
+      Loading...
       </div>
     );
   }

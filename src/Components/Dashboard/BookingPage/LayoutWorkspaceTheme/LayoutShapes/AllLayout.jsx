@@ -1,3 +1,5 @@
+import { themeActions } from '../../../../../redux/slices/themeSlice'; 
+
 import { useState, useEffect, useCallback } from 'react';
 import ClassicLayout from './ClassicLayout';
 import FreshLayout from './FreshLayout';
@@ -22,19 +24,52 @@ export default function AllLayout() {
 
   const location = useLocation();
   const { workspaceData, workspaceTheme, interviewData, interviewTheme } = location.state || {};
-console.log(interviewTheme);
+  console.log(interviewTheme);
   
   const isInterview = Boolean(interviewData?.id);
   const currentId = isInterview ? interviewData?.id : workspaceData?.id;
   const currentTheme = isInterview ? interviewTheme : workspaceTheme;
 
   const [selectedLayout, setSelectedLayout] = useState('modernWeb');
-  const [themeData, setThemeData] = useState({
+const [themeData, setThemeData] = useState({
+  color: '',
+  textColor: '', 
+  header: { title: '', logo: null, visibleTitle: true, visibleLogo: true },
+  pageProperties: { title: 'Welcome', description: '', visibleTitle: true, visibleDescription: true },
+  workspaceProperties: { name: 'Ahmed', description: '' },
+  buttonText: 'Book appointment',
+  preSelect: true,
+  socialLinks: {
+    facebook: '', visibleFacebook: true,
+    instagram: '', visibleInstagram: true,
+    x: '', visibleX: true,
+    linkedin: '', visibleLinkedin: true,
+    tiktok: theme?.footer_tiktok || '', 
+    visibleTiktok: theme?.show_tiktok ?? true, 
+    snapchat: theme?.footer_snapchat || '', 
+    visibleSnapchat: theme?.show_snapchat ?? true, 
+    whatsapp: theme?.footer_whatsapp || '', 
+    visibleWhatsapp: theme?.show_whatsapp ?? true, 
+    phone: '', visiblePhone: true,
+    email: '', visibleEmail: true,
+  },
+});
+  
+  const isGradient = themeData.color?.includes('-') || false;  
+  const [firstColor, secondColor] = isGradient 
+    ? themeData.color.split('-') 
+    : [themeData.color || '#FFFFFF', themeData.color || '#FFFFFF'];
+ 
+  const [isPanelVisible, setIsPanelVisible] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+useEffect(() => {
+  dispatch(themeActions.clearTheme());
+  
+  setThemeData({
     color: '',
-    textColor: '', 
+    textColor: '#000000', 
     header: { title: '', logo: null, visibleTitle: true, visibleLogo: true },
     pageProperties: { title: 'Welcome', description: '', visibleTitle: true, visibleDescription: true },
-    workspaceProperties: { name: 'Ahmed', description: '' },
     buttonText: 'Book appointment',
     preSelect: true,
     socialLinks: {
@@ -42,86 +77,102 @@ console.log(interviewTheme);
       instagram: '', visibleInstagram: true,
       x: '', visibleX: true,
       linkedin: '', visibleLinkedin: true,
+      tiktok: '', visibleTiktok: true,
+      snapchat: '', visibleSnapchat: true,
+      whatsapp: '', visibleWhatsapp: true,
       phone: '', visiblePhone: true,
       email: '', visibleEmail: true,
     },
   });
+  setSelectedLayout('modernWeb');
   
-  const isGradient = themeData.color.includes('-');  
-  const [firstColor, secondColor] = isGradient 
-    ? themeData.color.split('-') 
-    : [themeData.color, themeData.color];
- 
-  const [isPanelVisible, setIsPanelVisible] = useState(false);
-  const [isCompact, setIsCompact] = useState(false);
- 
-  useEffect(() => {
-    if (currentTheme?.id) {
-      dispatch(getTheme(currentTheme.id));
+  if (currentTheme?.id) {
+    dispatch(getTheme(currentTheme.id));
+  }
+}, [currentId, dispatch, currentTheme?.id]);
+
+useEffect(() => {
+  const checkScreenSize = () => {
+    const compact = window.innerWidth < 1024;
+    setIsCompact(compact);
+    
+    if (window.innerWidth >= 1024) {
+      setIsPanelVisible(true);
     }
-  }, [dispatch, currentTheme]);
+  };
 
-  useEffect(() => {
-    if (theme) {
-      console.log('theme.theme من API:', theme.theme); 
-      let parsedColors = {};
-      try { parsedColors = JSON.parse(theme.colors || '{}'); } catch {}
-
-      const reverseMap = Object.fromEntries(
-        Object.entries(LAYOUT_TO_THEME).map(([ui, api]) => [api, ui])
-      );
-      const uiLayout = reverseMap[theme.theme];
-      console.log(uiLayout);
-
-      const mappedData = {
-        layout: uiLayout,
-        color: parsedColors.primary || '#4f46e5',
-        textColor: parsedColors.text_color || '#000000', 
-        backgroundOpacity: (parsedColors.background_opacity || 1) * 100,
-        header: {
-          title: theme.nickname || 'Ahmed',
-           logo: theme.photo ? theme.photo : null,
-          visibleTitle: theme.show_nickname ?? true,
-          visibleLogo: theme.show_photo ?? true,
-        },
-        pageProperties: {
-          title: theme.page_title || 'Welcome',
-          description: theme.page_description || '',
-          visibleTitle: theme.show_page_title ?? true,
-          visibleDescription: theme.show_page_description ?? true,
-        },
-        buttonText: theme.book_button || 'Book appointment',
-        preSelect: theme.for_interviews ?? true,
-        socialLinks: {
-          facebook: theme.footer_facebook || '', visibleFacebook: theme.show_facebook ?? true,
-          instagram: theme.footer_instagram || '', visibleInstagram: theme.show_instagram ?? true,
-          x: theme.footer_x || '', visibleX: theme.show_x ?? true,
-          linkedin: theme.footer_linkedin || '', visibleLinkedin: theme.show_linkedin ?? true,
-          phone: theme.footer_phone || '', visiblePhone: theme.show_phone ?? true,
-          email: theme.footer_email || '', visibleEmail: theme.show_email ?? true,
-        },
-      };
-
-      setThemeData(mappedData);
-      setSelectedLayout(mappedData.layout);
+  checkScreenSize();
+  
+  const mediaQuery = window.matchMedia('(min-width: 1024px)');
+  
+  const handleMediaChange = (e) => {
+    if (e.matches) {
+      setIsPanelVisible(true);
+      setIsCompact(false);
+    } else {
+      setIsCompact(true);
     }
-  }, [theme]);
+  };
 
-  useEffect(() => {
-    setThemeData(prev => ({ ...prev, layout: selectedLayout }));
-  }, [selectedLayout]);
+  mediaQuery.addEventListener('change', handleMediaChange);
+  
+  return () => {
+    mediaQuery.removeEventListener('change', handleMediaChange);
+  };
+}, []);
+useEffect(() => {
+  if (theme) {
+    let parsedColors = {};
+    try { parsedColors = JSON.parse(theme.colors || '{}'); } catch {}
 
-  useEffect(() => {
-    const checkScreenSize = () => {
-      const compact = window.innerWidth < 1024;
-      setIsCompact(compact);
-      setIsPanelVisible(!compact);
+    const reverseMap = Object.fromEntries(
+      Object.entries(LAYOUT_TO_THEME).map(([ui, api]) => [api, ui])
+    );
+    const uiLayout = reverseMap[theme.theme];
+
+    const mappedData = {
+      layout: uiLayout,
+      color: parsedColors.primary || '#4f46e5',
+      textColor: parsedColors.text_color || '#000000', 
+      backgroundOpacity: (parsedColors.background_opacity || 1) * 100,
+      header: {
+        title: theme.nickname || 'Ahmed',
+        logo: theme.photo ? theme.photo : null,
+        visibleTitle: theme.show_nickname ?? true,
+        visibleLogo: theme.show_photo ?? true,
+      },
+      pageProperties: {
+        title: theme.page_title || 'Welcome',
+        description: theme.page_description || '',
+        visibleTitle: theme.show_page_title ?? true,
+        visibleDescription: theme.show_page_description ?? true,
+      },
+      buttonText: theme.book_button || 'Book appointment',
+      preSelect: theme.for_interviews ?? true,
+      socialLinks: {
+        facebook: theme.footer_facebook || '', visibleFacebook: theme.show_facebook ?? true,
+        instagram: theme.footer_instagram || '', visibleInstagram: theme.show_instagram ?? true,
+        x: theme.footer_x || '', visibleX: theme.show_x ?? true,
+        linkedin: theme.footer_linkedin || '', visibleLinkedin: theme.show_linkedin ?? true,
+        tiktok: theme.footer_tiktok || '', visibleTiktok: theme.show_tiktok ?? true,
+        snapchat: theme.footer_snapchat || '', visibleSnapchat: theme.show_snapchat ?? true,
+        whatsapp: theme.footer_whatsapp || '', visibleWhatsapp: theme.show_whatsapp ?? true,
+        phone: theme.footer_phone || '', visiblePhone: theme.show_phone ?? true,
+        email: theme.footer_email || '', visibleEmail: theme.show_email ?? true,
+      },
     };
 
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
+    setThemeData(mappedData);
+    setSelectedLayout(mappedData.layout);
+  }
+}, [theme]);
+
+// ✅ 3️⃣ تحديث الـ layout في themeData
+useEffect(() => {
+  setThemeData(prev => ({ ...prev, layout: selectedLayout }));
+}, [selectedLayout]);
+
+
 
   const handleThemeChange = useCallback((newTheme) => {
     console.log(newTheme);
@@ -147,10 +198,7 @@ console.log(interviewTheme);
 
   const handleLayoutChange = useCallback((layout) => {
     setSelectedLayout(layout);
-    if (isCompact) {
-      setIsPanelVisible(false);
-    }
-  }, [isCompact]);
+  }, []);
 
   const togglePanel = useCallback(() => {
     setIsPanelVisible(prev => !prev);
@@ -187,12 +235,24 @@ console.log(interviewTheme);
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
         <div
-          style={selectedLayout !== 'fresh' ? { background: secondColor } : {}}
+          style={
+            selectedLayout === 'newLayout' 
+              ? { background: firstColor } 
+              : selectedLayout !== 'fresh' 
+                ? { background: firstColor } 
+                : selectedLayout === 'modernWeb'
+                ? { background: firstColor }
+                : {}
+          }
           className={`${
             isPanelVisible && isCompact ? 'opacity-50' : 'opacity-100'
           } col-span-1 lg:col-span-9 transition-opacity duration-300 border rounded-lg h-[75%] overflow-y-auto`}
         >
-          <div className="mb-6">
+          {/* Header Section */}
+          <div 
+            className="mb-6"
+            style={selectedLayout === 'newLayout' || selectedLayout === 'modernWeb' ? { background: firstColor } : {}}
+          >
             <div className="flex flex-col items-start gap-3">
               <div className="flex space-x-1 bg-gray-100 w-full py-4 px-4 rounded-t-lg">
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
@@ -219,8 +279,8 @@ console.log(interviewTheme);
             </div>
           </div>
 
-          {selectedLayout !== 'fresh' && (
-            <div className="mb-8 text-center">
+          {selectedLayout !== 'fresh' && selectedLayout !== 'newLayout' && (
+            <div className="mb-8 text-center" >
               {themeData.pageProperties.visibleTitle && (
                 <h2 className="text-2xl font-bold mb-2" style={{ color: themeData.textColor }}>
                   {themeData.pageProperties.title}
@@ -241,18 +301,23 @@ console.log(interviewTheme);
           {selectedLayout === 'fresh' && <FreshLayout themeData={themeData} />}
           {selectedLayout === 'modernWeb' && <ModernWebLayout themeData={themeData} />}
           {selectedLayout === 'newLayout' && <NewLayout themeData={themeData} />}
-          <Footer themeData={themeData} />
+          
+          {/* Footer Section */}
+          <div style={selectedLayout === 'newLayout' ? { background: firstColor } : {}}>
+            <Footer themeData={themeData} />
+          </div>
         </div>
 
         {isPanelVisible && (
           <div
             className={`${
               isCompact
-                ? 'fixed inset-y-0 right-0 z-40 w-72 shadow-xl bg-white overflow-y-auto'
+                ? 'fixed inset-y-0 right-0 z-40 w-full md:w-72 shadow-xl bg-white overflow-y-auto'
                 : 'col-span-3'
             }`}
           >
             <WorkspaceThemePanel
+             key={currentId} 
               onLayoutChange={handleLayoutChange}
               onThemeChange={handleThemeChange}
               currentId={currentId}
@@ -266,11 +331,20 @@ console.log(interviewTheme);
       </div>
 
       {isPanelVisible && isCompact && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-20 z-30"
-          onClick={() => setIsPanelVisible(false)}
-          aria-hidden="true"
-        />
+         <div
+    className="fixed inset-0 bg-black bg-opacity-20 z-30"
+    onMouseDown={(e) => {
+      if (e.target === e.currentTarget) {
+        setIsPanelVisible(false);
+      }
+    }}
+    onTouchStart={(e) => {
+      if (e.target === e.currentTarget) {
+        setIsPanelVisible(false);
+      }
+    }}
+    aria-hidden="true"
+  />
       )}
     </div>
   );

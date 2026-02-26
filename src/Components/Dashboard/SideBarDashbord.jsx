@@ -28,22 +28,43 @@ export default function SideBarDashbord() {
   
   const mySpaceRef = useRef(null);
   const menuRef = useRef(null);
-
+  const toggleButtonRef = useRef(null);
+  const manualWorkspaceSelection = useRef(false); // ✅ لتتبع الاختيار اليدوي
   const dispatch = useDispatch();
   
-  // ✅ استخدم selector بشكل مباشر بدون ref
   const { workspaces, workspace } = useSelector(state => state.workspace);
+  const previousWorkspace = useRef(workspace); // ✅ لحفظ آخر workspace تم اختياره يدوياً
   
   const navigate = useNavigate();
 
+  // ✅ حماية الـ workspace من التغيير غير المقصود
   useEffect(() => {
+    // إذا تغير الـ workspace ولم يكن تغيير يدوي
+    if (workspace && previousWorkspace.current && 
+        workspace.id !== previousWorkspace.current.id && 
+        !manualWorkspaceSelection.current) {
+      
+      // إرجاع الـ workspace للقيمة السابقة
+      console.log("Preventing automatic workspace change, restoring previous workspace");
+      dispatch(workspaceAction.setWorkspace(previousWorkspace.current));
+    } else if (manualWorkspaceSelection.current) {
+      // إذا كان التغيير يدوي، حفظ القيمة الجديدة
+      previousWorkspace.current = workspace;
+      manualWorkspaceSelection.current = false; // إعادة تعيين الـ flag
+    }
+  }, [workspace, dispatch]);
+
+   useEffect(() => {
     dispatch(getWorkspace({ force: true }));
 
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setActiveMenuId(null);
       }
-      if (mySpaceRef.current && !mySpaceRef.current.contains(event.target)) {
+      if (mySpaceRef.current && 
+          !mySpaceRef.current.contains(event.target) &&
+          toggleButtonRef.current &&
+          !toggleButtonRef.current.contains(event.target)) {
         setIsWorkspaceOpen(false);
       }
     };
@@ -107,8 +128,9 @@ export default function SideBarDashbord() {
   useEffect(() => {
     const visibleItems = menuItems.filter(item => item.canShow);
 
-    if (visibleItems.length > 0) {
+    if (visibleItems.length > 0 && !active) { // ✅ فقط إذا لم يكن هناك active path
       setActive(prev => {
+        if (prev) return prev; // ✅ الحفاظ على القيمة الحالية
         const stillVisible = visibleItems.some(item => item.path === prev);
         const newPath = stillVisible ? prev : visibleItems[0].path;
         return newPath;
@@ -116,11 +138,12 @@ export default function SideBarDashbord() {
     }
   }, [canViewAnalytics, canViewAppointments, canViewInterview, canViewClients, canViewStaff]);
 
-  useEffect(() => {
-    if (active) {
-      navigate(active, { replace: true });
-    }
-  }, [active, navigate]);
+  // ✅ إزالة auto-navigation المتكرر
+  // useEffect(() => {
+  //   if (active) {
+  //     navigate(active, { replace: true });
+  //   }
+  // }, [active, navigate]);
 
   const filteredWorkspaces = useMemo(() => {
     if (!workspaces || !Array.isArray(workspaces)) {
@@ -143,16 +166,21 @@ export default function SideBarDashbord() {
   };
 
   const handleSelectWorkspace = (selectedWorkspace) => {
+    manualWorkspaceSelection.current = true; // ✅ تسجيل أن المستخدم اختار workspace يدوياً
     dispatch(workspaceAction.setWorkspace(selectedWorkspace));
+    
+    // ✅ التوجه لصفحة الـ workspace
     if (selectedWorkspace.id !== 0) {
       setActive("WorkspaceAvailability");
       navigate("WorkspaceAvailability");
-    } 
+    }
+    
     setIsWorkspaceOpen(false);
     setSearchQuery('');
   };
 
   const handleSelectMySpace = () => {
+    manualWorkspaceSelection.current = true; // ✅ تسجيل أن المستخدم اختار My Space يدوياً
     const mySpace = {
       id: 0,
       name: "My Space"
@@ -231,7 +259,6 @@ export default function SideBarDashbord() {
           }
         }
         
-        // ✅ لا داعي لـ dispatch(getWorkspace()) لأن removeWorkspaceFromList بيحدث الـ state
       } else {
         toast.error(response?.message || "Failed to delete workspace");
       }
@@ -261,6 +288,7 @@ export default function SideBarDashbord() {
         <nav className="flex-1 p-2">
           <div>
             <button
+            ref={toggleButtonRef}
               onClick={toggleWorkspaceDropdown}
               className="bg-purple-100 w-full p-2 text-left rounded hover:bg-gray-100 flex items-center gap-2 justify-between"
             >

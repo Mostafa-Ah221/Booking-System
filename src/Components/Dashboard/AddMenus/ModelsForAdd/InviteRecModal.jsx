@@ -110,24 +110,50 @@ const InviteRecModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handlePhoneChange = (value, country) => {
-    setPhoneValue(value);
-
+const handlePhoneChange = (value, country) => {
+  // Handle empty or invalid input
+  if (!value) {
+    setPhoneValue('');
     setFormData((prev) => ({
       ...prev,
-      phone: value.replace(`+${country.dialCode}`, ""),
-      code_phone: `+${country.dialCode}`,
+      phone: "",
+      code_phone: "",
     }));
+    return;
+  }
 
-    if (!value || value.length <= country.dialCode.length + 1) {
-      setErrors((prev) => ({
-        ...prev,
-        phone: "Please enter a valid phone number",
-      }));
-      return;
-    }
+  setPhoneValue(value);
 
-    const phoneNumber = parsePhoneNumberFromString(value, country.countryCode?.toUpperCase());
+  const dialCode = country.dialCode || '';
+  const countryCode = country.countryCode?.toUpperCase() || '';
+  
+  let phoneWithoutCode = value;
+  
+  if (phoneWithoutCode.startsWith(dialCode)) {
+    phoneWithoutCode = phoneWithoutCode.slice(dialCode.length);
+  }
+  
+  phoneWithoutCode = phoneWithoutCode.replace(/[\s-]/g, '');
+
+  setFormData((prev) => ({
+    ...prev,
+    phone: phoneWithoutCode,
+    code_phone: `+${dialCode}`, 
+  }));
+
+  // Validate minimum length
+  if (phoneWithoutCode.length === 0) {
+    setErrors((prev) => ({
+      ...prev,
+      phone: "Please enter a valid phone number",
+    }));
+    return;
+  }
+
+  // Validate using libphonenumber-js
+  try {
+    const fullNumber = `+${dialCode}${phoneWithoutCode}`;
+    const phoneNumber = parsePhoneNumberFromString(fullNumber, countryCode);
 
     if (!phoneNumber || !phoneNumber.isValid()) {
       setErrors((prev) => ({
@@ -135,12 +161,19 @@ const InviteRecModal = ({ isOpen, onClose }) => {
         phone: "The phone number is invalid for this country",
       }));
     } else {
-      if (errors?.phone) {
-        setErrors((prev) => ({ ...prev, phone: undefined }));
-      }
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.phone;
+        return newErrors;
+      });
     }
-  };
-
+  } catch (error) {
+    setErrors((prev) => ({
+      ...prev,
+      phone: "Invalid phone number format",
+    }));
+  }
+};
   const handleRoleChange = (roleId) => {
     setFormData((prev) => {
       const currentRoles = prev.role_id || [];
@@ -289,7 +322,7 @@ const InviteRecModal = ({ isOpen, onClose }) => {
                   Contact Number <span className="text-red-500 ml-1">*</span>
                 </label>
                 <PhoneInput
-                  country="eg"
+                country="eg"
                   value={phoneValue}
                   onChange={handlePhoneChange}
                   enableSearch={true}
@@ -305,6 +338,8 @@ const InviteRecModal = ({ isOpen, onClose }) => {
                   buttonClass="!border-r !bg-gray-50 !px-3 !rounded-l-xl"
                   dropdownClass="!bg-white !border !shadow-xl !rounded-xl"
                   searchClass="!p-3 !border-b"
+                   disableCountryCode={false}
+  countryCodeEditable={false} 
                 />
                 {errors.phone && <p className="text-red-500 text-xs mt-2 flex items-center">
                   <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>

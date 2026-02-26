@@ -150,31 +150,36 @@ export function updateCustomer(customerId, customerData) {
                 };
             }
         } catch (error) {
-            if (error.response && error.response.data && error.response.data.errors) {
-                const errors = error.response.data.errors;
+  if (error.response?.data?.errors) {
+    const errors = error.response.data.errors;
 
-                const formattedErrors = Object.keys(errors).reduce((acc, field) => {
-                    acc[field] = errors[field].join(", ");
-                    return acc;
-                }, {});
+    const formattedErrors = Object.keys(errors).reduce((acc, field) => {
+      acc[field] = errors[field].join(", ");
+      return acc;
+    }, {});
 
-                dispatch(customerAction.setError(formattedErrors));
+    dispatch(customerAction.setError(formattedErrors));
 
-                Object.keys(formattedErrors).forEach(field => {
-                    console.error(`❌ خطأ في الحقل: ${field} => ${formattedErrors[field]}`);
-                });
-            } else {
-                console.error("Error updating client:", error);
-                dispatch(customerAction.setError({ general: "Something went wrong" }));
-            }
+    Object.values(formattedErrors).forEach((msg) => {
+      toast.error(msg, {
+        position: "top-center",
+        duration: 4000,
+      });
+    });
 
-            dispatch(customerAction.setLoading(false));
+  } else {
+    toast.error("Something went wrong");
+    dispatch(customerAction.setError({ general: "Something went wrong" }));
+  }
 
-            return {
-                success: false,
-                message: error.response?.data?.message 
-            };
-        }
+  dispatch(customerAction.setLoading(false));
+
+  return {
+    success: false,
+    message: error.response?.data?.message,
+  };
+}
+
     };
 }
 

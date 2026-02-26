@@ -8,6 +8,7 @@ import TimeSelectionSection2 from '../Theme-2/time2';
 import { Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
 import BookingSummarySidebar2 from '../Theme-2/BookingSummarySidebar2';
 import CalendarSection4 from './CalendarSection4';
+import { FaXTwitter } from 'react-icons/fa6';
 
 const AppointmentBooking_4 = () => {
   const { id, idAdmin, idCustomer, idSpace } = useParams();
@@ -815,7 +816,7 @@ const AppointmentBooking_4 = () => {
                 className='flex items-center gap-2 hover:opacity-70 transition-opacity'
                 style={{color: textColor}}
               >
-                <Twitter className='w-4 h-4' />
+                <FaXTwitter className='w-4 h-4' />
               </a>
                  <span>|</span>
               </>

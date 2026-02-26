@@ -1,7 +1,7 @@
 import { IoIosCamera } from "react-icons/io";
 
 const InterviewDetailsShow = ({ interview, canEdit, onEditClick }) => {
-  console.log(interview);
+  
   
   return (
     <div className="w-full bg-white mt-2 px-6 rounded-lg mx-5 text-sm">

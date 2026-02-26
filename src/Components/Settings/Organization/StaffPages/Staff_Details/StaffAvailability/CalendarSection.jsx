@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Send, Edit } from 'lucide-react';
-import {  useParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Send, Edit, X } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import toast from "react-hot-toast";
 import { getStaffById } from '../../../../../../redux/apiCalls/StaffCallApi';
 
 const CalendarSection = ({ 
   timeZone, 
-  currentMonth,
-  selectedDates,
+  currentMonth: initialMonth,
   goToPreviousMonth, 
   goToNextMonth,
   handleDateClick,
@@ -19,12 +17,37 @@ const CalendarSection = ({
   const [rangeEnd, setRangeEnd] = useState(null);
   const [selecting, setSelecting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [displayDates, setDisplayDates] = useState([]); 
-   const { id } = useParams();
-    const { staff, loading, error } = useSelector(state => state.staff);
+  const [displayDates, setDisplayDates] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(initialMonth || new Date());
+
+  // Month/Year selector states
+  const [selectorView, setSelectorView] = useState('calendar'); // 'calendar', 'months', 'years'
+  const [selectedYear, setSelectedYear] = useState(currentMonth.getFullYear());
+  const [yearPageIndex, setYearPageIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // الحد الأدنى: 5 سنوات للوراء
+  const MIN_ALLOWED_YEAR = new Date().getFullYear() - 5; // 2020
+  const minAllowedDate = new Date(MIN_ALLOWED_YEAR, 0, 1); // 1 يناير 2020
+
+  const { id } = useParams();
+  const { staff } = useSelector(state => state.staff);
   const dispatch = useDispatch();
 
-console.log(staff);
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -32,49 +55,38 @@ console.log(staff);
     }
   }, [id, dispatch]);
 
- 
   useEffect(() => {
     if (staff?.staff) {
-     
       const dateSource = availabilityMode === 'available' 
-        ? staff?.staff.available_dates 
-        : staff?.staff.un_available_dates;
+        ? staff.staff.available_dates 
+        : staff.staff.un_available_dates;
 
       if (dateSource?.length > 0) {
         const lastRange = dateSource[dateSource.length - 1];
         if (lastRange?.from && lastRange?.to) {
-        
           setRangeStart(lastRange.from);
           setRangeEnd(lastRange.to);
-
-          
           const datesInRange = generateDatesInRange(lastRange.from, lastRange.to);
           setDisplayDates(datesInRange);
-          
-          
-          handleDateClick(datesInRange);
+          if (handleDateClick) handleDateClick(datesInRange);
         }
       } else {
-     
         setDisplayDates([]);
         setRangeStart(null);
         setRangeEnd(null);
       }
     }
-  }, [staff?.staff, availabilityMode]);
+  }, [staff?.staff, availabilityMode, handleDateClick]);
 
-  
   const generateDatesInRange = (startDate, endDate) => {
-    const datesInRange = [];
-    const currentDate = new Date(startDate);
+    const dates = [];
+    const current = new Date(startDate);
     const end = new Date(endDate);
-    
-    while (currentDate <= end) {
-      datesInRange.push({ date: formatDate(new Date(currentDate)) });
-      currentDate.setDate(currentDate.getDate() + 1);
+    while (current <= end) {
+      dates.push({ date: formatDate(new Date(current)) });
+      current.setDate(current.getDate() + 1);
     }
-    
-    return datesInRange;
+    return dates;
   };
 
   const formatDate = (date) => {
@@ -84,341 +96,346 @@ console.log(staff);
     return `${year}-${month}-${day}`;
   };
 
-  const createDate = (year, month, day) => {
-    return new Date(year, month, day);
-  };
+  const createDate = (year, month, day) => new Date(year, month, day);
 
-  const getDateString = (day, monthOffset = 0) => {
-    const year =
-      monthOffset === 1 && currentMonth.getMonth() === 11
-        ? currentMonth.getFullYear() + 1
-        : currentMonth.getFullYear();
-    const month =
-      monthOffset === 1
-        ? currentMonth.getMonth() === 11
-          ? 0
-          : currentMonth.getMonth() + 1
-        : currentMonth.getMonth();
-    return formatDate(new Date(year, month, day));
+  // تعطيل التواريخ قبل 5 سنين
+  const isDateDisabled = (dateStr) => {
+    const checkDate = new Date(dateStr);
+    return checkDate < minAllowedDate;
   };
 
   const isInSelectedRange = (day, month, year) => {
-    // استخدام displayDates بدلاً من rangeStart/rangeEnd في العرض
     if (!isEditMode && displayDates.length > 0) {
       const dateStr = formatDate(createDate(year, month, day));
       return displayDates.some(d => d.date === dateStr);
     }
-    
-    // في وضع التحرير، استخدم rangeStart/rangeEnd
     if (!rangeStart || !rangeEnd) return false;
     const date = createDate(year, month, day);
-    const start = new Date(rangeStart);
-    const end = new Date(rangeEnd);
-    return date >= start && date <= end;
+    return date >= new Date(rangeStart) && date <= new Date(rangeEnd);
   };
 
   const isRangeStart = (day, month, year) => {
-    if (!isEditMode && displayDates.length > 0) {
-      const dateStr = formatDate(createDate(year, month, day));
-      return displayDates[0]?.date === dateStr;
-    }
-    
+    if (!isEditMode && displayDates.length > 0) return displayDates[0]?.date === formatDate(createDate(year, month, day));
     if (!rangeStart) return false;
-    const date = formatDate(createDate(year, month, day));
-    return date === rangeStart;
+    return formatDate(createDate(year, month, day)) === rangeStart;
   };
 
   const isRangeEnd = (day, month, year) => {
-    if (!isEditMode && displayDates.length > 0) {
-      const dateStr = formatDate(createDate(year, month, day));
-      return displayDates[displayDates.length - 1]?.date === dateStr;
-    }
-    
+    if (!isEditMode && displayDates.length > 0) return displayDates[displayDates.length - 1]?.date === formatDate(createDate(year, month, day));
     if (!rangeEnd) return false;
-    const date = formatDate(createDate(year, month, day));
-    return date === rangeEnd;
+    return formatDate(createDate(year, month, day)) === rangeEnd;
   };
 
   const handleDateSelect = (day, monthOffset = 0) => {
-    if (!isEditMode) return;
-    const year =
-      monthOffset === 1 && currentMonth.getMonth() === 11
-        ? currentMonth.getFullYear() + 1
-        : currentMonth.getFullYear();
-    const month =
-      monthOffset === 1
-        ? currentMonth.getMonth() === 11
-          ? 0
-          : currentMonth.getMonth() + 1
-        : currentMonth.getMonth();
-    const date = createDate(year, month, day);
-    const dateStr = formatDate(date);
+    if (!isEditMode || selectorView !== 'calendar') return;
+
+    const year = monthOffset === 1 && currentMonth.getMonth() === 11
+      ? currentMonth.getFullYear() + 1
+      : currentMonth.getFullYear();
+    const month = monthOffset === 1
+      ? currentMonth.getMonth() === 11 ? 0 : currentMonth.getMonth() + 1
+      : currentMonth.getMonth();
+
+    const dateStr = formatDate(createDate(year, month, day));
+
+    if (isDateDisabled(dateStr)) {
+      alert('لا يمكن اختيار تاريخ قبل 5 سنوات');
+      return;
+    }
 
     if (!selecting) {
       setRangeStart(dateStr);
       setRangeEnd(null);
       setSelecting(true);
-      handleDateClick([{ date: dateStr }]);
+      if (handleDateClick) handleDateClick([{ date: dateStr }]);
     } else {
-      const startDate = new Date(rangeStart);
-      const clickedDate = date;
+      const start = new Date(rangeStart);
+      const clicked = createDate(year, month, day);
+      const newStart = clicked < start ? dateStr : rangeStart;
+      const newEnd = clicked < start ? rangeStart : dateStr;
 
-      if (clickedDate < startDate) {
-        setRangeEnd(rangeStart);
-        setRangeStart(dateStr);
-      } else {
-        setRangeEnd(dateStr);
-      }
-
+      setRangeStart(newStart);
+      setRangeEnd(newEnd);
       setSelecting(false);
-      const start = new Date(Math.min(new Date(rangeStart), clickedDate));
-      const end = new Date(Math.max(new Date(rangeStart), clickedDate));
-      const datesInRange = [];
 
-      const currentDate = new Date(start);
-      while (currentDate <= end) {
-        datesInRange.push({ date: formatDate(new Date(currentDate)) });
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-
-      handleDateClick(datesInRange);
+      const datesInRange = generateDatesInRange(newStart, newEnd);
+      if (handleDateClick) handleDateClick(datesInRange);
     }
   };
 
-  // Generate calendar days for a month
   const generateCalendarDays = (year, month) => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
-    const result = [];
-    
-    // Add empty cells for days before the 1st
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      result.push(null);
-    }
-    
-    // Add days of the month
-    for (let i = 1; i <= daysInMonth; i++) {
-      result.push(i);
-    }
-    
-    return result;
+    const firstDay = new Date(year, month, 1).getDay();
+    const days = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    return days;
   };
 
-  // Format selected dates for API
-  const formatSelectedDates = () => {
-    if (!selectedDates || selectedDates.length === 0) return [];
-    
-    // With range selection, we can simplify to just one range
-    if (rangeStart && rangeEnd) {
-      return [{ from: rangeStart, to: rangeEnd }];
+  const generateYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = MIN_ALLOWED_YEAR; i <= currentYear + 50; i++) {
+      years.push(i);
     }
-    
-    // Extract date strings and sort them
-    const sortedDates = [...selectedDates]
-      .map(date => typeof date === 'object' && date.date ? date.date : date)
-      .sort();
-    
-    // Group consecutive dates into ranges  
-    const dateRanges = [];
-    let currentRange = null;
-    
-    sortedDates.forEach(date => {
-      if (!currentRange) {
-        currentRange = { from: date, to: date };
-      } else if (isConsecutiveDate(currentRange.to, date)) {
-        currentRange.to = date;
-      } else {
-        dateRanges.push(currentRange);
-        currentRange = { from: date, to: date };
-      }
-    });
-    
-    if (currentRange) {
-      dateRanges.push(currentRange);
-    }
-    
-    return dateRanges;
+    return years;
   };
 
-  // Check if two dates are consecutive
-  const isConsecutiveDate = (date1, date2) => {
-    const d1 = new Date(date1);
-    const d2 = new Date(date2);
-    d1.setDate(d1.getDate() + 1);
-    return formatDate(d1) === date2;
+  // Month/Year Picker Handlers
+  const handleHeaderClick = () => {
+    if (!isEditMode) return;
+    setIsAnimating(true);
+    setTimeout(() => {
+      setSelectorView('months');
+      setIsAnimating(false);
+    }, 150);
   };
 
-  // Handle save action
+  const handleYearClick = () => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      const years = generateYears();
+      const index = years.indexOf(selectedYear);
+      setYearPageIndex(Math.floor(index / 12));
+      setSelectorView('years');
+      setIsAnimating(false);
+    }, 150);
+  };
+
+  const handleMonthSelect = (monthIndex) => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      setCurrentMonth(new Date(selectedYear, monthIndex, 1));
+      setSelectorView('calendar');
+      setIsAnimating(false);
+    }, 150);
+  };
+
+  const handleYearSelect = (year) => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      setSelectedYear(year);
+      setSelectorView('months');
+      setIsAnimating(false);
+    }, 150);
+  };
+
+  const handleCancelSelector = () => {
+    setIsAnimating(true);
+    setTimeout(() => {
+      setSelectorView('calendar');
+      setIsAnimating(false);
+    }, 150);
+  };
+
+  const handlePreviousYear = () => selectedYear > MIN_ALLOWED_YEAR && setSelectedYear(y => y - 1);
+  const handleNextYear = () => setSelectedYear(y => y + 1);
+
+  const handlePreviousYearPage = () => setYearPageIndex(p => Math.max(0, p - 1));
+  const handleNextYearPage = () => {
+    const years = generateYears();
+    const max = Math.ceil(years.length / 12) - 1;
+    setYearPageIndex(p => Math.min(max, p + 1));
+  };
+
   const handleSaveClick = async () => {
-    const available_dates = formatSelectedDates();
-    
+    if (!rangeStart || !rangeEnd) return;
     try {
       if (handleSave) {
-        const result = await handleSave({ available_dates });
-        
-        if (result && result.success) {
-          const newDisplayDates = [];
-          available_dates.forEach(range => {
-            const datesInRange = generateDatesInRange(range.from, range.to);
-            newDisplayDates.push(...datesInRange);
-          });
-          setDisplayDates(newDisplayDates);
-          
+        const result = await handleSave({ available_dates: [{ from: rangeStart, to: rangeEnd }] });
+        if (result?.success) {
+          const newDates = generateDatesInRange(rangeStart, rangeEnd);
+          setDisplayDates(newDates);
           await dispatch(getStaffById(id));
-          
           setIsEditMode(false);
           resetSelection();
         }
       }
     } catch (error) {
-      console.error('Error saving dates:', error);
-      // toast.error(error.message);
+      console.error('Error saving:', error);
     }
   };
 
-  // Handle edit mode toggle
   const handleEditClick = () => {
     setIsEditMode(true);
+    setSelectorView('calendar');
     if (displayDates.length > 0) {
       setRangeStart(displayDates[0].date);
       setRangeEnd(displayDates[displayDates.length - 1].date);
     }
   };
 
-  // Handle cancel action
   const handleCancelClick = () => {
     setIsEditMode(false);
+    setSelectorView('calendar');
     resetSelection();
   };
 
-  // Reset range selection
   const resetSelection = () => {
     setRangeStart(null);
     setRangeEnd(null);
     setSelecting(false);
-    if (handleDateClick) {
-      handleDateClick([]);
-    }
+    if (handleDateClick) handleDateClick([]);
   };
 
-  // Calendar component for single month
-  const SingleCalendar = ({ year, month, monthOffset = 0 }) => {
-    const calendarDays = generateCalendarDays(year, month);
+  const SingleCalendar = ({ year, month, monthOffset = 0, isOverlay = false }) => {
+    const days = generateCalendarDays(year, month);
     const weeks = [];
-    
-    // Create weeks array
-    for (let i = 0; i < calendarDays.length; i += 7) {
-      weeks.push(calendarDays.slice(i, i + 7));
+    for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
+
+    const isToday = (day) => day && createDate(year, month, day).toDateString() === new Date().toDateString();
+
+    const getCellStyle = (day) => {
+      if (!day) return 'invisible';
+      const dateStr = formatDate(createDate(year, month, day));
+      const disabled = isDateDisabled(dateStr);
+
+      if (disabled) return 'bg-gray-100 text-gray-400 cursor-not-allowed line-through';
+      if (isRangeStart(day, month, year)) return availabilityMode === 'available' ? 'bg-blue-600 text-white rounded-l-full' : 'bg-red-600 text-white rounded-l-full';
+      if (isRangeEnd(day, month, year)) return availabilityMode === 'available' ? 'bg-blue-600 text-white rounded-r-full' : 'bg-red-600 text-white rounded-r-full';
+      if (isInSelectedRange(day, month, year)) return availabilityMode === 'available' ? 'bg-blue-100 text-blue-900' : 'bg-red-100 text-red-900';
+      if (isToday(day)) return 'bg-blue-500 text-white rounded-full font-semibold';
+      return isEditMode ? 'hover:bg-gray-100' : '';
+    };
+
+    // Months View
+    if (selectorView === 'months' && monthOffset === 0) {
+      return (
+        <div className={`flex-1 transition-all duration-200 ${isAnimating ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}>
+          <div className="flex justify-between items-center mb-4 px-4">
+            <button onClick={handlePreviousYear} disabled={selectedYear <= MIN_ALLOWED_YEAR} className={`p-2 rounded-full ${selectedYear <= MIN_ALLOWED_YEAR ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}>
+              <ChevronLeft size={18} />
+            </button>
+            <button onClick={handleYearClick} className="font-semibold hover:bg-gray-100 px-4 py-2 rounded">{selectedYear}</button>
+            <button onClick={handleNextYear} className="p-2 rounded-full hover:bg-gray-100"><ChevronRight size={18} /></button>
+          </div>
+          <div className="grid grid-cols-3 gap-2 px-4">
+            {months.map((name, i) => (
+              <button
+                key={i}
+                onClick={() => selectedYear >= MIN_ALLOWED_YEAR + 1 && handleMonthSelect(i)}
+                disabled={selectedYear < MIN_ALLOWED_YEAR + 1}
+                className={`p-2.5 rounded-lg text-xs font-medium ${selectedYear < MIN_ALLOWED_YEAR + 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'hover:bg-blue-50 hover:text-blue-600'} ${currentMonth.getMonth() === i && currentMonth.getFullYear() === selectedYear ? 'border border-blue-600 text-blue-600' : 'bg-gray-50'}`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-center mt-4">
+            <button onClick={handleCancelSelector} className="px-4 py-2 text-xs text-gray-600 hover:text-gray-800 flex items-center gap-2">
+              <X size={14} /> Cancel
+            </button>
+          </div>
+        </div>
+      );
     }
 
-    // Check if date is today
-    const isToday = (day) => {
-      if (day === null) return false;
-      const today = new Date();
-      const dateToCheck = new Date(year, month, day);
-      return dateToCheck.toDateString() === today.toDateString();
-    };
+    // Years View
+    if (selectorView === 'years' && monthOffset === 0) {
+      const years = generateYears();
+      const start = yearPageIndex * 12;
+      const visible = years.slice(start, start + 12);
+      const maxPage = Math.ceil(years.length / 12) - 1;
 
-    // Get style for date cell
-    const getDateCellStyle = (day) => {
-      if (day === null) return 'invisible';
-      
-      const dateYear = year;
-      const dateMonth = month;
-      
-      let baseStyle = '';
-      
-      if (isRangeStart(day, dateMonth, dateYear)) {
-        baseStyle = availabilityMode === 'available' ? 
-          'bg-blue-600 text-white rounded-l-full' : 
-          'bg-red-600 text-white rounded-l-full';
-      } else if (isRangeEnd(day, dateMonth, dateYear)) {
-        baseStyle = availabilityMode === 'available' ? 
-          'bg-blue-600 text-white rounded-r-full' : 
-          'bg-red-600 text-white rounded-r-full';
-      } else if (isInSelectedRange(day, dateMonth, dateYear)) {
-        baseStyle = availabilityMode === 'available' ? 
-          'bg-blue-100 text-blue-900' : 
-          'bg-red-100 text-red-900';
-      } else if (selecting && rangeStart === getDateString(day, monthOffset)) {
-        baseStyle = availabilityMode === 'available' ? 
-          'bg-blue-600 text-white rounded-full' : 
-          'bg-red-600 text-white rounded-full';
-      } else if (isToday(day)) {
-        baseStyle = 'bg-blue-500 text-white rounded-full font-semibold';
-      } else {
-        baseStyle = isEditMode ? 'hover:bg-gray-100' : '';
-      }
-      
-      // Add blur effect if not in edit mode
-      if (!isEditMode) {
-        baseStyle += ' opacity-50 cursor-not-allowed';
-      }
-      
-      return baseStyle;
-    };
+      return (
+        <div className={`flex-1 transition-all duration-200 ${isAnimating ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}`}>
+          <div className="flex justify-between items-center mb-4 px-4">
+            <button onClick={handlePreviousYearPage} disabled={yearPageIndex === 0} className={`p-2 rounded-full ${yearPageIndex === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100'}`}><ChevronLeft size={18} /></button>
+            <h3 className="font-semibold">Select Year</h3>
+            <button onClick={handleNextYearPage} disabled={yearPageIndex === maxPage} className={`p-2 rounded-full ${yearPageIndex === maxPage ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100'}`}><ChevronRight size={18} /></button>
+          </div>
+          <div className="grid grid-cols-4 gap-2 px-4">
+            {visible.map(y => (
+              <button key={y} onClick={() => handleYearSelect(y)} className={`p-2.5 rounded-lg text-xs font-medium hover:bg-blue-50 hover:text-blue-600 ${selectedYear === y ? 'border border-blue-600 text-blue-600' : 'bg-gray-50'}`}>
+                {y}
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-center mt-4">
+            <button onClick={handleCancelSelector} className="px-4 py-2 text-xs text-gray-600 hover:text-gray-800 flex items-center gap-2">
+              <X size={14} /> Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
 
+    // Calendar View
     return (
-      <div className="flex-1">
-        <div className="text-center mb-3">
-          <div className="font-medium text-sm">{`${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}`}</div>
-        </div>
-        
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-            <div key={index} className="text-center font-medium text-gray-500 text-xs h-6 flex items-center justify-center">
-              {day}
-            </div>
-          ))}
-        </div>
-
-        <div className={`grid grid-cols-7 gap-0 ${!isEditMode ? 'pointer-events-none' : ''}`}>
-          {weeks.map((week, weekIndex) => (
-            week.map((day, dayIndex) => (
-              <div
-                key={`${weekIndex}-${dayIndex}`}
-                className={`h-8 flex items-center justify-center relative ${day === null ? 'invisible' : ''}`}
-              >
-                <button
-                  onClick={() => day !== null && handleDateSelect(day, monthOffset)}
-                  className={`h-8 w-8 flex items-center justify-center text-xs ${getDateCellStyle(day)}`}
-                  disabled={day === null || !isEditMode}
-                >
-                  {day}
-                </button>
-              </div>
-            ))
-          ))}
+      <div className={`flex-1 ${isOverlay ? 'relative' : ''}`}>
+        {isOverlay && selectorView !== 'calendar' && <div className="absolute inset-0 bg-white/10 z-10 rounded-lg"></div>}
+        <div className={`transition-all duration-200 ${selectorView !== 'calendar' ? 'opacity-30 pointer-events-none' : ''}`}>
+          <div className="text-center mb-2 sm:mb-3">
+            <button
+              onClick={monthOffset === 0 ? handleHeaderClick : undefined}
+              disabled={!isEditMode || monthOffset !== 0}
+              className={`font-medium text-xs sm:text-sm ${isEditMode && monthOffset === 0 ? 'hover:bg-gray-100 px-3 py-1 rounded-lg cursor-pointer' : 'opacity-75'}`}
+            >
+              {new Date(year, month).toLocaleString('default', { month: 'long' })} {year}
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+              <div key={i} className="text-center text-gray-500 text-[10px] sm:text-xs h-5 sm:h-6 flex items-center justify-center font-medium">{d}</div>
+            ))}
+          </div>
+          <div className={`grid grid-cols-7 gap-0 ${!isEditMode || selectorView !== 'calendar' ? 'pointer-events-none' : ''}`}>
+            {weeks.map((week, wi) => week.map((day, di) => {
+              const dateStr = day ? formatDate(createDate(year, month, day)) : null;
+              const disabled = dateStr && isDateDisabled(dateStr);
+              return (
+                <div key={`${wi}-${di}`} className={`h-7 sm:h-8 md:h-9 flex items-center justify-center ${day === null ? 'invisible' : ''}`}>
+                  <button
+                    onClick={() => day && !disabled && handleDateSelect(day, monthOffset)}
+                    className={`h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 flex items-center justify-center text-[10px] sm:text-xs ${getCellStyle(day)}`}
+                    disabled={day === null || !isEditMode || disabled || selectorView !== 'calendar'}
+                    title={disabled ? 'تاريخ غير مسموح (قبل 5 سنوات)' : ''}
+                  >
+                    {day}
+                  </button>
+                </div>
+              );
+            }))}
+          </div>
         </div>
       </div>
     );
   };
 
-  // Double calendar component
   const Calendar = ({ year, month }) => {
     const nextMonth = month === 11 ? 0 : month + 1;
     const nextYear = month === 11 ? year + 1 : year;
 
+    const handlePrev = () => {
+      if (selectorView !== 'calendar') return;
+      const prev = new Date(currentMonth);
+      prev.setMonth(prev.getMonth() - 1);
+      if (prev >= minAllowedDate) {
+        setCurrentMonth(prev);
+        if (goToPreviousMonth) goToPreviousMonth();
+      }
+    };
+
+    const handleNext = () => {
+      if (selectorView !== 'calendar') return;
+      const next = new Date(currentMonth);
+      next.setMonth(next.getMonth() + 1);
+      setCurrentMonth(next);
+      if (goToNextMonth) goToNextMonth();
+    };
+
     return (
-      <div className="mt-4">
-        <div className="flex justify-between items-center mb-4">
-          <button 
-            onClick={isEditMode ? goToPreviousMonth : undefined} 
-            className={`p-1 rounded-full ${isEditMode ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
-            disabled={!isEditMode}
-          >
-            <ChevronLeft size={16} />
+      <div className="mt-3 sm:mt-4">
+        <div className="flex justify-between items-center mb-3 sm:mb-4">
+          <button onClick={isEditMode ? handlePrev : undefined} disabled={!isEditMode || selectorView !== 'calendar'} className={`p-1 sm:p-2 rounded-full ${isEditMode && selectorView === 'calendar' ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}>
+            <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
           </button>
-          <div className="flex space-x-8 flex-1 justify-center">
+          <div className={`flex ${isMobile ? 'flex-1' : 'space-x-4 sm:space-x-8'} justify-center`}>
             <SingleCalendar year={year} month={month} monthOffset={0} />
-            <SingleCalendar year={nextYear} month={nextMonth} monthOffset={1} />
+            {!isMobile && <SingleCalendar year={nextYear} month={nextMonth} monthOffset={1} isOverlay={true} />}
           </div>
-          <button 
-            onClick={isEditMode ? goToNextMonth : undefined} 
-            className={`p-1 rounded-full ${isEditMode ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}
-            disabled={!isEditMode}
-          >
-            <ChevronRight size={16} />
+          <button onClick={isEditMode ? handleNext : undefined} disabled={!isEditMode || selectorView !== 'calendar'} className={`p-1 sm:p-2 rounded-full ${isEditMode && selectorView === 'calendar' ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'}`}>
+            <ChevronRight size={16} className="sm:w-5 sm:h-5" />
           </button>
         </div>
       </div>
@@ -426,138 +443,69 @@ console.log(staff);
   };
 
   return (
-    <div className="p-6">
+    <div className="p-3 sm:p-4 md:p-6">
+      {/* Header */}
       {!isEditMode && (
-        <div className="flex justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between gap-3 mb-4 sm:mb-6">
           <div>
-            <h2 className="text-xl font-semibold">
+            <h2 className="text-base sm:text-xl font-semibold">
               {availabilityMode === 'available' ? 'Available Dates' : 'Unavailable Dates'}
             </h2>
-            <p className="text-gray-500">
-              {availabilityMode === 'available' ? 
-                'Select a range of available dates' : 
-                'Select a range of unavailable dates'
-              }
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              {availabilityMode === 'available' ? 'Select a range of available dates' : 'Select a range of unavailable dates'}
             </p>
           </div>
-          
-          <div className="flex items-center">
-            <button 
-              onClick={handleEditClick}
-              className={`px-4 py-2 text-white rounded-md shadow-sm flex items-center ${
-                availabilityMode === 'available' ? 
-                'bg-blue-600 hover:bg-blue-700' : 
-                'bg-red-600 hover:bg-red-700'
-              }`}
-            >
-              <Edit size={16} className="mr-2" />
-              <span className='text-sm'>Edit</span>
-              
-            </button>
-          </div>
+          <button onClick={handleEditClick} className={`px-3 sm:px-4 py-1.5 sm:py-2 text-white rounded-md flex items-center ${availabilityMode === 'available' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}>
+            <Edit size={14} className="mr-2" />
+            <span className="text-xs sm:text-sm">Edit</span>
+          </button>
         </div>
       )}
 
-      {/* Show action buttons only when in edit mode */}
+      {/* Edit Mode Buttons */}
       {isEditMode && (
-        <div className="space-x-3 flex justify-end mb-6">
-          {/* <div>
-            <select 
-              className="border rounded-md p-2 pr-8 appearance-none text-gray-600"
-              value={timeZone}
-              disabled
-            >
-              <option>{timeZone}</option>
-            </select> 
-          </div> */}
-          <div className="space-x-2 flex gap-3">
-            <button
-              onClick={handleCancelClick}
-              className="px-4 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-            >
-              <span className='text-sm'>Cancel</span>
-              
-            </button>
-            <button
-              onClick={handleSaveClick}
-              className={`px-4 py-1 text-white rounded-md shadow-sm flex items-center ${
-                availabilityMode === 'available' ? 
-                'bg-blue-600 hover:bg-blue-700' : 
-                'bg-red-600 hover:bg-red-700'
-              }`}
-              // disabled={!rangeStart || !rangeEnd}
-            >
-              <Send size={16} className="mr-2" />
-              <span className='text-sm'>Save</span>
-               
-            </button>
-          </div>
+        <div className="flex justify-end gap-2 mb-4 sm:mb-6">
+          <button onClick={handleCancelClick} className="px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button onClick={handleSaveClick} className={`px-3 sm:px-4 py-1.5 sm:py-2 text-white rounded-md flex items-center ${availabilityMode === 'available' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}>
+            <Send size={14} className="mr-2" />
+            Save
+          </button>
         </div>
       )}
 
-      <div className="border rounded-lg p-4 mb-6">
-        {isEditMode && (
-          <div className="text-gray-600 mb-2 text-sm">
+      <div className="border rounded-lg p-2 sm:p-3 md:p-4 mb-4 sm:mb-6">
+        {isEditMode && selectorView === 'calendar' && (
+          <div className="text-gray-600 mb-2 text-xs sm:text-sm">
             {selecting ? 'Select range end date' : 'Select range start date'}
           </div>
         )}
-        
-        <Calendar 
-          year={currentMonth.getFullYear()} 
-          month={currentMonth.getMonth()} 
-        />
-        
-        {/* عرض النطاق الحالي */}
-        {((isEditMode && (rangeStart || rangeEnd)) || (!isEditMode && displayDates.length > 0)) && (
-          <div className="mt-4 flex justify-between items-center">
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                value={isEditMode ? 
-                  (rangeStart ? new Date(rangeStart).toLocaleDateString('en-CA') : '') :
-                  (displayDates.length > 0 ? displayDates[0].date : '')
-                }
-                readOnly
-                className="px-2 py-1 border rounded text-xs w-24"
-                placeholder="Start date"
-              />
-              <span className="text-xs text-gray-500 flex items-center">to</span>
-              <input
-                type="text"
-                value={isEditMode ? 
-                  (rangeEnd ? new Date(rangeEnd).toLocaleDateString('en-CA') : '') :
-                  (displayDates.length > 0 ? displayDates[displayDates.length - 1].date : '')
-                }
-                readOnly
-                className="px-2 py-1 border rounded text-xs w-24"
-                placeholder="End date"
-              />
+        <Calendar year={currentMonth.getFullYear()} month={currentMonth.getMonth()} />
+
+        {((isEditMode && (rangeStart || rangeEnd)) || (!isEditMode && displayDates.length > 0)) && selectorView === 'calendar' && (
+          <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input type="text" value={rangeStart || (displayDates[0]?.date || '')} readOnly className="px-2 py-1 border rounded text-[10px] sm:text-xs w-24" placeholder="Start" />
+              <span className="text-gray-500 text-xs">to</span>
+              <input type="text" value={rangeEnd || (displayDates[displayDates.length - 1]?.date || '')} readOnly className="px-2 py-1 border rounded text-[10px] sm:text-xs w-24" placeholder="End" />
             </div>
-            {isEditMode && (
-              <button
-                onClick={resetSelection}
-                className="text-xs text-red-600 hover:text-red-800"
-              >
-                Reset
-              </button>
-            )}
+            {isEditMode && <button onClick={resetSelection} className="text-xs text-red-600 hover:text-red-800">Reset</button>}
           </div>
         )}
       </div>
 
-      <div className="flex justify-between items-center">
-        <div className="text-gray-600 text-sm">
-          {isEditMode ? (
-            rangeStart && rangeEnd ? 
-              `Selected range from ${new Date(rangeStart).toLocaleDateString()} to ${new Date(rangeEnd).toLocaleDateString()}` : 
-              'No date range selected'
-          ) : (
-            displayDates.length > 0 ? 
-              `${availabilityMode === 'available' ? 'Available' : 'Unavailable'} from ${new Date(displayDates[0].date).toLocaleDateString()} to ${new Date(displayDates[displayDates.length - 1].date).toLocaleDateString()}` : 
-              `No ${availabilityMode} dates set`
-          )}
+      {selectorView === 'calendar' && (
+        <div className="text-gray-600 text-xs sm:text-sm">
+          {isEditMode
+            ? rangeStart && rangeEnd
+              ? `Selected: ${new Date(rangeStart).toLocaleDateString()} to ${new Date(rangeEnd).toLocaleDateString()}`
+              : 'No date range selected'
+            : displayDates.length > 0
+              ? `${availabilityMode === 'available' ? 'Available' : 'Unavailable'} from ${new Date(displayDates[0].date).toLocaleDateString()} to ${new Date(displayDates[displayDates.length - 1].date).toLocaleDateString()}`
+              : `No ${availabilityMode} dates set`}
         </div>
-      </div>
+      )}
     </div>
   );
 };

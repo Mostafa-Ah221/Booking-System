@@ -12,6 +12,7 @@ const InterviewAvailability = () => {
   const [activeTab, setActiveTab] = useState('available-times');
   const [availabilityMode, setAvailabilityMode] = useState('available');
   const [activeSection, setActiveSection] = useState(null);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [timeZone, setTimeZone] = useState({
     value: 'Africa/Cairo',
     label: '(GMT+2:00) Cairo'
@@ -30,22 +31,31 @@ const InterviewAvailability = () => {
   const { workspace } = useSelector(state => state.workspace);
   
   const [weekDays, setWeekDays] = useState([]);
-  console.log(interview);
 
   useEffect(() => {
     dispatch(fetchAllInterviews());
   }, [dispatch]);
 
-  useEffect(() => {
-    if (interview?.workspace_id) {
-      dispatch(editWorkspaceById(interview?.workspace_id));
-    }
-  }, [dispatch, interview?.workspace_id]);
+  // ✅ إزالة الكود الذي يغير workspace تلقائياً
+  // useEffect(() => {
+  //   if (interview?.workspace_id) {
+  //     dispatch(editWorkspaceById(interview?.workspace_id));
+  //   }
+  // }, [dispatch, interview?.workspace_id]);
 
   const handleTimeZoneChange = useCallback((selectedTimezone) => {
     setTimeZone(selectedTimezone);
   }, []);
-
+  
+  useEffect(() => {
+    if (interview && workspace) {
+      const timer = setTimeout(() => {
+        setIsDataLoaded(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [interview, workspace]);
+  
   const formatDate = useCallback((date) => date.toISOString().split('T')[0], []);
 
   const isConsecutiveDate = useCallback((date1, date2) => {
@@ -94,14 +104,15 @@ const InterviewAvailability = () => {
   const navigateToWorkspaceAvailability = useCallback((workspaceData) => {
     console.log(workspaceData);
     if (workspaceData && workspaceData.id) {
-      dispatch(workspaceAction.setWorkspace(workspaceData));
+      // ✅ عدم تغيير workspace هنا - فقط navigate
+      // dispatch(workspaceAction.setWorkspace(workspaceData));
       navigate('/layoutDashboard/WorkspaceAvailability');
       
       toast.error('Please set available times for the workspace first', {
         duration: 4000,
       });
     }
-  }, [dispatch, navigate]);
+  }, [navigate]); // ✅ إزالة dispatch من dependencies
 
   const handleSaveAvailableTimes = useCallback(async (formData) => {
     try {
@@ -113,10 +124,8 @@ const InterviewAvailability = () => {
         throw new Error('No available times provided');
       }
       
-      // ✅ استخراج string value من timezone
       let timezoneValue = formData?.time_zone || timeZone;
       
-      // التأكد من أنه string وليس object
       if (typeof timezoneValue === 'object' && timezoneValue?.value) {
         timezoneValue = timezoneValue.value;
       }
@@ -124,7 +133,7 @@ const InterviewAvailability = () => {
       const payload = { 
         available_times: availableTimesData,
         available_dates: interview?.available_dates || [],
-        time_zone: timezoneValue // ✅ الآن string بالتأكيد
+        time_zone: timezoneValue
       };
       
       console.log('Payload sent to API:', payload);
@@ -150,16 +159,14 @@ const InterviewAvailability = () => {
     try {
       const unAvailableTimes = formData?.un_available_times || formData?.available_times || [];
       
-      // ✅ استخراج string value من timezone
       let timezoneValue = formData?.time_zone || timeZone;
       
-      // التأكد من أنه string وليس object
       if (typeof timezoneValue === 'object' && timezoneValue?.value) {
         timezoneValue = timezoneValue.value;
       }
       
       const payload = {
-        time_zone: timezoneValue // ✅ الآن string بالتأكيد
+        time_zone: timezoneValue 
       };
       
       console.log('Unavailable payload:', payload);
@@ -365,6 +372,7 @@ const InterviewAvailability = () => {
       getInterviewData={interview}
       getWorkspaceData={workspace}
       isTimeSectionDisabled={isTimeSectionDisabled}
+      isDataLoaded={isDataLoaded}
     />
   );
 };

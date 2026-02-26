@@ -377,7 +377,7 @@ const ModernBookingApp = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [selectedTimezone, setSelectedTimezone] = useState('Africa/Cairo');
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', code_phone: '+20' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', code_phone: '' });
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
@@ -400,7 +400,7 @@ const ModernBookingApp = () => {
           duration_period: 'minutes',
           photo: null,
           available_dates: [
-            { from: '2025-11-01 00:00:00', to: '2025-11-30 23:59:59' }
+            { from: '2026-11-01 00:00:00', to: '2026-11-30 23:59:59' }
           ],
           unavailable_dates: [],
           unavailable_times: [],

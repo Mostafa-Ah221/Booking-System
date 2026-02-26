@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Calendar, FileText, User, ChevronUp, ChevronDown} from "lucide-react";
+import { Calendar, FileText, User, ChevronUp, ChevronDown, Bell} from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaCheck } from "react-icons/fa6";
 import { useDispatch, useSelector } from 'react-redux';
@@ -48,6 +48,8 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
       ? "Staff_Profilepage"
        : location.pathname.includes("Staff_Analytics") || location.pathname.includes("Staff_Analytics")
       ? "Staff_Analytics"
+       : location.pathname.includes("Staff_Notifications") || location.pathname.includes("Staff_Notifications")
+      ? "Staff_Notifications"
        : location.pathname.includes("Staff_Availability") || location.pathname.includes("Staff_Availability")
       ? "Staff_Availability"
       : location.pathname.includes("Staff_Appointment")
@@ -63,6 +65,7 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
     { name: "Availability", icon: <User size={18} />, path: "Staff_Availability" },
     { name: "Appointments", icon: <Calendar size={18} />, path: "Staff_Appointment" },
     { name: "Interviews", icon: <FileText size={18} />, path: "Staff_Interviews" },
+    { name: "Product Notifications", icon: <Bell size={18} />, path: "Staff_Notifications" },
   ];
 
   const workspaceDataRef = useRef(staff_workspaces);

@@ -234,14 +234,15 @@ const Notifications = ({ isOpen, onClose }) => {
       }
     }
 
-    // الحجوزات
     if (lowerType.includes('appointment')) {
-      const appointmentId = notification?.data?.appointment_id;
-      if (appointmentId) {
-        onClose();
-        navigate(`/layoutDashboard/userDashboard?appointmentId=${appointmentId}`);
-      }
-    }
+  const appointmentId = notification?.data?.appointment_id;
+  if (appointmentId) {
+    onClose();
+    navigate('/layoutDashboard/userDashboard', { 
+      state: { appointmentId: appointmentId }
+    });
+  }
+}
   };
 
   // === تحديد الكل كمقروء ===
@@ -257,7 +258,6 @@ const Notifications = ({ isOpen, onClose }) => {
     setMarkingAllAsRead(false);
   };
 
-  // === أيقونة حسب النوع ===
   const getNotificationIcon = (type) => {
     const lowerType = type?.toLowerCase() || '';
     

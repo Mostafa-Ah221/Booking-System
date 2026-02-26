@@ -13,7 +13,7 @@ const ReadOnlyView = ({
   isEditing,
   activeSection,
   timeZone,
-  onTimeZoneChange, // إضافة هذا
+  onTimeZoneChange, 
   weekDays,
   selectedTimeDropdown,
   handleTimeDropdownToggle,
@@ -29,11 +29,11 @@ const ReadOnlyView = ({
   getInterviewData,
   getWorkspaceData,
   isTimeSectionDisabled,
+  isDataLoaded
 }) => {
   const sectionRef = useRef(null);
   const [contentHeight, setContentHeight] = useState(0);
 
-  console.log(getInterviewData);
 
   const isCollectiveBooking = getInterviewData?.type === "collective-booking";
 
@@ -229,6 +229,7 @@ const ReadOnlyView = ({
                       availabilityMode={getCurrentAvailabilityMode()}
                       isTimeSectionDisabled={isTimeSectionDisabled}
                       getWorkspaceData={getWorkspaceData}
+                      isDataLoaded={isDataLoaded}
                     />
                   )}
                   {(activeTab === 'available-dates' || activeTab === 'unavailable-dates') && (

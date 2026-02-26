@@ -6,16 +6,22 @@ const staffApisSlice = createSlice({
     staffData: null,  
     staff_appointments: [],
     staff_appointment: null,
+    staff_pagination: null,
     staff_interviews: [],
     staff_interview: [],
     staff_workspaces: [],
     share_link: null,
+    preferences: null,  
     loading: false,
     error: null,
+    success: null,
   },
   reducers: {
     setStaff(state, action) { 
       state.staffData = action.payload;
+    },
+     setStaff_pagination: (state, action) => {
+      state.staff_pagination = action.payload;
     },
     setStaff_appointments(state, action) {
       const incomingData = action.payload;
@@ -40,7 +46,6 @@ const staffApisSlice = createSlice({
       state.staff_appointment = action.payload;
     },
     setStaff_interviews(state, action) {
-      
       if (Array.isArray(action.payload)) {
         state.staff_interviews = action.payload;
       } else if (action.payload?.interviews) {
@@ -92,6 +97,49 @@ const staffApisSlice = createSlice({
         state.staff_appointments = [];
       }
     },
+    
+    // 👇 الـ Reducers الجديدة للـ Email Settings
+    setPreferences(state, action) {
+      console.log('📥 setPreferences:', action.payload);
+      state.preferences = action.payload;
+    },
+    
+    updateEmailSettingsLocally(state, action) {
+      const emailSettings = action.payload;
+      
+      console.log('🔄 Updating locally:', emailSettings);
+      console.log('📦 Current preferences:', state.preferences);
+      
+      if (!state.preferences) {
+        console.warn('⚠️ No preferences to update');
+        return;
+      }
+      
+      // Update the preferences object directly
+      Object.keys(emailSettings).forEach(key => {
+        if (key === 'email_language') {
+          state.preferences.email_language = emailSettings[key];
+        } else if (key.startsWith('appointment_')) {
+          // Update appointment settings: true/false -> "1"/"0"
+          state.preferences[key] = emailSettings[key] ? "1" : "0";
+        }
+      });
+      
+      console.log('✅ Updated preferences:', state.preferences);
+    },
+    
+    setSuccess(state, action) {
+      state.success = action.payload;
+    },
+    
+    resetSuccess(state) {
+      state.success = null;
+    },
+    
+    resetError(state) {
+      state.error = null;
+    },
+    
     setLoading(state, action) {
       state.loading = action.payload;
     },

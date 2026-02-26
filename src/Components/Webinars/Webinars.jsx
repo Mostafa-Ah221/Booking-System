@@ -5,28 +5,28 @@ export default function Webinars() {
 
   const handsOnWorkshops = [
     {
-      day: "Oct 01, 2025 at Wednesday",
+      day: "Oct 01, 2026 at Wednesday",
       time: "11:00 a.m ET",
       title: "Session 4 | Create scheduling workflows for your appointments",
       description: "In this session, you'll learn how to configure workflows before, during, and after appointments, so you can save time and reduce manual tasks. Send follow-ups via email and SMS, sync data to your CRM, create invoices through custom functions, and more for any of your event types.",
       status: "register"
     },
     {
-      day: "Oct 16, 2025 at Thursday",
+      day: "Oct 16, 2026 at Thursday",
       time: "11:00 a.m. ET",
       title: "Session 5 | Connect Appoint Roll with other apps to enhance productivity :",
       description: "",
       status: "register"
     },
     {
-      day: "Aug 21, 2025 Thursday",
+      day: "Aug 21, 2026 Thursday",
       time: "11:00 a.m ET",
       title: "(COMPLETED) Session 1 | Enable scheduling automation with Appoint Roll :",
       description: "",
       status: "completed"
     },
     {
-      day: "Sept 04, 2025 at Thursday",
+      day: "Sept 04, 2026 at Thursday",
       time: "11:00 a.m ET",
       title: "(COMPLETED) Session 2 | Seven ways to schedule appointments with Appoint Roll :",
       description: "",
@@ -49,7 +49,7 @@ export default function Webinars() {
       status: "register"
     },
     {
-      day: "Tuesday, September 30, 2025",
+      day: "Tuesday, September 30, 2026",
       time: "10:00 p.m. IST / 12:30 p.m. EDT",
       title: "Accelerate sales cycles with Appoint Roll :",
       description: "",

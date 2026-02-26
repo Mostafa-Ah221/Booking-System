@@ -3,9 +3,9 @@ import { Plus, Calendar, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 
 const CustomDate = () => {
   const [showCalendar, setShowCalendar] = useState(false);
-  const [selectedDate, setSelectedDate] = useState('12 Feb 2025');
+  const [selectedDate, setSelectedDate] = useState('12 Feb 2026');
   const [currentMonth, setCurrentMonth] = useState(2); 
-  const [currentYear, setCurrentYear] = useState(2025);
+  const [currentYear, setCurrentYear] = useState(2026);
   
   const months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',

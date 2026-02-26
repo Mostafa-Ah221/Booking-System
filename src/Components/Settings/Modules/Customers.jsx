@@ -65,7 +65,7 @@ const Customers = () => {
   const { customers, loading, deleteLoading,error,dataFetched } = useSelector(state => state.customers);
   const { allInterviews } = useSelector(state => state.interview);
   const dispatch = useDispatch();
-console.log(customers);
+console.log(clientData);
 
 const dataFetchedRef = useRef(false);
 
@@ -112,6 +112,8 @@ useEffect(() => {
   };
 
   const handleScheduleClick = (customer) => {
+    console.log(customer);
+    
     const customerData = {
       id: customer.id,
       name: customer.name,

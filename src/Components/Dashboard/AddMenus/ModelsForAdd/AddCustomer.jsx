@@ -165,10 +165,12 @@ const handlePhoneChange = (value, country) => {
             </label>
             <PhoneInput
               country="eg"
-              value={phoneValue} // عرض الرقم الكامل فقط
+              value={phoneValue}
               onChange={handlePhoneChange}
               enableSearch={true}
               searchPlaceholder="Search country"
+              disableCountryCode={false}
+               countryCodeEditable={false}
               inputProps={{
                 name: "phone",
                 required: true,

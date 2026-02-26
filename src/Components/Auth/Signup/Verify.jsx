@@ -367,7 +367,7 @@ const Verify = () => {
             {/* Footer */}
             <div className="text-center mt-8">
               <p className="text-gray-600 text-sm leading-relaxed">
-                <span className="font-medium text-gray-800">© 2025 Appointroll</span>
+                <span className="font-medium text-gray-800">© 2026 Appointroll</span>
                 <span className="mx-2">•</span>
                 All Rights Reserved
               </p>

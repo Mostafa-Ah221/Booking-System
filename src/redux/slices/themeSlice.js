@@ -43,7 +43,10 @@ const themeSlice = createSlice({
       state.loading = false;
       state.error = null;
     },
-
+ clearTheme(state) {
+    state.theme = null;
+    state.error = null;
+  },
     addTheme(state, action) {
       if (!Array.isArray(state.themes)) state.themes = [];
       state.themes.push(action.payload);

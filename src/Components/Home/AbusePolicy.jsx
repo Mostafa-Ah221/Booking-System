@@ -135,7 +135,7 @@ const AbusePolicy = () => {
           </p>
           <div className="mt-8 text-center">
             <span className="inline-block bg-white/10 backdrop-blur-sm px-6 py-2 rounded-full text-sm font-medium">
-              Last Updated: October 27, 2025
+              Last Updated: October 27, 2026
             </span>
           </div>
         </div>
@@ -349,7 +349,7 @@ const AbusePolicy = () => {
         {/* Footer */}
         <div className="text-center">
           <p className="text-gray-500 text-sm mb-2">
-            © 2025 Appoint Roll. All rights reserved.
+            © 2026 Appoint Roll. All rights reserved.
           </p>
           <p className="text-gray-400 text-xs">
             This Abuse Policy is part of our Terms of Service

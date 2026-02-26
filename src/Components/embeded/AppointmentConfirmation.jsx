@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Calendar, Clock, Download, Plus, ChevronRight, MoreHorizontal } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import Confetti from 'react-confetti';
 import { Link, useParams } from 'react-router-dom';
 import RescheduleSidebar from './RescheduleSidebar';
 import CancelConfirmationModal from './CancelConfirmationModal';
 import imgCheckCircle from '../../assets/image/ueyd.png';
 import imgCheckCancel from '../../assets/image/cancel.png';
-import { getAppointmentByIdPublic } from '../../redux/apiCalls/AppointmentCallApi';
+import {  getAppointmentByTokenPublic } from '../../redux/apiCalls/AppointmentCallApi';
 import { useDispatch } from 'react-redux';
 
 export default function AppointmentConfirmation() {
@@ -21,12 +21,14 @@ export default function AppointmentConfirmation() {
     height: window.innerHeight,
   });
   console.log(appointmentData);
-  
+  const [searchParams] = useSearchParams();
+  const appointmentToken = searchParams.get('apptok');
+  console.log(appointmentToken);
   
   const dispatch = useDispatch();
   const dropdownRef = useRef(null);
   const location = useLocation();
-  const responseData = location.state?.data.data.appointment;
+  const responseData = location.state?.data;
   const double_book = localStorage.getItem("double_book");
   const { id, idAdmin, idCustomer, idSpace } = useParams();
 
@@ -57,7 +59,7 @@ console.log(responseData);
   
   const fetchAppointmentData = async () => {
     try {
-      const result = await dispatch(getAppointmentByIdPublic(responseData?.id));
+      const result = await dispatch(getAppointmentByTokenPublic(appointmentToken));
       console.log(result);
       
       setAppointmentData(result.data.appointment);
@@ -67,10 +69,10 @@ console.log(responseData);
   };
 
   useEffect(() => {
-    if (responseData?.id) {
-      fetchAppointmentData();
-    }
-  }, [responseData?.id, dispatch]);
+  if (appointmentToken) {  
+    fetchAppointmentData();
+  }
+}, [appointmentToken, dispatch]);
 
   const handleRescheduleSuccess = async () => {
   await fetchAppointmentData();
@@ -175,7 +177,7 @@ END:VCALENDAR
       <div className="max-w-4xl mx-auto px-4 pb-8 pt-12 ">
         <div className="text-center mb-8">
           <h1 className="text-xl font-bold text-gray-800 mb-2">
-            Appointment confirmed with {responseData?.customer}!
+            Appointment confirmed with {appointmentData?.customer_name}!
           </h1>
           <p className="text-gray-600">Your appointment has been successfully scheduled</p>
         </div>
@@ -308,9 +310,8 @@ END:VCALENDAR
                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                     <Calendar className="w-5 h-5 text-purple-600" />
                   </div>
-                  <span className="text-xl font-bold">Appoint </span>
+                  <span className="text-xl font-bold">Appoint Roll</span>
                 </div>
-                <span className="text-xl font-bold">Roll</span>
               </div>
               
               <div className="mb-4">

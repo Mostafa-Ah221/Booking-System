@@ -64,7 +64,7 @@ const EditCustomer = () => {
   const [editData, setEditData] = useState({
     name: "",
     email: "",
-    code_phone: "+20",
+    code_phone: "",
     phone: 0,
   });
   
@@ -89,7 +89,7 @@ const EditCustomer = () => {
  useEffect(() => {
   if (customer) {
     const fullPhone = customer?.client?.phone || "";
-    let code = "+20";
+    let code = "";
     let phoneNumber = "";
     
     if (fullPhone) {
@@ -124,7 +124,7 @@ const EditCustomer = () => {
         name: customer?.client.name || "",
         email: customer.client.email || "",
         phone: customer.client.phone || "",
-        code_phone: customer?.client.code_phone || "+20"
+        code_phone: customer?.client.code_phone || ""
       };
       setEditData(customerData);
       
@@ -445,6 +445,8 @@ const handlePhoneChange = (value, country) => {
                         onChange={handlePhoneChange}
                         enableSearch={true}
                         searchPlaceholder="Search country"
+                        disableCountryCode={false}
+           countryCodeEditable={false}
                         inputProps={{
                           name: "phone",
                           required: true,

@@ -16,6 +16,7 @@ const Interviews = () => {
   const { workspace } = useSelector(state => state.workspace);
   const workspaceId = workspace ? workspace.id : 0;
   const canEditInterviewf = usePermission("edit interview");
+console.log(interviews);
 
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -27,19 +28,24 @@ const Interviews = () => {
   const org_share_link = profileData?.user.share_link;
   const menuRef = useRef(null);
 
- useEffect(() => {
+useEffect(() => {
+  console.log("useEffect triggered → workspaceId:", workspaceId, "currentWorkspaceId:", currentWorkspaceId);
+
   if (currentWorkspaceId !== null && currentWorkspaceId !== workspaceId) {
+    console.log("Clearing interviews because workspace changed");
     dispatch(interviewAction.clearInterviews());
   }
 
   if (currentType !== null) {
+    console.log("Clearing because currentType exists");
     dispatch(interviewAction.clearInterviews());
   }
 
-  if (workspaceId !== null && workspaceId !== undefined) {
+  if (workspaceId != null) {   
+    console.log("Fetching interviews for workspace:", workspaceId);
     dispatch(fetchInterviews({ work_space_id: workspaceId }));
   }
-}, [workspaceId, dispatch, currentWorkspaceId, currentType]);
+}, [workspaceId, currentWorkspaceId, currentType, dispatch]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -64,6 +70,7 @@ const handleUpdateShareLink = async (newShareLink,id) => {
 
   const toggleMenu = (interviewId, e) => {
     e.preventDefault();
+    e.stopPropagation();
     setActiveMenuId(activeMenuId === interviewId ? null : interviewId);
   };
 

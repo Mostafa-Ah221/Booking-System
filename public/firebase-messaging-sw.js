@@ -16,15 +16,17 @@ firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  console.log("📩 Background Message:", payload);
-
+  console.log('[SW] Background message received:', payload);
+  
   const notificationTitle = payload.notification?.title || "New Notification";
   const notificationOptions = {
     body: payload.notification?.body || "You have a new message",
     icon: "/firebase-logo.png",
     badge: "/badge-icon.png",
-    data: payload.data 
+    tag: payload.data?.notification_id || 'default-notification', 
+    renotify: false, 
+    data: payload.data
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });

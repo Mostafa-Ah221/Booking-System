@@ -10,8 +10,10 @@ const useBookingLogic = (id, navigate, isInterviewMode, interviewId, share_link,
   const [showBookingSummary, setShowBookingSummary] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
-  
+  const [displayedTimes, setDisplayedTimes] = useState([]);
   const [selectedService, setSelectedService] = useState('demo');
+  const [modalDisplayedTimes, setModalDisplayedTimes] = useState([]);
+
 const getDefaultTimezone = () => {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone; 
@@ -45,7 +47,7 @@ const lastResourceIdRef = useRef(null);
     name: '',
     email: '',
     phone: '',
-    code_phone: '+20',
+    code_phone: '',
     address: ''
   });
   
@@ -53,35 +55,33 @@ const lastResourceIdRef = useRef(null);
   const [bookingData, setBookingData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-const WORKSPACE_TIMEZONE = 'Africa/Cairo';
- 
- const getNavigationPath = () => {
+ const WORKSPACE_TIMEZONE = 'Africa/Cairo';
+ const lastFetchTimeRef = useRef(0);
+ const FETCH_COOLDOWN = 60000; 
+  const getNavigationPath = (token = '') => {
   const pathname = location.pathname;
-
   const pathParts = pathname.split("/").filter(Boolean);
-  const orgBase = pathParts[0]; 
+  const orgBase = pathParts[0];
+console.log(token);
+
+  const tokenQuery = token ? `?apptok=${token}` : '';
 
   if (pathname.includes("/w/")) {
-    // Workspace
-    const workspaceSlug = pathParts[2]; 
-    return `/${orgBase}/w/${workspaceSlug}/appointmentConfirmation`;
+    const workspaceSlug = pathParts[2];
+    return `/${orgBase}/w/${workspaceSlug}/appointmentConfirmation${tokenQuery}`;
   } 
   else if (pathname.includes("/s/")) {
-    // Staff
     const staffSlug = pathParts[2];
-    return `/${orgBase}/s/${staffSlug}/appointmentConfirmation`;
+    return `/${orgBase}/s/${staffSlug}/appointmentConfirmation${tokenQuery}`;
   } 
   else if (pathname.includes("/service/")) {
-    // Service
     const serviceSlug = pathParts[2];
-    return `/${orgBase}/service/${serviceSlug}/appointmentConfirmation`;
+    return `/${orgBase}/service/${serviceSlug}/appointmentConfirmation${tokenQuery}`;
   } 
   else {
-    // Organization only
-    return `/${orgBase}/appointmentConfirmation`;
+    return `/${orgBase}/appointmentConfirmation${tokenQuery}`;
   }
 };
-
 const convertDisabledTimesToTimezone = (disabledTimes, targetTimezone) => {
   if (!disabledTimes || !Array.isArray(disabledTimes)) return [];
   
@@ -92,7 +92,7 @@ const convertDisabledTimesToTimezone = (disabledTimes, targetTimezone) => {
       let { date: originalDate, time } = disabled;
       if (!originalDate || !time) return disabled;
 
-      // 1. لو التاريخ جاي ISO (مثل 2025-12-08) → استخدمه مباشرة
+      // 1. لو التاريخ جاي ISO (مثل 2026-12-08) → استخدمه مباشرة
       let isoDate = originalDate;
       if (!originalDate.includes('-') || originalDate.split('-')[0].length !== 4) {
         // لو مش ISO → حوله
@@ -136,6 +136,85 @@ const convertDisabledTimesToTimezone = (disabledTimes, targetTimezone) => {
   });
 };
 
+const refreshTimesForModal = (date) => {
+  if (!date || !bookingData?.raw_available_times) {
+    setModalDisplayedTimes([]);
+    return;
+  }
+
+  const isoDate = convertDateToISO(date);
+  if (!isoDate) {
+    setModalDisplayedTimes([]);
+    return;
+  }
+
+  const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;
+
+  // ✅ حول disabled_times من UTC للـ user timezone
+  const convertedDisabledTimes = (bookingData.disabled_times || []).map(disabled => {
+    try {
+      let { date: origDate, time } = disabled;
+      if (!origDate || !time) return disabled;
+
+      let dateISO = origDate;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(origDate)) {
+        dateISO = convertDateToISO(origDate);
+      }
+      if (!dateISO) return disabled;
+
+      const [h, m] = time.split(':').map(Number);
+      const utcTimestamp = Date.UTC(
+        parseInt(dateISO.split('-')[0]),
+        parseInt(dateISO.split('-')[1]) - 1,
+        parseInt(dateISO.split('-')[2]),
+        h,
+        m,
+        0
+      );
+      
+      const utcDate = new Date(utcTimestamp);
+      
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: userTimezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
+      const parts = formatter.formatToParts(utcDate);
+      const map = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+
+      const convertedISO = `${map.year}-${map.month}-${map.day}`;
+      const convertedTime = `${map.hour}:${map.minute}:00`;
+
+      return {
+        date: convertedISO,
+        time: convertedTime
+      };
+    } catch (err) {
+      console.error('❌ Failed to convert disabled time:', disabled, err);
+      return disabled;
+    }
+  });
+
+  const times = generateTimeSlots(
+    bookingData.raw_available_times,
+    parseInt(bookingData.duration_cycle),
+    bookingData.duration_period || 'minutes',
+    date,
+    convertedDisabledTimes,
+    bookingData.unavailable_times || [],
+    bookingData.unavailable_dates || [],
+    parseInt(bookingData.rest_cycle || '0'),
+    userTimezone
+  );
+
+  console.log(`🔄 Refreshed times for modal on ${date}:`, times);
+  setModalDisplayedTimes(times);
+};
 const convertDateTimeWithTimezone = (dateStr, timeStr, targetTimezone) => {
   try {
     // 1. تحويل التاريخ لـ ISO
@@ -146,7 +225,6 @@ const convertDateTimeWithTimezone = (dateStr, timeStr, targetTimezone) => {
     const [hours, minutes, seconds = 0] = timeStr.split(':').map(Number);
     
     // 3. إنشاء Date object بـ UTC
-    // ⚠️ المفتاح: استخدم Date.UTC() بدل string مع Z
     const utcTimestamp = Date.UTC(
       parseInt(isoDate.split('-')[0]), // year
       parseInt(isoDate.split('-')[1]) - 1, // month (0-indexed)
@@ -170,8 +248,6 @@ const convertDateTimeWithTimezone = (dateStr, timeStr, targetTimezone) => {
     });
 
     const formatted = formatter.format(utcDate);
-    // formatted مثال: "06/12/2025, 06:30"
-    
     const [datePart, timePart] = formatted.split(', ');
     const [day, month, year] = datePart.split('/');
     const [hour, minute] = timePart.split(':');
@@ -229,7 +305,7 @@ const convertDateTimeWithTimezone = (dateStr, timeStr, targetTimezone) => {
 
 const generateTimeSlots = (
   availableTimes,
-  durationCycle = 15,
+  durationCycle ,
   durationPeriod = "minutes",
   selectedDate = null,
   disabledTimes = [],
@@ -242,30 +318,163 @@ const generateTimeSlots = (
     return [];
   }
 
-  const formattedDate = convertDateToISO(selectedDate);
-  if (!formattedDate) return [];
+  // Helper: Convert "08 Dec 2026" → "2026-12-08"
+  const convertDateToISO = (dateStr) => {
+    try {
+      if (typeof dateStr === 'string' && dateStr.includes(' ')) {
+        const months = {
+          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+          'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+          'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+        };
+        const parts = dateStr.trim().split(' ');
+        if (parts.length !== 3) return null;
+        const [day, month, year] = parts;
+        const monthNum = months[month];
+        if (!monthNum) return null;
+        return `${year}-${monthNum}-${day.padStart(2, '0')}`;
+      }
+      return dateStr;
+    } catch (error) {
+      console.error('Error converting date:', error);
+      return null;
+    }
+  };
 
-  const getDayOfWeekFromDate = (dateString) => {
-    const date = new Date(dateString + 'T00:00:00.000Z');
+  const formattedDate = convertDateToISO(selectedDate);
+  if (!formattedDate) {
+    console.log('❌ Could not convert selectedDate to ISO:', selectedDate);
+    return [];
+  }
+
+  // Helper: Get day_id from ISO date (1=Sunday, 7=Saturday)
+  const getDayOfWeekFromDate = (isoDateString) => {
+    const date = new Date(isoDateString + 'T00:00:00.000Z');
     if (isNaN(date.getTime())) return null;
     const dayOfWeek = date.getUTCDay();
     return dayOfWeek === 0 ? 1 : dayOfWeek + 1;
   };
 
-  const targetDayId = getDayOfWeekFromDate(formattedDate);
-  if (!targetDayId) return [];
+  // Helper: Time string to minutes
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr || !timeStr.includes(':')) return 0;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+  };
 
-  const timeRangesForSelectedDay = availableTimes.filter(
-    tr => tr && Number(tr.day_id) === Number(targetDayId)
+  // Helper: Check if time is in unavailable range
+const isTimeInUnavailableRange = (timeStr, dayId) => {
+  if (!unavailableTimes?.length) return false;
+  const timeMinutes = timeToMinutes(timeStr);
+  return unavailableTimes.some(range => {
+    if (Number(range.day_id) !== Number(dayId)) return false;
+    const fromMinutes = timeToMinutes(range.from);
+    if (!range.to || range.to === null) {
+      return timeMinutes >= fromMinutes;
+    }
+    const toMinutes = timeToMinutes(range.to);
+    return timeMinutes >= fromMinutes && timeMinutes < toMinutes;
+  });
+};
+
+ const isTimePast = (targetIsoDate, localTimeStr, targetTimezone) => {
+  try {
+    const [hours, minutes] = localTimeStr.split(':').map(Number);
+
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: targetTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    const dateParts = targetIsoDate.split('-');
+    const testDate = new Date(Date.UTC(
+      parseInt(dateParts[0]),
+      parseInt(dateParts[1]) - 1,
+      parseInt(dateParts[2]),
+      hours,
+      minutes,
+      0
+    ));
+
+    const formattedParts = formatter.formatToParts(testDate);
+    const partsMap = formattedParts.reduce((acc, part) => {
+      acc[part.type] = part.value;
+      return acc;
+    }, {});
+
+    const localDateTime = new Date(
+      `${partsMap.year}-${partsMap.month}-${partsMap.day}T${partsMap.hour}:${partsMap.minute}:00`
+    );
+
+    return localDateTime < new Date();
+  } catch (error) {
+    console.error('Error in isTimePast:', error);
+    return false;
+  }
+};
+
+  // Helper: Convert UTC time to target timezone
+  const convertUTCTimeToTimezone = (utcDateISO, utcTime, targetTz) => {
+    try {
+      const [hours, minutes] = utcTime.split(':').map(Number);
+      const utcTimestamp = Date.UTC(
+        parseInt(utcDateISO.split('-')[0]),
+        parseInt(utcDateISO.split('-')[1]) - 1,
+        parseInt(utcDateISO.split('-')[2]),
+        hours,
+        minutes,
+        0
+      );
+      const utcDate = new Date(utcTimestamp);
+      
+      const formatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: targetTz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
+      const formatted = formatter.format(utcDate);
+      const [datePart, timePart] = formatted.split(', ');
+      const [day, month, year] = datePart.split('/');
+      const [hour, minute] = timePart.split(':');
+
+      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const newDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
+      const newTime = `${hour}:${minute}`;
+      const isoDate = `${year}-${month}-${day}`;
+
+      return { date: newDate, time: newTime, isoDate };
+    } catch (err) {
+      console.error('❌ Conversion failed:', err);
+      return null;
+    }
+  };
+
+  // Helper: Generate UTC slots for a specific day_id
+const generateUTCSlotsForDay = (dayId) => {
+  const timeRangesForDay = availableTimes.filter(
+    tr => tr && Number(tr.day_id) === Number(dayId)
   );
 
+  if (timeRangesForDay.length === 0) {
+    return [];
+  }
+
+  const slots = [];
   const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
-  const restInMinutes = restCycle;
+  const restInMinutes = parseInt(restCycle) || 0;
 
-  const utcTimeSlots = [];
-
-  // ── 1️⃣ توليد الأوقات بـ UTC أولاً ──────────────────────────
-  timeRangesForSelectedDay.forEach(range => {
+  timeRangesForDay.forEach(range => {
     if (!range?.from || !range?.to) return;
     
     const [fromH, fromM] = range.from.split(':').map(Number);
@@ -273,8 +482,10 @@ const generateTimeSlots = (
     
     let currentMinutes = fromH * 60 + fromM;
     const endMinutes = toH * 60 + toM;
+    
+    let lastValidSlot = null;
 
-    while (currentMinutes < endMinutes) {
+   while (currentMinutes < endMinutes) {
       const hours = Math.floor(currentMinutes / 60);
       const minutes = currentMinutes % 60;
       const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
@@ -282,37 +493,102 @@ const generateTimeSlots = (
       const endTimeMinutes = currentMinutes + durationInMinutes;
       if (endTimeMinutes > endMinutes) break;
 
-      utcTimeSlots.push(timeStr);
-      currentMinutes += durationInMinutes + restInMinutes;
-    }
-  });
-
-  // ── 2️⃣ تحويل كل وقت من UTC → Target Timezone ───────────────
-  const convertedSlots = [];
-  
-  utcTimeSlots.forEach(utcTime => {
-    const converted = convertDateTimeWithTimezone(selectedDate, utcTime, targetTimezone);
-    
-    // تأكد أن التاريخ المحول = التاريخ المطلوب
-    if (converted.date === selectedDate) {
-      const isoDate = convertDateToISO(converted.date);
-      const disabled = disabledTimes.some(d => 
-        d.date === isoDate && d.time.startsWith(converted.time)
-      );
-      const past = isTimePast(converted.date, converted.time);
-      
-      if (!disabled && !past) {
-        convertedSlots.push(converted.time);
+      if (!isTimeInUnavailableRange(timeStr, dayId)) {
+        slots.push(timeStr);
+        currentMinutes += durationInMinutes + restInMinutes;
+      } else {
+        currentMinutes += 1;
       }
     }
   });
 
-  // ── 3️⃣ إزالة التكرار وترتيب ──────────────────────────────
+  return slots;
+};
+
+  // ═══════════════════════ Main Logic ═══════════════════════
+  
+  const convertedSlots = [];
+  const targetDateISO = formattedDate;
+
+  // Get 3 days: previous, current, next
+  const dates = [];
+  
+  // Previous day
+  const prevDate = new Date(formattedDate + 'T00:00:00.000Z');
+  prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+  const prevISO = prevDate.toISOString().split('T')[0];
+  dates.push({ iso: prevISO, label: 'Previous' });
+  
+  // Current day
+  dates.push({ iso: formattedDate, label: 'Current' });
+  
+  // Next day
+  const nextDate = new Date(formattedDate + 'T00:00:00.000Z');
+  nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+  const nextISO = nextDate.toISOString().split('T')[0];
+  dates.push({ iso: nextISO, label: 'Next' });
+
+  console.log(`📅 Checking 3 days:`, dates.map(d => `${d.label}: ${d.iso}`).join(', '));
+
+  dates.forEach(({ iso, label }) => {
+    const dayId = getDayOfWeekFromDate(iso);
+    if (!dayId) {
+      console.log(`   ⚠️ ${label} day: Could not get day_id for ${iso}`);
+      return;
+    }
+
+    console.log(`\n📅 ${label} day: ${iso} (day_id: ${dayId})`);
+    const utcSlots = generateUTCSlotsForDay(dayId);
+    console.log(`   📌 Generated ${utcSlots.length} UTC slots`);
+
+    if (utcSlots.length === 0) return;
+
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const [y, m, d] = iso.split('-');
+    const readableDate = `${d} ${monthNames[parseInt(m)-1]} ${y}`;
+
+   utcSlots.forEach(utcTime => {
+  // 1. افحص إن الـ slot في UTC لسه لم يمرّ
+  const [hours, minutes] = utcTime.split(':').map(Number);
+  const slotUTC = Date.UTC(
+    parseInt(iso.split('-')[0]),
+    parseInt(iso.split('-')[1]) - 1,
+    parseInt(iso.split('-')[2]),
+    hours,
+    minutes,
+    0
+  );
+
+  if (slotUTC < Date.now()) {
+    console.log(`   ⏭️ ${iso} ${utcTime} UTC → skipped (past in UTC)`);
+    return;
+  }
+
+  const converted = convertUTCTimeToTimezone(iso, utcTime, targetTimezone);
+  if (!converted) return;
+
+  if (converted.isoDate !== targetDateISO) {
+    return;
+  }
+
+  const disabled = disabledTimes.some(d => 
+    d.date === targetDateISO && d.time.startsWith(converted.time)
+  );
+
+  if (!disabled) {
+    convertedSlots.push(converted.time);
+  } 
+});
+  });
+
+  // Remove duplicates and sort
   const unique = [...new Set(convertedSlots)].sort((a, b) => {
     const [ha, ma] = a.split(':').map(Number);
     const [hb, mb] = b.split(':').map(Number);
     return ha * 60 + ma - (hb * 60 + mb);
   });
+
+  
 
   return unique;
 };
@@ -372,7 +648,7 @@ const generateTimeSlots = (
 const isTimeDisabled = (date, time, disabledTimes = []) => {
   if (!date || !time || !Array.isArray(disabledTimes)) return false;
 
-  const isoDate = convertDateToISO(date); // "08 Dec 2025" → "2025-12-08"
+  const isoDate = convertDateToISO(date); // "08 Dec 2026" → "2026-12-08"
   const timePrefix = time.slice(0, 5);   // "09:00" → "09:00"
 
   return disabledTimes.some(d => {
@@ -386,55 +662,70 @@ useEffect(() => {
   const isoDate = convertDateToISO(selectedDate);
   if (!isoDate) return;
 
-  const userTimezone = selectedTimezone || 'Africa/Cairo';
+  const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;;
 
   const convertedDisabledTimes = (bookingData.disabled_times || []).map(disabled => {
     try {
       let { date: origDate, time } = disabled;
       if (!origDate || !time) return disabled;
+
       let dateISO = origDate;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(origDate)) {
         dateISO = convertDateToISO(origDate);
       }
       if (!dateISO) return disabled;
 
-      const [year, month, day] = dateISO.split('-');
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const tempDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
+      const [h, m] = time.split(':').map(Number);
+      const utcTimestamp = Date.UTC(
+        parseInt(dateISO.split('-')[0]),
+        parseInt(dateISO.split('-')[1]) - 1,
+        parseInt(dateISO.split('-')[2]),
+        h,
+        m,
+        0
+      );
+      
+      const utcDate = new Date(utcTimestamp);
+      
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: userTimezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
 
-      const converted = convertDateTimeWithTimezone(tempDate, time, userTimezone);
-      const convertedISO = convertDateToISO(converted.date);
+      const parts = formatter.formatToParts(utcDate);
+      const map = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+
+      const convertedISO = `${map.year}-${map.month}-${map.day}`;
+      const convertedTime = `${map.hour}:${map.minute}:00`;
 
       return {
         date: convertedISO,
-        time: converted.time + ':00'
+        time: convertedTime
       };
     } catch (err) {
-      console.warn('Failed to convert disabled time:', disabled, err);
+      console.error('❌ Failed to convert disabled time:', disabled, err);
       return disabled;
     }
   });
 
-  // بناء lookup
-  const disabledMap = {};
-  convertedDisabledTimes.forEach(d => {
-    if (d.date === isoDate) {
-      disabledMap[d.time.slice(0, 5)] = true;
-    }
-  });
 
-  // توليد الأوقات
   const times = generateTimeSlots(
     bookingData.raw_available_times,
     parseInt(bookingData.duration_cycle),
     bookingData.duration_period || 'minutes',
-    selectedDate,
+    selectedDate, 
     convertedDisabledTimes,
     bookingData.unavailable_times || [],
     bookingData.unavailable_dates || [],
     parseInt(bookingData.rest_cycle || '0'),
-    userTimezone
+    userTimezone 
   );
+  setDisplayedTimes(times);
 
   setBookingData(prev => ({
     ...prev,
@@ -443,12 +734,18 @@ useEffect(() => {
   }));
 
   if (times.length > 0) {
-    setSelectedTime(prev => prev && times.includes(prev) ? prev : times[0]);
+    const currentTime = selectedTime;
+    if (currentTime && times.includes(currentTime)) {
+    
+    } else {
+      setSelectedTime(times[0]);
+    }
   } else {
     setSelectedTime('');
   }
 
-}, [selectedDate, selectedTimezone, bookingData?.raw_available_times]);
+}, [selectedDate, selectedTimezone, bookingData?.raw_available_times, bookingData?.disabled_times]);
+
 
 const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavailableTimes = [], unavailableDates = []) => {
     if (!date || !availableTimes || !Array.isArray(availableTimes)) {
@@ -468,7 +765,7 @@ const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavail
     return availableTime ? (typeof availableTime === 'string' ? availableTime : availableTime.time) : null;
   };
 
- const fetchInterviewData = async (interviewId) => {
+const fetchInterviewData = async (interviewId) => {
   const response = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}`);
   
   if (!response.ok) {
@@ -484,55 +781,42 @@ const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavail
   }
   
   const interview = apiData.data.interview;
-  setRequireEndTime(interview.require_end_time === "1" || interview.require_end_time === 1 || interview.require_end_time === true);
   
-  
+  let availableStaffGroups = [];
   if (interview.staff_group && Array.isArray(interview.staff_group) && interview.staff_group.length > 0) {
-   
-    setAvailableStaffGroups(prev => {
-      const prevIds = prev.map(g => g.group_id).sort().join(',');
-      const newIds = interview.staff_group.map(g => g.group_id).sort().join(',');
-      return prevIds !== newIds ? interview.staff_group : prev;
-    });
-  } else {
-    setAvailableStaffGroups([]);
+    availableStaffGroups = interview.staff_group;
   }
 
+  let availableResources = [];
   if (interview.resources && Array.isArray(interview.resources) && interview.resources.length > 0) {
-    setAvailableResources(prev => {
-      const prevIds = prev.map(r => r.id).sort().join(',');
-      const newIds = interview.resources.map(r => r.id).sort().join(',');
-      return prevIds !== newIds ? interview.resources : prev;
-    });
-  } else {
-    setAvailableResources([]);
+    availableResources = interview.resources;
   }
 
+  let availableStaff = [];
+  let initialSelectedStaff = null;
   if (interview.staff && Array.isArray(interview.staff) && interview.staff.length > 0) {
-    setAvailableStaff(prev => {
-      const prevIds = prev.map(s => s.id).sort().join(',');
-      const newIds = interview.staff.map(s => s.id).sort().join(',');
-      return prevIds !== newIds ? interview.staff : prev;
-    });
+    availableStaff = interview.staff;
     
     if (isStaff && share_link) {
       const staffMember = interview.staff.find(staff => staff.share_link === share_link);
-      
       if (staffMember) {
-        setSelectedStaff(staffMember);
-        setAvailableStaff([]); 
+        initialSelectedStaff = staffMember;
+        availableStaff = []; // مسح availableStaff كما في الكود الأصلي
       }
     }
-  } else {
-    setAvailableStaff([]);
   }
   
   localStorage.setItem('double_book', interview.double_book);
   localStorage.setItem('approve_appo', interview.approve_appointment);
   
-   return {
+  return {
     interview,
-    theme: apiData.data?.theme || null
+    theme: apiData.data?.theme || null,
+    requireEndTime: interview.require_end_time === "1" || interview.require_end_time === 1 || interview.require_end_time === true,
+    availableStaffGroups,
+    availableResources,
+    availableStaff,
+    initialSelectedStaff
   };
 };
 
@@ -555,36 +839,37 @@ const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavail
   return `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
 };
 
- const transformInterviewData = (interview) => {
+const transformInterviewData = (interview, initialSelectedStaff = null) => {
   let sourceData;
-  
+
   if (selectedResource) {
     sourceData = {
       available_dates: interview.available_dates || [],
       unavailable_dates: interview.un_available_dates || [],
       unavailable_times: interview.un_available_times || [],
       available_times: interview.available_times || [],
-      disabled_times: selectedResource.disabled_times || [] 
+      disabled_times: selectedResource.disabled_times || []
     };
   } else if (selectedStaffGroup) {
     sourceData = {
       available_dates: selectedStaffGroup.collective_available_dates || [],
-      unavailable_dates:selectedStaffGroup.collective_unavailable_dates || [],
-      unavailable_times:selectedStaffGroup.collective_unavailable_times || [],
+      unavailable_dates: selectedStaffGroup.collective_unavailable_dates || [],
+      unavailable_times: selectedStaffGroup.collective_unavailable_times || [],
       available_times: selectedStaffGroup.collective_available_times || [],
       disabled_times: selectedStaffGroup.disabled_times || []
     };
-  } else if (selectedStaff) {
-    sourceData = selectedStaff;
+  } else if (selectedStaff || initialSelectedStaff) {
+    // تفضيل initialSelectedStaff لو موجود (لأنه synchronous في التحميل الأولي)
+    sourceData = initialSelectedStaff || selectedStaff;
   } else {
     sourceData = interview;
   }
-  
+
   return {
     available_dates: sourceData.available_dates || [],
     unavailable_dates: sourceData.un_available_dates || [],
     unavailable_times: sourceData.un_available_times || [],
-    available_times: sourceData.available_times || [], 
+    available_times: sourceData.available_times || [],
     name: interview.name || 'Interview',
     customer_id: interview.customer_id,
     id: interview.id,
@@ -593,14 +878,15 @@ const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavail
     duration: `${interview.duration_cycle}${interview.duration_period}`,
     work_space_id: interview.work_space_id,
     photo: interview.photo,
-    disabled_times: sourceData.disabled_times || [], 
+    disabled_times: sourceData.disabled_times || [],
     created_at: interview.created_at,
-    raw_available_times: sourceData.available_times,
+    raw_available_times: sourceData.available_times || [],
     duration_cycle: interview.duration_cycle,
     duration_period: interview.duration_period,
     rest_cycle: interview.rest_cycle || '0',
     status_of_pay: interview.status_of_pay,
     price: interview.price || '0',
+    payment_details: interview.payment_details || null,
     mode: interview.mode,
     inperson_mode: interview.inperson_mode,
     currency: interview.currency,
@@ -614,237 +900,7 @@ const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavail
   };
 };
 
-const findDefaultDateTime = (transformedData) => {
 
-
-  if (!transformedData?.available_dates?.length || !transformedData?.raw_available_times?.length) {
- 
-    return { defaultDate: null, defaultTime: null };
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const possibleDates = [];
-
-
- transformedData.available_dates.forEach(range => {
-    try {
-
-      let fromISO = range.from;
-      if (range.from.includes(' ')) {
-        fromISO = convertDateToISO(range.from.split(' ')[0]) || convertDateToISO(range.from);
-      }
-      
-      let toISO = range.to || range.from;
-      if (toISO.includes(' ')) {
-        toISO = convertDateToISO(toISO.split(' ')[0]) || convertDateToISO(toISO);
-      }
-      
-      if (!fromISO || !toISO) {
-        console.warn('⚠️ Could not parse date range:', range);
-        return;
-      }
-      
-      const from = new Date(fromISO + 'T00:00:00.000Z');
-      const to = new Date(toISO + 'T00:00:00.000Z');
-      
-      let current = new Date(from);
-      while (current <= to) {
-        if (current >= today) {
-          const formatted = current.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          });
-          possibleDates.push(formatted);
-        }
-        current.setDate(current.getDate() + 1);
-      }
-    } catch (e) {
-      console.error('❌ Error parsing date range:', range, e);
-    }
-  });
-
-
-  if (possibleDates.length === 0) {
-    return { defaultDate: null, defaultTime: null };
-  }
-
-  possibleDates.sort((a, b) => new Date(a) - new Date(b));
-
-  const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;
-
-  const convertedDisabledTimes = (transformedData.disabled_times || []).map(disabled => {
-    try {
-      let { date: origDate, time } = disabled;
-      if (!origDate || !time) return disabled;
-
-      let dateISO = origDate;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(origDate)) {
-        dateISO = convertDateToISO(origDate);
-      }
-      if (!dateISO) return disabled;
-
-      const [h, m] = time.split(':').map(Number);
-      const utcDateTime = new Date(`${dateISO}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`);
-
-      const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: userTimezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      });
-
-      const parts = formatter.formatToParts(utcDateTime);
-      const map = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
-
-      return {
-        date: `${map.year}-${map.month}-${map.day}`,
-        time: `${map.hour}:${map.minute}:00`
-      };
-    } catch (err) {
-      console.error('❌ Error converting disabled time:', disabled, err);
-      return disabled;
-    }
-  });
-
-  console.log('✅ Converted disabled times:', convertedDisabledTimes.length);
-
-  // 3️⃣ دالة توليد الأوقات
-  const generateTimesForDay = (targetISODate) => {
-    const times = generateTimeSlots(
-      transformedData.raw_available_times,
-      parseInt(transformedData.duration_cycle),
-      transformedData.duration_period || 'minutes',
-      targetISODate,
-      [],
-      transformedData.unavailable_times || [],
-      transformedData.unavailable_dates || [],
-      parseInt(transformedData.rest_cycle || '0'),
-      WORKSPACE_TIMEZONE
-    );
-    console.log(`⏰ Generated ${times.length} times for ${targetISODate}`);
-    return times;
-  };
-
-  // 4️⃣ دالة التحويل والفحص
-  const convertAndCheck = (cairoDateStr, cairoTime, targetDateStr, isoDate, disabledMap) => {
-    const converted = convertDateTimeWithTimezone(
-      cairoDateStr,
-      cairoTime,
-      WORKSPACE_TIMEZONE,
-      userTimezone
-    );
-
-    if (converted.date !== targetDateStr) return null;
-
-    const timeKey = converted.time.slice(0, 5);
-    const isDisabled = !!disabledMap[timeKey];
-    const isPast = isTimePast(targetDateStr, converted.time);
-
-    return (!isDisabled && !isPast) ? converted.time : null;
-  };
-
-  // 5️⃣ البحث في كل يوم
-  for (let i = 0; i < possibleDates.length; i++) {
-    const dateStr = possibleDates[i];
-    console.log(`\n🔍 Checking date ${i + 1}/${possibleDates.length}: ${dateStr}`);
-    
-    const isoDate = convertDateToISO(dateStr);
-    if (!isoDate) {
-      console.log('❌ Failed to convert to ISO');
-      continue;
-    }
-
-    // بناء lookup
-    const disabledMap = {};
-    convertedDisabledTimes.forEach(d => {
-      if (d.date === isoDate) {
-        disabledMap[d.time.slice(0, 5)] = true;
-      }
-    });
-
-    console.log(`🚫 Disabled times for this date: ${Object.keys(disabledMap).length}`);
-
-    const allUserTimes = [];
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    // اليوم الحالي
-    console.log('  📍 Checking current day...');
-    const currentDayTimes = generateTimesForDay(isoDate);
-    currentDayTimes.forEach(time => {
-      const result = convertAndCheck(dateStr, time, dateStr, isoDate, disabledMap);
-      if (result) allUserTimes.push(result);
-    });
-    console.log(`    ✓ Found ${allUserTimes.length} times from current day`);
-
-    // اليوم السابق
-    if (userTimezone !== WORKSPACE_TIMEZONE) {
-      console.log('  📍 Checking previous day...');
-      const prevDate = new Date(isoDate + 'T00:00:00.000Z');
-      prevDate.setUTCDate(prevDate.getUTCDate() - 1);
-      const prevISO = prevDate.toISOString().split('T')[0];
-      const prevTimes = generateTimesForDay(prevISO);
-      const prevDay = String(prevDate.getUTCDate()).padStart(2, '0');
-      const prevMonth = monthNames[prevDate.getUTCMonth()];
-      const prevYear = prevDate.getUTCFullYear();
-      const prevDateStr = `${prevDay} ${prevMonth} ${prevYear}`;
-
-      let prevCount = 0;
-      prevTimes.forEach(time => {
-        const result = convertAndCheck(prevDateStr, time, dateStr, isoDate, disabledMap);
-        if (result) {
-          allUserTimes.push(result);
-          prevCount++;
-        }
-      });
-      console.log(`    ✓ Found ${prevCount} times from previous day`);
-    }
-
-    // اليوم التالي
-    if (userTimezone !== WORKSPACE_TIMEZONE) {
-      console.log('  📍 Checking next day...');
-      const nextDate = new Date(isoDate + 'T00:00:00.000Z');
-      nextDate.setUTCDate(nextDate.getUTCDate() + 1);
-      const nextISO = nextDate.toISOString().split('T')[0];
-      const nextTimes = generateTimesForDay(nextISO);
-      const nextDay = String(nextDate.getUTCDate()).padStart(2, '0');
-      const nextMonth = monthNames[nextDate.getUTCMonth()];
-      const nextYear = nextDate.getUTCFullYear();
-      const nextDateStr = `${nextDay} ${nextMonth} ${nextYear}`;
-
-      let nextCount = 0;
-      nextTimes.forEach(time => {
-        const result = convertAndCheck(nextDateStr, time, dateStr, isoDate, disabledMap);
-        if (result) {
-          allUserTimes.push(result);
-          nextCount++;
-        }
-      });
-      console.log(`    ✓ Found ${nextCount} times from next day`);
-    }
-
-    // إزالة التكرارات وترتيب
-    const uniqueTimes = [...new Set(allUserTimes)].sort((a, b) => {
-      const [ha, ma] = a.split(':').map(Number);
-      const [hb, mb] = b.split(':').map(Number);
-      return ha * 60 + ma - (hb * 60 + mb);
-    });
-
-    console.log(`📊 Total unique times: ${uniqueTimes.length}`);
-
-    if (uniqueTimes.length > 0) {
-      console.log(`✅ SUCCESS! Returning: ${dateStr} @ ${uniqueTimes[0]}`);
-      return { defaultDate: dateStr, defaultTime: uniqueTimes[0] };
-    }
-  }
-
-  console.log('⚠️ No valid times found anywhere, returning first date without time');
-  return { defaultDate: possibleDates[0], defaultTime: null };
-};
 
   const formatDateForAPI = (dateString) => {
     if (!dateString) {
@@ -934,9 +990,12 @@ const findDefaultDateTime = (transformedData) => {
       if (!response.ok) {
         throw responseData;
       }
-
+      const appointmentToken = responseData?.data?.appointment?.token;
+      console.log(responseData);
+      console.log(appointmentToken);
       
-      const navigationPath = getNavigationPath();
+      const navigationPath = getNavigationPath(appointmentToken);
+      
       navigate(navigationPath, {
         state:{
           data: responseData,
@@ -963,7 +1022,7 @@ const findDefaultDateTime = (transformedData) => {
       );
 
       setShowBookingSummary(false);
-      setFormData({ name: '', email: '', phone: '', code_phone: '+20', address: '' });
+      setFormData({ name: '', email: '', phone: '', code_phone: '', address: '' });
 
       const newDisabledTime = {
         date: formattedDate,
@@ -1062,8 +1121,12 @@ useEffect(() => {
 }, [selectedTime, selectedEndTime, requireEndTime, bookingData]);
 
   // useEffect hooks
- useEffect(() => {
+useEffect(() => {
+  let isMounted = true;
+  
   const loadInitialData = async () => {
+    if (!isMounted) return;
+    
     try {
       setLoading(true);
       setError(null);
@@ -1071,104 +1134,123 @@ useEffect(() => {
       const interviewId = id || share_link;
       if (!interviewId) return;
 
-            const { interview, theme: fetchedTheme } = await fetchInterviewData(interviewId);
-      if (fetchedTheme && !theme && typeof setTheme === 'function') {
-        setTheme(fetchedTheme);
-      }
-      const transformedData = transformInterviewData(interview);
+      const fetchedData = await fetchInterviewData(interviewId);
 
+      if (!isMounted) return;
+
+      setRequireEndTime(fetchedData.requireEndTime);
+      setAvailableStaffGroups(fetchedData.availableStaffGroups);
+      setAvailableResources(fetchedData.availableResources);
+      setAvailableStaff(fetchedData.availableStaff);
+
+      if (fetchedData.initialSelectedStaff) {
+        setSelectedStaff(fetchedData.initialSelectedStaff);
+      }
+
+      if (fetchedData.theme && !theme && typeof setTheme === 'function') {
+        setTheme(fetchedData.theme);
+      }
+
+      const transformedData = transformInterviewData(
+        fetchedData.interview,
+        fetchedData.initialSelectedStaff || null
+      );
 
       setBookingData(transformedData);
 
-      if (!transformedData.available_dates?.length) {
-        setLoading(false);
-        return;
-      }
+      // ✅ هنا التعديل: نجيب أول تاريخ متاح فيه أوقات
+      if (transformedData.available_dates?.length > 0) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        let firstAvailableDate = null;
+        
+        // نلف على كل الـ date ranges
+        for (const range of transformedData.available_dates) {
+          try {
+            let fromISO = convertDateToISO(range.from.includes(' ') ? range.from.split(' ')[0] : range.from);
+            let toISO = range.to 
+              ? convertDateToISO(range.to.includes(' ') ? range.to.split(' ')[0] : range.to)
+              : fromISO;
 
-      let firstAvailableDate = null;
-      let firstAvailableTime = null;
+            if (!fromISO || !toISO) continue;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const possibleDates = [];
-
-      transformedData.available_dates.forEach(range => {
-        try {
-          const from = new Date(range.from.split(' ')[0]);
-          const to = new Date((range.to || range.from).split(' ')[0]);
-
-          let current = new Date(from);
-          while (current <= to) {
-            if (current >= today) {
-              const formatted = current.toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              });
-              possibleDates.push(formatted);
+            const fromDate = new Date(fromISO + 'T00:00:00.000Z');
+            const toDate = new Date(toISO + 'T00:00:00.000Z');
+            
+            // نبدأ من اليوم الحالي أو من تاريخ البداية (أيهما أكبر)
+            let current = new Date(Math.max(fromDate.getTime(), today.getTime()));
+            
+            // نلف على الأيام لحد ما نلاقي يوم فيه أوقات متاحة
+            while (current <= toDate && !firstAvailableDate) {
+              const day = current.getDate();
+              const month = current.getMonth();
+              const year = current.getFullYear();
+              
+              // نشيك لو اليوم ده متاح وفيه أوقات
+              const times = generateTimeSlots(
+                transformedData.raw_available_times || transformedData.available_times,
+                parseInt(transformedData.duration_cycle),
+                transformedData.duration_period || 'minutes',
+                current.toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }).replace(/\//g, ' '),
+                transformedData.disabled_times || [],
+                transformedData.unavailable_times || [],
+                transformedData.unavailable_dates || [],
+                parseInt(transformedData.rest_cycle || '0'),
+                selectedTimezone
+              );
+              
+              if (times && times.length > 0) {
+                // لقينا أول يوم فيه أوقات متاحة
+                firstAvailableDate = current.toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }).replace(/\//g, ' ');
+                break;
+              }
+              
+              // ننتقل لليوم التالي
+              current.setDate(current.getDate() + 1);
             }
-            current.setDate(current.getDate() + 1);
+            
+            if (firstAvailableDate) break;
+            
+          } catch (e) {
+            console.error('Error processing date range:', e);
           }
-        } catch (e) {}
-      });
-
-      possibleDates.sort((a, b) => new Date(a) - new Date(b));
-
-      for (const dateStr of possibleDates) {
-        const isoDate = convertDateToISO(dateStr);
-        if (!isoDate) continue;
-
-        const times = generateTimeSlots(
-          transformedData.raw_available_times || [],
-          parseInt(transformedData.duration_cycle),
-          transformedData.duration_period || 'minutes',
-          isoDate,
-          transformedData.disabled_times || [],
-          transformedData.unavailable_times || [],
-          transformedData.unavailable_dates || [],
-          parseInt(transformedData.rest_cycle || '0'),
-          WORKSPACE_TIMEZONE
-        );
-
-        const validTimes = times.filter(time => {
-          const isDisabled = (transformedData.disabled_times || []).some(d =>
-            d.date === isoDate && d.time.startsWith(time)
-          );
-          const isPast = isTimePast(dateStr, time);
-          return !isDisabled && !isPast;
-        });
-
-        if (validTimes.length > 0) {
-          firstAvailableDate = dateStr;
-          firstAvailableTime = validTimes[0];
-          break;
+        }
+        
+        if (firstAvailableDate) {
+          setSelectedDate(firstAvailableDate);
+          console.log('📅 First available date with times:', firstAvailableDate);
         }
       }
-
-      if (!firstAvailableDate && possibleDates.length > 0) {
-        firstAvailableDate = possibleDates[0];
-      }
-
-      if (firstAvailableDate) {
-        setSelectedDate(firstAvailableDate);
-        if (firstAvailableTime) {
-          setSelectedTime(firstAvailableTime);
-        }
-      }
-
+      
     } catch (err) {
-      console.error(err);
+      if (!isMounted) return;
+      console.error('Failed to load initial booking data:', err);
       setError('Failed to load booking data');
+      setDataNotFound?.(true); 
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
   };
 
   if (id || share_link) {
     loadInitialData();
   }
-}, [id, share_link,selectedTimezone]); 
+
+  return () => {
+    isMounted = false;
+  };
+}, [id, share_link]);
 
 useEffect(() => {
   console.log('🔍 selectedStaff changed:', selectedStaff?.name);
@@ -1192,22 +1274,62 @@ useEffect(() => {
     rest_cycle: bookingData?.rest_cycle || '0',
   };
 
-  console.log('📊 Setting bookingData with:', {
-    raw_available_times: updatedData.raw_available_times?.length,
-    duration: updatedData.duration_cycle + updatedData.duration_period
-  });
-
   setBookingData(updatedData);
 
-  console.log('🕐 Calling findDefaultDateTime...');
-  const { defaultDate, defaultTime } = findDefaultDateTime(updatedData);
-  console.log('✅ Result:', { defaultDate, defaultTime });
-  
-  if (defaultDate) {
-    setSelectedDate(defaultDate);
-    if (defaultTime) {
-      setSelectedTime(defaultTime);
+  // ✅ التعديل هنا: نجيب أول تاريخ فيه أوقات متاحة
+  const possibleDates = [];
+  updatedData.available_dates.forEach(range => {
+    try {
+      let fromISO = convertDateToISO(range.from.includes(' ') ? range.from.split(' ')[0] : range.from);
+      let toISO = range.to 
+        ? convertDateToISO(range.to.includes(' ') ? range.to.split(' ')[0] : range.to)
+        : fromISO;
+
+      if (!fromISO || !toISO) return;
+
+      const from = new Date(fromISO + 'T00:00:00.000Z');
+      const to = new Date(toISO + 'T00:00:00.000Z');
+      const todayUTC = new Date();
+      todayUTC.setUTCHours(0, 0, 0, 0);
+
+      let current = new Date(Math.max(from.getTime(), todayUTC.getTime()));
+
+      while (current <= to) {
+        const formatted = current.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          timeZone: 'UTC'
+        }).replace(/\//g, ' ');
+        
+        // ✅ نشيك لو اليوم ده فيه أوقات متاحة
+        const times = generateTimeSlots(
+          updatedData.raw_available_times,
+          parseInt(updatedData.duration_cycle),
+          updatedData.duration_period || 'minutes',
+          formatted,
+          updatedData.disabled_times || [],
+          updatedData.unavailable_times || [],
+          updatedData.unavailable_dates || [],
+          parseInt(updatedData.rest_cycle || '0'),
+          selectedTimezone
+        );
+        
+        if (times && times.length > 0) {
+          possibleDates.push(formatted);
+        }
+        
+        current.setUTCDate(current.getUTCDate() + 1);
+      }
+    } catch (e) {
+      console.error('Error:', e);
     }
+  });
+
+  if (possibleDates.length > 0) {
+    // possibleDates.sort((a, b) => new Date(convertDateToISO(a)) - new Date(convertDateToISO(b)));
+    setSelectedDate(possibleDates[0]); // أول تاريخ فيه أوقات
+    console.log(`📅 Staff selected, first date with times: ${possibleDates[0]}`);
   } else {
     setSelectedDate('');
     setSelectedTime('');
@@ -1220,7 +1342,7 @@ useEffect(() => {
   const updatedData = {
     ...bookingData,
     available_dates: selectedStaffGroup.collective_available_dates || [],
-    unavailable_dates: selectedStaffGroup.collective_unavailable_dates || [], // ✅ أضفها
+    unavailable_dates: selectedStaffGroup.collective_unavailable_dates || [],
     unavailable_times: selectedStaffGroup.collective_unavailable_times || [],
     available_times: selectedStaffGroup.collective_available_times || [],
     disabled_times: selectedStaffGroup.disabled_times || [],
@@ -1232,18 +1354,64 @@ useEffect(() => {
 
   setBookingData(updatedData);
 
-  const { defaultDate, defaultTime } = findDefaultDateTime(updatedData);
-  
-  if (defaultDate) {
-    setSelectedDate(defaultDate);
-    if (defaultTime) {
-      setSelectedTime(defaultTime);
+  // ✅ التعديل هنا: نجيب أول تاريخ فيه أوقات متاحة
+  const possibleDates = [];
+  updatedData.available_dates.forEach(range => {
+    try {
+      let fromISO = convertDateToISO(range.from.includes(' ') ? range.from.split(' ')[0] : range.from);
+      let toISO = range.to 
+        ? convertDateToISO(range.to.includes(' ') ? range.to.split(' ')[0] : range.to)
+        : fromISO;
+
+      if (!fromISO || !toISO) return;
+
+      const from = new Date(fromISO + 'T00:00:00.000Z');
+      const to = new Date(toISO + 'T00:00:00.000Z');
+      const todayUTC = new Date();
+      todayUTC.setUTCHours(0, 0, 0, 0);
+
+      let current = new Date(Math.max(from.getTime(), todayUTC.getTime()));
+
+      while (current <= to) {
+        const formatted = current.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          timeZone: 'UTC'
+        }).replace(/\//g, ' ');
+        
+        // ✅ نشيك لو اليوم ده فيه أوقات متاحة
+        const times = generateTimeSlots(
+          updatedData.raw_available_times,
+          parseInt(updatedData.duration_cycle),
+          updatedData.duration_period || 'minutes',
+          formatted,
+          updatedData.disabled_times || [],
+          updatedData.unavailable_times || [],
+          updatedData.unavailable_dates || [],
+          parseInt(updatedData.rest_cycle || '0'),
+          selectedTimezone
+        );
+        
+        if (times && times.length > 0) {
+          possibleDates.push(formatted);
+        }
+        
+        current.setUTCDate(current.getUTCDate() + 1);
+      }
+    } catch (e) {
+      console.error('Error:', e);
     }
+  });
+
+  if (possibleDates.length > 0) {
+    setSelectedDate(possibleDates[0]); // أول تاريخ فيه أوقات
+    console.log(`📅 StaffGroup selected, first date with times: ${possibleDates[0]}`);
   } else {
     setSelectedDate('');
     setSelectedTime('');
   }
-}, [selectedStaffGroup,selectedTimezone]);
+}, [selectedStaffGroup, selectedTimezone]);
 useEffect(() => {
   if (requireEndTime && selectedTime && bookingData) {
     const calculatedEndTime = calculateEndTime(
@@ -1324,37 +1492,82 @@ useEffect(() => {
 }, [selectedResource, selectedDate, bookingData?.raw_available_times, selectedTimezone]);
 
 
-  useEffect(() => {
-    if (!id || !bookingData) return;
+useEffect(() => {
+  if (!id || !bookingData) return;
 
-    const intervalId = setInterval(async () => {
-      try {
-        const interview = await fetchInterviewData(id);
-        const newDisabledTimes = interview.disabled_times || [];
-        
-        if (JSON.stringify(newDisabledTimes) !== JSON.stringify(bookingData.disabled_times)) {
-          setBookingData(prevData => ({
-            ...prevData,
-            disabled_times: newDisabledTimes
-          }));
-          
-          if (selectedDate && selectedTime && isTimeDisabled(selectedDate, selectedTime, newDisabledTimes)) {
-            const alternativeTime = getFirstAvailableTime(
-              selectedDate,
-              bookingData.available_times,
-              newDisabledTimes,
-              bookingData.unavailable_times,
-              bookingData.unavailable_dates
+  const checkForUpdates = async () => {
+    const now = Date.now();
+    
+    // ✅ امنع الـ fetch إلا لو مر دقيقة
+    if (now - lastFetchTimeRef.current < FETCH_COOLDOWN) {
+      return;
+    }
+
+    try {
+      lastFetchTimeRef.current = now;
+      
+      const fetchedData = await fetchInterviewData(id);
+      const newDisabledTimes = fetchedData.interview.disabled_times || [];
+
+      const currentDisabledTimesStr = JSON.stringify(
+        (bookingData.disabled_times || []).sort((a, b) => 
+          a.date.localeCompare(b.date) || a.time.localeCompare(b.time)
+        )
+      );
+      const newDisabledTimesStr = JSON.stringify(
+        newDisabledTimes.sort((a, b) => 
+          a.date.localeCompare(b.date) || a.time.localeCompare(b.time)
+        )
+      );
+
+      // ✅ Update فقط لو في تغيير فعلي
+      if (currentDisabledTimesStr !== newDisabledTimesStr) {
+        setBookingData(prev => ({
+          ...prev,
+          disabled_times: newDisabledTimes
+        }));
+
+        if (selectedDate && selectedTime) {
+          const isoDate = convertDateToISO(selectedDate);
+          const isSelectedTimeNowDisabled = newDisabledTimes.some(disabled => 
+            disabled.date === isoDate && disabled.time.startsWith(selectedTime)
+          );
+
+          if (isSelectedTimeNowDisabled) {
+            const currentAvailableTimes = bookingData.available_times || [];
+            const timesArray = currentAvailableTimes.map(slot => 
+              typeof slot === 'string' ? slot : slot.time
             );
+
+            const alternativeTime = timesArray.find(time => {
+              const isDisabled = newDisabledTimes.some(d => 
+                d.date === isoDate && d.time.startsWith(time)
+              );
+              const isPast = isTimePast(selectedDate, time);
+              return !isDisabled && !isPast;
+            });
+
+            if (alternativeTime) {
+              setSelectedTime(alternativeTime);
+            } else {
+              setSelectedTime('');
+            }
           }
         }
-      } catch (error) {
-        // Silent error handling
       }
-    }, 60000);
+    } catch (error) {
+      console.error('Check for updates error:', error);
+    }
+  };
 
-    return () => clearInterval(intervalId);
-  }, [id, bookingData, selectedDate, selectedTime]);
+  // ✅ نادي الـ check مرة واحدة عند mount
+  checkForUpdates();
+
+  // ✅ واستخدم interval بس لو User لسه شغال على الصفحة
+  const intervalId = setInterval(checkForUpdates, FETCH_COOLDOWN);
+
+  return () => clearInterval(intervalId);
+}, [id]);
 
   return {
     bookingData,
@@ -1379,7 +1592,7 @@ useEffect(() => {
     setShowBookingSummary,
     setShowTimeModal,
     setShowCalendarModal,
-    
+    displayedTimes,
     handleBookAppointment,
     handleScheduleAppointment,
     isTimeDisabled,
@@ -1406,6 +1619,8 @@ useEffect(() => {
    totalPrice,
   numberOfSlots,
   calculatePriceBasedOnTime,
+   modalDisplayedTimes,    
+  refreshTimesForModal, 
   };
 };
 

@@ -5,21 +5,24 @@ import { staffApisActions } from "../../slices/StaffApisSlice/StaffApisSlice";
 
 export function satff_FetchAppointments(queryParams = {}, force = false) {
   return async (dispatch, getState) => {
-    const { staff_appointments, loading } = getState().staffApis;
+    const { loading } = getState().staffApis;
 
-    if (staff_appointments && staff_appointments.length > 0 && !force && loading) {
+    if (loading) {
       return;
     }
 
     dispatch(staffApisActions.setLoading(true));
     try {
       const token = localStorage.getItem("access_token");
-
-      let url = "https://backend-booking.appointroll.com/api/staff/appointments";
-
       const searchParams = new URLSearchParams();
+      
+      // إضافة page parameter
+      searchParams.append('page', queryParams.page || 1);
+      
+      // إضافة باقي الـ parameters
       Object.keys(queryParams).forEach((key) => {
         if (
+          key !== 'page' && 
           queryParams[key] !== null &&
           queryParams[key] !== undefined &&
           queryParams[key] !== ""
@@ -28,9 +31,8 @@ export function satff_FetchAppointments(queryParams = {}, force = false) {
         }
       });
 
-      if (searchParams.toString()) {
-        url += `?${searchParams.toString()}`;
-      }
+      const queryString = searchParams.toString();
+      const url = `https://backend-booking.appointroll.com/api/staff/appointments?${queryString}`;
 
       const response = await axios.get(url, {
         headers: {
@@ -40,14 +42,14 @@ export function satff_FetchAppointments(queryParams = {}, force = false) {
       });
 
       if (response.data) {
-  dispatch(staffApisActions.setStaff_appointments(response.data.data.appointments || []));
+        dispatch(staffApisActions.setStaff_appointments(response.data.data.appointments || []));
+        // إضافة الـ pagination data
+        dispatch(staffApisActions.setStaff_pagination(response.data.data.pagination));
         dispatch(staffApisActions.setError(null));
       }
     } catch (err) {
       console.error("Failed to fetch appointments:", err);
-      dispatch(
-        staffApisActions.setError("فشل في تحميل المواعيد")
-      );
+      dispatch(staffApisActions.setError("فشل في تحميل المواعيد"));
     } finally {
       dispatch(staffApisActions.setLoading(false));
     }
@@ -689,3 +691,79 @@ export const updateShareLink_DashboardStaff = (newShareLink) => {
   };
 };
 
+
+
+export const UpdateEmailSettings_Staff = (payload) => {
+  return async (dispatch) => {
+    dispatch(staffApisActions.setLoading(true));
+
+    try {
+      const token = localStorage.getItem("access_token");
+
+      const response = await axios.patch(
+        "https://backend-booking.appointroll.com/api/staff/notifications/email-settings",
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        dispatch(staffApisActions.updateEmailSettingsLocally(payload));
+        dispatch(staffApisActions.setSuccess(response.data.message));
+      }
+
+      return {
+        success: true,
+        message: response.data.message,
+      };
+    } catch (error) {
+      console.error("❌ Error:", error.response?.data || error.message);
+
+      const errorMessage =
+        error.response?.data?.message || "Failed to update email settings";
+
+      dispatch(staffApisActions.setError(errorMessage));
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    } finally {
+      dispatch(staffApisActions.setLoading(false));
+    }
+  };
+};
+
+export const getPreferences_Staff = () => {
+  return async (dispatch) => {
+    dispatch(staffApisActions.setLoading(true));
+
+    try {
+      const token = localStorage.getItem("access_token");
+
+      const response = await axios.get(
+        "https://backend-booking.appointroll.com/api/staff/notifications/email-settings",
+        {
+          headers: {
+            Authorization: token,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        dispatch(staffApisActions.setPreferences(response.data.data));
+      }
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || error.message;
+
+      dispatch(staffApisActions.setError(errorMessage));
+    } finally {
+      dispatch(staffApisActions.setLoading(false));
+    }
+  };
+};

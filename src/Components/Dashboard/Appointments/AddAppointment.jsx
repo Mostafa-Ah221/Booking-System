@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { X, ChevronDown, Calendar, Clock, User, Mail, MapPin } from 'lucide-react';
+import { X, ChevronDown, Calendar, Clock, User, MapPin } from 'lucide-react';
 import { getCustomers } from '../../../redux/apiCalls/CustomerCallApi';
 import { createAppointment, fetchAppointments } from '../../../redux/apiCalls/AppointmentCallApi';
 import DateTimeSelector from './DataTimeSections/DateTimeSelector';
+import TimezoneSelect from 'react-timezone-select';
 import toast from 'react-hot-toast';
 
 const AddAppointment = ({ 
@@ -15,9 +16,11 @@ const AddAppointment = ({
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [endTime, setEndTime] = useState(null);
- const [selectedType, setSelectedType] = useState('');
- const [showTypeDropdown, setShowTypeDropdown] = useState(false);
-
+  const [selectedType, setSelectedType] = useState('');
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [selectedTimeZone, setSelectedTimeZone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
   const [selectedInterview, setSelectedInterview] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null); 
@@ -31,7 +34,7 @@ const AddAppointment = ({
   const { customers: { clients = [], loading = false } = {} } = useSelector(state => state.customers);
   const dispatch = useDispatch();
 
-console.log(selectedInterview?.mode);
+  console.log(selectedInterview?.mode);
 
   useEffect(() => {
     dispatch(getCustomers());
@@ -59,8 +62,8 @@ console.log(selectedInterview?.mode);
   };
 
   const handleSubmit = async () => {
-    if (!selectedDate || !selectedTime || !selectedInterview || !selectedCustomer) {
-      setError('Please select customer, interview, date and time');
+    if (!selectedDate || !selectedTime || !selectedInterview || !selectedCustomer || !selectedTimeZone) {
+      setError('Please select customer, interview, date, time and time zone');
       return;
     }
 
@@ -106,9 +109,8 @@ console.log(selectedInterview?.mode);
           date: formattedDate, 
           time: selectedTime, 
           end_time: selectedInterview?.type === "resource" ? endTime : null,
-          type:selectedType,
-          // send_notifications: sendUpdates,
-          time_zone: 'Africa/Cairo',
+          type: selectedType,
+          time_zone: selectedTimeZone,
           ...(selectedInterview?.type === "collective-booking" && selectedStaff?.group_id && {
             group_id: selectedStaff.group_id
           }),
@@ -137,7 +139,8 @@ console.log(selectedInterview?.mode);
         setEndTime(null);
         setSelectedInterview(null);
         setSelectedCustomer(null);
-        setSelectedStaff(null); // reset selectedStaff
+        setSelectedStaff(null);
+        setSelectedTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
         
         onClose();
       } else {
@@ -148,19 +151,6 @@ console.log(selectedInterview?.mode);
       
       const errorMessage = err.message || 'Failed to schedule appointment. Please try again.';
       setError(errorMessage);
-      
-      // toast.error(errorMessage, {
-      //   position: 'top-center',
-      //   duration: 5000,
-      //   icon: '❌',
-      //   style: {
-      //     borderRadius: '8px',
-      //     background: '#333',
-      //     color: '#fff',
-      //     padding: '12px 16px',
-      //     fontWeight: '500',
-      //   },
-      // });
     }
   };
 
@@ -264,7 +254,6 @@ console.log(selectedInterview?.mode);
           {/* Interview Selection */}
           <div className="mb-6">
             <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-              {/* <Calendar size={16} /> */}
               Select Interview
             </h3>
             <div className="relative">
@@ -321,6 +310,34 @@ console.log(selectedInterview?.mode);
                   )}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Time Zone Selection */}
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Select Time Zone</h3>
+            <div className="border border-gray-300 rounded-lg">
+              <TimezoneSelect
+                value={selectedTimeZone}
+                onChange={(timezone) => setSelectedTimeZone(timezone?.value || null)}
+                className="react-timezone-select w-full"
+                classNamePrefix="select"
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    border: 'none',
+                    boxShadow: 'none',
+                    width: '100%',
+                    '&:hover': {
+                      border: 'none',
+                    },
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    width: '100%',
+                  }),
+                }}
+              />
             </div>
           </div>
 
@@ -392,9 +409,9 @@ console.log(selectedInterview?.mode);
               selectedEndTime={endTime}
               onStaffSelect={handleStaffSelect} 
               mode={mode}
+              selectedTimezone={selectedTimeZone}
             />
           )}
-
 
           {/* Selected Details Summary */}
           {(selectedCustomer || selectedInterview || selectedDate || selectedTime || selectedStaff) && (
@@ -416,7 +433,7 @@ console.log(selectedInterview?.mode);
                   <Calendar size={16} className="text-gray-500" />
                   <div>
                     <div className="text-sm font-medium">Interview Type</div>
-                    <div className="text-sm text-gray-600 truncate block max-w-[150px] ">{selectedInterview.name} </div>
+                    <div className="text-sm text-gray-600 truncate block max-w-[150px]">{selectedInterview.name}</div>
                   </div>
                 </div>
               )}
@@ -445,19 +462,6 @@ console.log(selectedInterview?.mode);
               )}
             </div>
           )}
-
-          {/* Notification Checkbox */}
-          {/* <div className="mb-6">
-            <label className="flex items-center gap-3">
-              <input 
-                type="checkbox" 
-                checked={sendUpdates}
-                onChange={(e) => setSendUpdates(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">Send confirmation and updates to client</span>
-            </label>
-          </div> */}
         </div>
 
         {/* Fixed Bottom Section */}
@@ -469,12 +473,13 @@ console.log(selectedInterview?.mode);
               !selectedTime ||
               !selectedInterview ||
               !selectedCustomer ||
+              !selectedTimeZone ||
               (selectedInterview?.staff?.length > 0 && !selectedStaff) || 
               (selectedInterview?.mode === "online/inperson" && !selectedType) ||
               isProcessing
             }
             className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center ${
-              selectedDate && selectedTime && selectedInterview && selectedCustomer && (!selectedInterview?.staff?.length || selectedStaff) && !isProcessing
+              selectedDate && selectedTime && selectedInterview && selectedCustomer && selectedTimeZone && (!selectedInterview?.staff?.length || selectedStaff) && !isProcessing
                 ? 'bg-purple-600 text-white hover:bg-purple-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}

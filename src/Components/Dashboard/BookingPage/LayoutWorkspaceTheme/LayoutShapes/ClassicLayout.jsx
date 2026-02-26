@@ -5,11 +5,10 @@ const ClassicLayout = ({ themeData }) => {
  
 
   const accentColor = color.includes('-') ? color.split('-')[0] : color;
-   const isGradient = color.includes('-');
-
-    const [firstColor, secondColor] = isGradient 
-      ? color.split('-') 
-      : [color, color];
+   const isGradient = themeData.color?.includes('-') || false;  
+const [firstColor, secondColor] = isGradient 
+  ? themeData.color.split('-') 
+  : [themeData.color || '#FFFFFF', themeData.color || '#FFFFFF'];
 
   return (
     <div className=" flex flex-col rounded-lg ">
@@ -63,7 +62,7 @@ const ClassicLayout = ({ themeData }) => {
             </div>
             <div className="flex-1">
               <div style={{ color: accentColor }} className="text-sm font-medium">Date, Time & Recruiter</div>
-              <div className="text-sm" style={{ color: themeData.textColor }}>26 Feb 2025 | 09:00 am</div>
+              <div className="text-sm" style={{ color: themeData.textColor }}>26 Feb 2026 | 09:00 am</div>
             </div>
           </div>
         </div>
@@ -78,7 +77,7 @@ const ClassicLayout = ({ themeData }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
                 </svg>
               </button>
-              <div style={{ color: themeData.textColor }}>February 2025</div>
+              <div style={{ color: themeData.textColor }}>February 2026</div>
               <button >
                 <svg style={{ color: accentColor }} className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>

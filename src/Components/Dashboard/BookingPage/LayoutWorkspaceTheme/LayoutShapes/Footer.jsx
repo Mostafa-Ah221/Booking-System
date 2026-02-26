@@ -1,6 +1,8 @@
 // components/Footer.jsx
 import { Facebook, Instagram, Linkedin, Mail, Phone } from 'lucide-react';
-
+import { RiSnapchatLine } from "react-icons/ri";
+import { PiTiktokLogoLight } from "react-icons/pi";
+import { MdWhatsapp } from "react-icons/md";
 const Footer = ({ themeData }) => {
   const { footer = {}, socialLinks = {} } = themeData;
 
@@ -68,7 +70,40 @@ const Footer = ({ themeData }) => {
           <span style={{ color: themeData.textColor }}>|</span>
           </>
         )}
-
+         {/* TikTok - جديد */}
+              {socialLinks?.visibleTiktok && socialLinks?.tiktok && (
+                <>
+                  <a href={socialLinks.tiktok} target="_blank" rel="noopener noreferrer"
+                    className="text-gray-600 hover:text-indigo-600 transition-colors">
+                    <PiTiktokLogoLight className="w-4 h-4" style={{ color: themeData.textColor}} />
+                  </a>
+                  <span style={{ color: themeData.textColor}}>|</span>
+                </>
+              )}
+              
+              {/* Snapchat - جديد */}
+              {socialLinks?.visibleSnapchat && socialLinks?.snapchat && (
+                <>
+                  <a href={socialLinks.snapchat} target="_blank" rel="noopener noreferrer"
+                    className="text-gray-600 hover:text-indigo-600 transition-colors">
+                    <RiSnapchatLine className="w-4 h-4" style={{ color: themeData.textColor }} />
+                  </a>
+                  <span style={{ color: themeData.textColor }}>|</span>
+                </>
+              )}
+           {socialLinks?.visibleWhatsapp && socialLinks?.whatsapp && (
+          <>
+            <a 
+              href={`https://wa.me/${socialLinks.whatsapp.replace(/[^0-9]/g, '')}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-indigo-600 transition-colors"
+            >
+              <MdWhatsapp style={{ color: themeData.textColor }} className="w-4 h-4"/>
+            </a>
+            <span style={{ color: themeData.textColor }}>|</span>
+          </>
+        )}
         {socialLinks.phone && socialLinks.visiblePhone && (
           <>
           <a href={`tel:${socialLinks.phone}`} className=" hover:opacity-80 flex">

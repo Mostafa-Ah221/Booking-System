@@ -334,10 +334,10 @@ const SecurityPage = () => {
         {/* Footer */}
         <div className="mt-16 text-center">
           <p className="text-gray-500 text-sm mb-2">
-            © 2025 Appoint Roll. All rights reserved.
+            © 2026 Appoint Roll. All rights reserved.
           </p>
           <p className="text-gray-400 text-xs">
-            Last updated: October 27, 2025
+            Last updated: October 27, 2026
           </p>
         </div>
       </div>

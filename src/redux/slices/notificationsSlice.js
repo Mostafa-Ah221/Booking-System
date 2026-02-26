@@ -5,6 +5,7 @@ const notificationsSlice = createSlice({
     initialState: {
         notifications: null,
         preferences: [],
+        preferencesEmail: [],
         unreadCount: 0,
         loading: false,
         error: null,
@@ -21,6 +22,9 @@ const notificationsSlice = createSlice({
 
         setPreferences(state, action){
             state.preferences = action.payload
+        },
+        setPreferencesEmail(state, action){
+            state.preferencesEmail = action.payload
         },
         
  updatePreferencesLocally(state, action) {
@@ -41,6 +45,29 @@ const notificationsSlice = createSlice({
     }
   });
 },
+ updateEmailSettingsLocally(state, action) {
+            const emailSettings = action.payload;
+            
+            console.log('🔄 Updating email settings locally:', emailSettings);
+            console.log('📦 Current preferencesEmail:', state.preferencesEmail);
+            
+            if (!state.preferencesEmail) {
+                console.warn('⚠️ No preferencesEmail to update');
+                return;
+            }
+            
+            // Update the preferencesEmail object directly
+            Object.keys(emailSettings).forEach(key => {
+                if (key === 'email_language') {
+                    state.preferencesEmail.email_language = emailSettings[key];
+                } else if (key.startsWith('appointment_')) {
+                    // Update appointment settings: true/false -> "1"/"0"
+                    state.preferencesEmail[key] = emailSettings[key] ? "1" : "0";
+                }
+            });
+            
+            console.log('✅ Updated preferencesEmail:', state.preferencesEmail);
+        },
         
         setUnreadCount(state, action){
             state.unreadCount = action.payload

@@ -9,9 +9,8 @@ import { PiBaseballCap, PiUsersThreeLight } from 'react-icons/pi';
 import BookingSummarySidebar2 from './BookingSummarySidebar2';
 import CalendarSection2 from './calender2';
 import TimeSelectionSection2 from './time2';
-import { Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
 
-
+import BookingFooter from '../BookingFooter';
 
 const AppointmentBooking2 = () => {
   const { id, idAdmin, idCustomer, idSpace } = useParams();
@@ -188,7 +187,9 @@ const hasAnySocial =
     (theme?.show_facebook === "1" && theme?.footer_facebook) ||
     (theme?.show_x === "1" && theme?.footer_x) ||
     (theme?.show_instagram === "1" && theme?.footer_instagram) ||
-    (theme?.show_linkedin === "1" && theme?.footer_linkedin);
+    (theme?.show_linkedin === "1" && theme?.footer_linkedin) ||
+    (theme?.show_tiktok === "1" && theme?.footer_tiktok) ||
+    (theme?.show_snapchat === "1" && theme?.footer_snapchat) 
   // ── Auto-select single items ───────────────────────────────────────────────
   useEffect(() => {
     if (availableStaff?.length === 1 && !selectedStaff) {
@@ -308,7 +309,7 @@ const hasAnySocial =
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen "style={{ background: secondColor }}>
+    <div className="min-h-screen "style={{ background: firstColor }}>
       <div className="max-w-7xl mx-auto p-6 py-8" >
         {/* Header */}
         <div className="text-center mb-8">
@@ -325,11 +326,17 @@ const hasAnySocial =
           {theme?.show_page_title === '1' && theme?.page_title && (
             <h2 className="text-2xl font-bold  mb-3" style={{ color: textColor }} >{theme?.page_title } </h2>
           )}
-           {theme?.show_page_description === '1' && theme?.page_description && (
-          <p className=" max-w-2xl mx-auto text-sm"  style={{ color: textColor }}>
-           {theme?.page_description } 
-          </p>
-          )}
+           {theme?.show_page_description === '1' && (() => {
+              const interviewStep = steps.find((s) => s.key === 'interview')?.step;
+              const showInterviewDesc = interviewStep && currentStep >= interviewStep && selectedInterview?.page_description;
+              const description = showInterviewDesc ? selectedInterview.page_description : theme?.page_description;
+              
+              return description && (
+                <p className="text-sm mb-4 text-center" style={{color:textColor}}>
+                  {description}
+                </p>
+              );
+            })()}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -343,25 +350,27 @@ const hasAnySocial =
 
                 return (
                   <div
-                    key={s.key}
-                    className={` p-5  transition-all ${
-                      isActive ? ' bg-black bg-opacity-10 shadow-sm' : 'border-transparent'
-                    } ${!isClickable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-sm'}`}
-                    onClick={() => isClickable && handleStepClick(s.step)}
-                  >
+                      key={s.key}
+                      className={`p-5 transition-all shadow-sm ${
+                        isActive ? '' : 'border-transparent'
+                      } ${!isClickable ? 'cursor-not-allowed' : 'cursor-pointer hover:shadow-sm'}`}
+                      style={isActive ? { background: secondColor } : {}}
+                      onClick={() => isClickable && handleStepClick(s.step)}
+                    >
+
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <s.icon className={`w-5 h-5 ${s.label === 'Staff Group' ? 'w-6 h-6' : ''}`} style={{color:firstColor}} />
+                        <s.icon className={`w-5 h-5 ${s.label === 'Staff Group' ? 'w-6 h-6' : ''}`} style={{color:textColor}} />
                         <div>
-                          <h3 className="font-medium text-sm truncate block max-w-[150px]" style={{color:firstColor}}>
+                          <h3 className="font-medium text-sm truncate block max-w-[150px]" style={{color:textColor}}>
                             {s.label}
                           </h3>
                           {s.value && (
-                            <p className="text-xs  mt-1" style={{color:firstColor}}>{s.value}</p>
+                            <p className="text-xs  mt-1" style={{color:textColor}}>{s.value}</p>
                           )}
                         </div>
                       </div>
-                      {s.key !== 'datetime' && <ChevronDown className="w-5 h-5" style={{color:firstColor}}/>}
+                      {s.key !== 'datetime' && <ChevronDown className="w-5 h-5" style={{color:textColor}}/>}
                     </div>
                   </div>
                 );
@@ -386,9 +395,9 @@ const hasAnySocial =
                           : 'border-gray-400 border-opacity-40 border'
                       }`}
                       style={{
-                          // borderColor: selectedInterview?.id === interview.id ? firstColor : undefined,
-                          hoverBorderColor: selectedInterview?.id === interview.id ? firstColor : undefined,
-                          background: selectedInterview?.id === interview.id ? 'rgba(0, 0, 0, 0.1)' : undefined,
+                          // borderColor: selectedInterview?.id === interview.id ? textColor : undefined,
+                          hoverBorderColor: selectedInterview?.id === interview.id ? textColor : undefined,
+                          background: selectedInterview?.id === interview.id ? secondColor : undefined,
                         }}
                       onClick={() => handleInterviewSelect(interview)}
                     >
@@ -398,21 +407,21 @@ const hasAnySocial =
                             className={`w-12 h-12 rounded-sm flex border items-center justify-center font-semibold  `}
                              style={{
                           background: selectedInterview?.id === interview.id ? secondColor : 'rgba(0, 0, 0, 0.15)',
-                          borderColor: selectedInterview?.id === interview.id ? firstColor : 'transparent',
+                          borderColor: selectedInterview?.id === interview.id ? textColor : 'transparent',
                           color: selectedInterview?.id === interview.id ? textColor : textColor,
                         }}
                           >
                             {interview.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <h3 className="font-semibold truncate  max-w-[150px]" style={{color:firstColor}}>{interview.name}</h3>
-                            <p className="text-sm text-gray-500" style={{color:firstColor}}>
+                            <h3 className="font-semibold truncate  max-w-[150px]" style={{color:textColor}}>{interview.name}</h3>
+                            <p className="text-sm text-gray-500" style={{color:textColor}}>
                               {interview.duration_cycle} {interview.duration_period}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {selectedInterview?.id === interview.id && <Check className="w-5 h-5 " style={{color:firstColor}}/>}
+                          {selectedInterview?.id === interview.id && <Check className="w-5 h-5 " style={{color:textColor}}/>}
                           <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </div>
@@ -430,7 +439,7 @@ const hasAnySocial =
 
     {availableStaffGroups?.length > 0 && (
       <div className="space-y-4">
-        <h3 className="font-semibold " style={{ color: firstColor }}>Staff Groups</h3>
+        <h3 className="font-semibold " style={{ color: textColor }}>Staff Groups</h3>
 
         {availableStaffGroups.map((group) => (
           <div
@@ -443,11 +452,11 @@ const hasAnySocial =
             style={{
               background:
                 selectedStaffGroup?.group_id === group.group_id
-                  ? "rgba(0,0,0,0.1)"
+                  ? secondColor
                   : undefined,
               borderColor:
                 selectedStaffGroup?.group_id === group.group_id
-                  ? firstColor
+                  ? textColor
                   : undefined,
             }}
             onClick={() => {
@@ -466,7 +475,7 @@ const hasAnySocial =
                         : "rgba(0,0,0,0.15)",
                     borderColor:
                       selectedStaffGroup?.group_id === group.group_id
-                        ? firstColor
+                        ? textColor
                         : "transparent",
                     color: textColor,
                   }}
@@ -475,15 +484,15 @@ const hasAnySocial =
                 </div>
 
                 <div>
-                  <h3 className="font-semibold" style={{ color: firstColor }}>
+                  <h3 className="font-semibold" style={{ color: textColor }}>
                     {group.group_name}
                   </h3>
                   {group.group_description && (
-                    <p className="text-sm opacity-80" style={{ color: firstColor }}>
+                    <p className="text-sm opacity-80" style={{ color: textColor }}>
                       {group.group_description}
                     </p>
                   )}
-                  <p className="text-xs opacity-70" style={{ color: firstColor }}>
+                  <p className="text-xs opacity-70" style={{ color: textColor }}>
                     {group.staff.length} staff member
                   </p>
                 </div>
@@ -491,7 +500,7 @@ const hasAnySocial =
 
               <div className="flex items-center gap-2">
                 {selectedStaffGroup?.group_id === group.group_id && (
-                  <Check className="w-5 h-5" style={{ color: firstColor }} />
+                  <Check className="w-5 h-5" style={{ color: textColor }} />
                 )}
                 <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
@@ -504,7 +513,7 @@ const hasAnySocial =
     {/* Staff Members */}
     {!availableStaffGroups?.length && availableStaff?.length > 0 && (
       <div className="space-y-4">
-        <h3 className="font-semibold" style={{ color: firstColor }}>Staff Members</h3>
+        <h3 className="font-semibold" style={{ color: textColor }}>Staff Members</h3>
 
         {availableStaff.map((staff) => (
           <div
@@ -517,11 +526,11 @@ const hasAnySocial =
             style={{
               background:
                 selectedStaff?.id === staff.id
-                  ? "rgba(0,0,0,0.1)"
+                  ? secondColor
                   : undefined,
               borderColor:
                 selectedStaff?.id === staff.id
-                  ? firstColor
+                  ? textColor
                   : undefined,
             }}
             onClick={() => {
@@ -537,7 +546,7 @@ const hasAnySocial =
                     className="w-12 h-12 rounded-full object-cover border"
                     style={{
                       borderColor:
-                        selectedStaff?.id === staff.id ? firstColor : "transparent",
+                        selectedStaff?.id === staff.id ? textColor : "transparent",
                     }}
                   />
                 ) : (
@@ -549,7 +558,7 @@ const hasAnySocial =
                           ? secondColor
                           : "rgba(0,0,0,0.15)",
                       borderColor:
-                        selectedStaff?.id === staff.id ? firstColor : "transparent",
+                        selectedStaff?.id === staff.id ? textColor : "transparent",
                       color: textColor,
                     }}
                   >
@@ -557,14 +566,14 @@ const hasAnySocial =
                   </div>
                 )}
 
-                <h3 className="font-semibold truncate  max-w-[150px]" style={{ color: firstColor }}>
+                <h3 className="font-semibold truncate  max-w-[150px]" style={{ color: textColor }}>
                   {staff.name}
                 </h3>
               </div>
 
               <div className="flex items-center gap-2">
                 {selectedStaff?.id === staff.id && (
-                  <Check className="w-5 h-5" style={{ color: firstColor }} />
+                  <Check className="w-5 h-5" style={{ color: textColor }} />
                 )}
                 <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
@@ -592,10 +601,10 @@ const hasAnySocial =
                       style={{
                         background:
                           selectedResource?.id === resource.id
-                            ? "rgba(0,0,0,0.1)"
+                            ? secondColor
                             : undefined,
                         borderColor:
-                          selectedResource?.id === resource.id ? firstColor : undefined,
+                          selectedResource?.id === resource.id ? textColor : undefined,
                       }}
                       onClick={() => {
                         setSelectedResource(resource);
@@ -613,7 +622,7 @@ const hasAnySocial =
                                   : "rgba(0,0,0,0.15)",
                               borderColor:
                                 selectedResource?.id === resource.id
-                                  ? firstColor
+                                  ? textColor
                                   : "transparent",
                               color: textColor,
                             }}
@@ -622,14 +631,14 @@ const hasAnySocial =
                           </div>
 
                           <div>
-                            <h3 className="font-semibold truncate  max-w-[150px]" style={{ color: firstColor }}>
+                            <h3 className="font-semibold truncate  max-w-[150px]" style={{ color: textColor }}>
                               {resource.name}
                             </h3>
 
                             {resource.description && (
                               <p
                                 className="text-sm opacity-80"
-                                style={{ color: firstColor }}
+                                style={{ color: textColor }}
                               >
                                 {resource.description}
                               </p>
@@ -639,7 +648,7 @@ const hasAnySocial =
 
                         <div className="flex items-center gap-2">
                           {selectedResource?.id === resource.id && (
-                            <Check className="w-5 h-5" style={{ color: firstColor }} />
+                            <Check className="w-5 h-5" style={{ color: textColor }} />
                           )}
                           <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
@@ -669,10 +678,10 @@ const hasAnySocial =
           style={{
             background:
               selectedType === type.value
-                ? "rgba(0,0,0,0.1)"
+                ? secondColor
                 : undefined,
             borderColor:
-              selectedType === type.value ? firstColor : undefined,
+              selectedType === type.value ? textColor : undefined,
           }}
           onClick={() => {
             setSelectedType(type.value);
@@ -690,7 +699,7 @@ const hasAnySocial =
                       : "rgba(0,0,0,0.15)",
                   borderColor:
                     selectedType === type.value
-                      ? firstColor
+                      ? textColor
                       : "transparent",
                   color: textColor,
                 }}
@@ -702,14 +711,14 @@ const hasAnySocial =
                   : "AT"}
               </div>
 
-              <h3 className="font-semibold" style={{ color: firstColor }}>
+              <h3 className="font-semibold" style={{ color: textColor }}>
                 {type.label}
               </h3>
             </div>
 
             <div className="flex items-center gap-2">
               {selectedType === type.value && (
-                <Check className="w-5 h-5" style={{ color: firstColor }} />
+                <Check className="w-5 h-5" style={{ color: textColor }} />
               )}
               <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
@@ -808,110 +817,8 @@ const hasAnySocial =
 
         </div>
          {/* footer */}
-
-         <div className='flex flex-col items-center mt-20 w-full' style={{color: textColor}}>
-      {hasAnySocial && (
-        <div className='mb-6'>
-          <div className='flex gap-1 items-center justify-center flex-wrap'>
-             {/* Facebook */}
-            {theme?.show_facebook === "1" && theme?.footer_facebook && (
-              <>
-              <a 
-                href={theme.footer_facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Facebook className='w-4 h-4' />
-              </a>
-              <span>|</span>
-              </>
-            )}
-
-            {/* Email */}
-            {theme?.show_email === "1" && theme?.footer_email && (
-              <>
-              <a 
-                href={`mailto:${theme.footer_email}`}
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Mail className='w-4 h-4' />
-              </a>
-              <span>|</span>
-              </>
-            )}
-
-            {/* Phone */}
-            {theme?.show_phone === "1" && theme?.footer_phone && (
-              <>
-              <a 
-                href={`tel:${theme.footer_phone}`}
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Phone className='w-4 h-4' />
-                <span className='text-sm'>{theme.footer_phone}</span>
-              </a>
-              <span>|</span>
-              </>
-            )}
-
-           
-            {/* X (Twitter) */}
-            {theme?.show_x === "1" && theme?.footer_x && (
-              <>
-              <a 
-                href={theme.footer_x}
-                target="_blank"
-                rel="noopener noreferrer"
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Twitter className='w-4 h-4' />
-              </a>
-                 <span>|</span>
-              </>
-            )}
-
-            {/* Instagram */}
-            {theme?.show_instagram === "1" && theme?.footer_instagram && (
-              <>
-               <a 
-                href={theme.footer_instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Instagram className='w-4 h-4' />
-              </a>
-              <span>|</span>
-              </>
-             
-            )}
-
-            {/* LinkedIn */}
-            {theme?.show_linkedin === "1" && theme?.footer_linkedin && (
-              <a 
-                href={theme.footer_linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Linkedin className='w-4 h-4' />
-              </a>
-            )}
-
-          </div>
-        </div>
-      )}
-      <div>
-          <h2 className='text-sm'>Powered by Appoint Roll</h2>
-      </div>
-    </div>
+{/* footer */}
+<BookingFooter theme={theme} textColor={textColor} />
       </div>
     </div>
   );

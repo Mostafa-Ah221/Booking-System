@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Search, Layout,  Settings, Trash2, Share2 } from 'lucide-react';
+import { Search,  Settings, Share2 } from 'lucide-react';
 import { CgProfile } from 'react-icons/cg';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePermission } from "../../hooks/usePermission";
-import { deleteInterview, fetchAllInterviews,updateShareLinkIntreview } from '../../../redux/apiCalls/interviewCallApi';
+import {  fetchAllInterviews,updateShareLinkIntreview } from '../../../redux/apiCalls/interviewCallApi';
  import ShareBookingModal from '../Profile_Page/ShareModalPrpfile';
 import {  updateShareLinkWorkspace,getAllWorkspaces } from '../../../redux/apiCalls/workspaceCallApi';
 import { workspaceAction } from '../../../redux/slices/workspaceSlice';
 import { getStaff, updateShareLinkStaff } from '../../../redux/apiCalls/StaffCallApi';
 import { IoColorPaletteOutline } from 'react-icons/io5';
+
 
 const BookPage = () => {
   const [activeTab, setActiveTab] = useState('interviews');
@@ -28,11 +29,12 @@ const BookPage = () => {
   const {allInterviews, loading = false } = useSelector(state => state.interview);
   const { profile } = useSelector(state => state.profileData);
   const { workspace,allWorkspaces } = useSelector(state => state.workspace);
-    const { staffs } = useSelector(state => state.staff);
+  const { staffs } = useSelector(state => state.staff);
 
   const workspaceId = workspace ? workspace.id : 0;
   const profileData = profile?.user;
   const recruitersList = staffs || [];
+
 
   const canViewInterviews = usePermission('view interview');
   const canViewRecruiters = usePermission('view staff');
@@ -282,43 +284,42 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
             <div className="space-y-3">
               {filteredWorkspaces.length > 0 ? (
                 filteredWorkspaces.map((ws) => (
-                  <div
+                 <div
                     key={ws.id}
-                    className="flex items-center justify-between p-3 lg:p-4 rounded-xl bg-white shadow-sm border hover:shadow-md hover:border-gray-300 transition duration-200"
+                     className="flex items-center justify-between p-3 lg:p-4 hover:bg-gray-50 border-b hover:shadow-sm hover:border-gray-100 transition duration-200 group"
                   >
-                    {/* Left side - Icon + Name */}
-                   <Link
+                  {/* Left side - Icon + Name */}
+                  <Link
                     to="/bookPage/workspace-themes"
-                    state={{ workspaceData: ws,
-                      workspaceTheme:ws.theme
-                     }}
+                    state={{ 
+                      workspaceData: ws,
+                      workspaceTheme: ws.theme
+                    }}
                     className="flex items-center gap-3 flex-1"
                   >
-
-                      <div className="w-6 h-6 lg:w-8 lg:h-8 bg-gradient-to-br from-pink-400 to-pink-500 rounded-lg flex items-center justify-center text-white font-semibold shadow-md">
-                        <span className="text-sm">{ws?.name?.charAt(0)?.toUpperCase() || 'W'}</span>
-                      </div>
-                      <span className="font-medium text-sm text-gray-800 truncate  max-w-[150px]">
-                        {ws?.name}
-                      </span>
-                    </Link>
-
-                    {/* Right side - Action buttons */}
-                    <div className="flex items-center gap-2">
-                      <button 
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition"
-                        onClick={(e) => handleWorkspaceShareClick(ws, e)}
-                      >
-                        <Share2 size={isCompactView ? 14 : 16} />
-                      </button>
-                      <button 
-                      onClick={(e) => handleWorkspaceSettingsClick(ws, e)}
-                      className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition"
-                    >
-                      <Settings size={isCompactView ? 14 : 16} />
-                    </button>
+                    <div className="w-6 h-6 lg:w-8 lg:h-8 bg-gradient-to-br from-pink-400 to-pink-500 rounded-lg flex items-center justify-center text-white font-semibold shadow-md">
+                      <span className="text-sm">{ws?.name?.charAt(0)?.toUpperCase() || 'W'}</span>
                     </div>
+                    <span className="font-medium text-sm text-gray-800 truncate max-w-[150px]">
+                      {ws?.name}
+                    </span>
+                  </Link>
+                  {/* Right side - Action buttons */}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      className="p-1 lg:p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition"
+                      onClick={(e) => handleWorkspaceShareClick(ws, e)}
+                    >
+                      <Share2 size={isCompactView ? 16 : 18} />
+                    </button>
+                    <button 
+                      onClick={(e) => handleWorkspaceSettingsClick(ws, e)}
+                      className="p-1 lg:p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition"
+                    >
+                      <Settings size={isCompactView ? 16 : 18} />
+                    </button>
                   </div>
+                </div>
                 ))
               ) : (
                 <div className="text-center text-gray-500 text-sm py-6">
@@ -374,12 +375,12 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
                     <Link  to="/bookPage/workspace-themes"
                       state={{ interviewData: interview, interviewTheme:interview.theme }}
                       key={interview.id} 
-                      className="flex items-center gap-3 lg:gap-4 p-3 lg:p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group"
+                      className="flex items-center justify-between p-3 lg:p-4  bg-white border-b hover:shadow-sm hover:bg-gray-50 transition duration-200 group"
                        onClick={(e) => e.stopPropagation()}
                    >
                       <InterviewAvatar interview={interview} index={index} />
                       
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 ml-2">
                         <h3 className="font-medium text-sm lg:text-base truncate  max-w-[150px]">
                           {interview.name || 'Untitled Interview'}
                         </h3>
@@ -444,7 +445,7 @@ const handleUpdateInterviewShareLink = async (newShareLink,id) => {
             <Link
             to={`/layoutDashboard/setting/recruiterPage/${user.id}`}
               key={user.id} 
-              className="flex items-center border-b py-3 hover:bg-gray-50 rounded-lg px-2 transition-colors group"
+              className="flex items-center border-b py-3 hover:bg-gray-50 hover:shadow-sm px-2 transition-colors group"
             >
               <RecruiterAvatar user={user} />
               <div className="flex-1 ml-3 min-w-0">

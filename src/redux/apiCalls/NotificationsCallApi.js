@@ -57,6 +57,20 @@ export const getPreferences = () => async (dispatch) => {
         dispatch(notificationsActions.setError(error.message));
     }
 }
+export const getPreferencesEmail = () => async (dispatch) => {
+    dispatch(notificationsActions.setLoading(true));
+    try {
+        const response = await axiosInstance.get('/notifications/email-settings');
+        
+        if (response.status === 200) {
+            dispatch(notificationsActions.setPreferencesEmail(response.data.data));
+        }
+        dispatch(notificationsActions.setLoading(false));
+    } catch (error) {
+        dispatch(notificationsActions.setLoading(false));
+        dispatch(notificationsActions.setError(error.message));
+    }
+}
 
 export const getUnreadCount = () => async (dispatch) => {
     dispatch(notificationsActions.setLoading(true));
@@ -126,6 +140,7 @@ export const markAllNotificationAsRead = () => async (dispatch) => {
     }
 }
 
+
 export const UpdatePreferences = (payload) => async (dispatch) => {
     dispatch(notificationsActions.setLoading(true));
     try {
@@ -156,7 +171,34 @@ export const UpdatePreferences = (payload) => async (dispatch) => {
         dispatch(notificationsActions.setError(errorMessage));
     }
 }
-
+export const UpdateEmailSettings = (payload) => async (dispatch) => {
+    dispatch(notificationsActions.setLoading(true));
+    try {
+        
+        const response = await axiosInstance.patch(
+            '/notifications/email-settings', 
+            payload
+        );
+        
+        if (response.status === 200) {
+            dispatch(notificationsActions.updateEmailSettingsLocally(payload));
+            dispatch(notificationsActions.setSuccess(response.data.message));
+        }
+        
+        dispatch(notificationsActions.setLoading(false));
+        return { 
+            success: true, 
+            message: response.data.message 
+        };
+    } catch (error) {
+        console.error("❌ Error:", error.response?.data || error.message);
+        dispatch(notificationsActions.setLoading(false));
+        
+        const errorMessage = error.response?.data?.message || error.message;
+        dispatch(notificationsActions.setError(errorMessage));
+        return { success: false, error: errorMessage };
+    }
+}
 export const sendFCMToken = (token) => async (dispatch) => {
     try {
         const payload = {
@@ -174,10 +216,8 @@ export const sendFCMToken = (token) => async (dispatch) => {
             return { success: true, data: response.data };
         }
     } catch (error) {
-        // ✅ فقط اطبع الـ error ومترميش exception
         console.warn("⚠️ Failed to send FCM token:", error.message);
         return { success: false, error: error.message };
-        // ❌ شلنا الـ throw error
     }
 };
 

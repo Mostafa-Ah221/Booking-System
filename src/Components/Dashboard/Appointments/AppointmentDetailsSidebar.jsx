@@ -96,11 +96,9 @@ console.log(appointment);
         }
       } else {
         setApproveStatus(previousStatus);
-        console.error('Failed to update appointment:', result.message);
       }
     } catch (error) {
       setApproveStatus(previousStatus);
-      console.error('Error updating appointment:', error);
     } finally {
       setIsProcessing(false);
       setOpenDropdown(null);
@@ -219,7 +217,7 @@ console.log(appointment);
               </div>
               <div className="flex gap-2">
                 {/* Approval Section */}
-                {appointment?.approve_status === "0" && appointment?.approve_interview_status === true && canControlAppointment && (
+                {appointment?.approve_status === "0" && appointment?.approve_interview_status === true && canControlAppointment && appointment?.status !== 'passed' &&  appointment?.status !== 'cancelled' && (
                   <div className="relative" ref={dropdownRef}>
                     <button
                       className="border border-gray-300 px-3 py-1 rounded flex items-center gap-1 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -240,7 +238,6 @@ console.log(appointment);
                       />
                     </button>
 
-                    {/* Approval Dropdown Menu - 🔹 زودنا الـ z-index */}
                     {openDropdown === 'approval' && (
                       <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg z-[80]">
                         <div className="py-2 px-3">
@@ -273,7 +270,7 @@ console.log(appointment);
                   </div>
                 )}
 
-                {/* Actions Section - 🔹 كل التعديلات هنا */}
+                {/* Actions Section */}
                 {userType !== 'staff' && (canEditAppointment || canControlAppointment || canDeleteAppointment) && (
                   <div className="relative" ref={actionsDropdownRef}>
                     <button
@@ -294,7 +291,6 @@ console.log(appointment);
                       />
                     </button>
 
-                    {/* 🔹 زودنا الـ z-index وعدلنا الـ event handlers */}
                     {openDropdown === appointment.id && (
                       <div
                         className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-[80]"
@@ -322,7 +318,7 @@ console.log(appointment);
                             </button>
                           )}
 
-                          {canEditAppointment &&  appointment?.status !== 'cancelled' && (
+                          {canEditAppointment &&  appointment?.status !== 'cancelled' && appointment?.status !== 'passed' && (
                             <button
                               className="w-full text-right px-4 py-2 text-sm text-yellow-600 hover:bg-gray-50 flex items-center justify-end gap-2"
                               onClick={(e) => {

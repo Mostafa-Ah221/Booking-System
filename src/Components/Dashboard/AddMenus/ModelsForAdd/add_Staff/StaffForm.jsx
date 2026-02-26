@@ -93,11 +93,13 @@ export const InviteStaffForm = ({
         Contact Number
       </label>
       <PhoneInput
-        country="eg"
+      country="eg"
         value={phoneValue}
         onChange={onPhoneChange}
         enableSearch
         searchPlaceholder="Search country"
+        disableCountryCode={false}
+        countryCodeEditable={false}
         inputProps={{
           name: "phone",
           required: true,
@@ -265,6 +267,8 @@ export const AddStaffForm = ({
             onChange={onPhoneChange}
             enableSearch
             searchPlaceholder="Search country"
+            disableCountryCode={false}
+           countryCodeEditable={false}
             inputProps={{
               name: "phone",
               required: true,

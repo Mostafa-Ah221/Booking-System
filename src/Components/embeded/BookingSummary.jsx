@@ -28,7 +28,6 @@ export default function BookingSummary() {
     const pathname = location.pathname;
     const pathParts = pathname.split("/").filter(Boolean);
     const idAdmin_or = pathParts[0];
-console.log(appointmentData);
 
     if (pathname.includes("/w/")) {
       const idSpace = pathParts[2];

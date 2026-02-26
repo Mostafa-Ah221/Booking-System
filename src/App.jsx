@@ -92,6 +92,7 @@ import ThemeRouter from './Components/embeded/ThemeRouter';
 import AppointmentBooking_3 from './Components/embeded/Theme-3/AppointmentBooking-3';
 import InterviewLayut_Staff from './Components/Staff_Dashboard/Staff_Interview_Pages/InterviewLayut_Staff';
 import InterviewDetails_Staff from './Components/Staff_Dashboard/Staff_Interview_Pages/InterviewDetails_Staff';
+import StaffNotifictions from './Components/Staff_Dashboard/StaffNotifictions/StaffNotifictions';
 
 const router = createBrowserRouter([
   { path: "/verifyNotification", element: <VerifyForm /> },
@@ -225,6 +226,7 @@ const router = createBrowserRouter([
       { path: "Staff_Availability", element: <StaffAvailability /> },
       { path: "Staff_Appointment", element: (<StaffAppointments />) },
       { path: "Staff_Interviews", element: (<Staff_Interview />) },
+      { path: "Staff_Notifications", element: (<StaffNotifictions />) },
     ],
   },
 

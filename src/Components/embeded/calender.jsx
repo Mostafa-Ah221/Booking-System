@@ -17,7 +17,8 @@ const CalendarModal = ({
   restCycle = 0,
   selectedTimeZone,      
   setSelectedTimezone,      
-  workspaceTimezone   
+  workspaceTimezone,
+  themeColor
 }) => {
   const [currentMonth, setCurrentMonth] = useState(() => {
   if (selectedDate) {
@@ -35,7 +36,35 @@ const [currentYear, setCurrentYear] = useState(() => {
   }
   return new Date().getFullYear();
 });
-console.log(disabledTimes);
+const DEFAULT_COLORS = {
+  primary: "#ffffff-rgb(241 82 179)",
+  text_color: "#111827",
+};
+
+let apiColors = {};
+
+try {
+  apiColors = themeColor?.colors ? JSON.parse(themeColor.colors) : {};
+} catch {
+  apiColors = {};
+}
+
+const colors =
+  themeColor?.theme === "theme2"
+    ? { ...DEFAULT_COLORS, ...apiColors }
+    : DEFAULT_COLORS;
+
+const primary = colors.primary ?? DEFAULT_COLORS.primary;
+
+const [firstColor, secondColor] =
+  primary?.includes("-")
+    ? primary.split("-")
+    : [primary, primary];
+
+
+const textColor = colors.text_color;
+
+console.log(colors);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -43,7 +72,6 @@ console.log(disabledTimes);
   const monthAbbreviations = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  // دالة تحويل التاريخ من workspace → user timezone
   const convertDateTimeWithTimezone = (dateStr, timeStr, fromTimezone, toTimezone) => {
     try {
       const [day, monthAbbr, year] = dateStr.split(' ');
@@ -279,17 +307,15 @@ const checkDateAvailability = (day, month, year) => {
   }
   
   // ═══════════════════════════════════════════════════════════════════════
-  // لو الـ timezone مختلف → نشيك على 3 أيام (السابق، الحالي، التالي)
+  // لو الـ timezone
   // ═══════════════════════════════════════════════════════════════════════
   
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const currentDateStr = `${String(day).padStart(2, '0')} ${monthNames[month]} ${year}`;
   
-  // 1️⃣ نشيك اليوم الحالي
   const currentDayAvailable = checkDateAvailability(day, month, year);
   if (currentDayAvailable) return true;
   
-  // 2️⃣ نشيك اليوم السابق (للـ timezones اللي قدامنا زي Auckland +13)
   const prevDate = new Date(Date.UTC(year, month, day));
   prevDate.setUTCDate(prevDate.getUTCDate() - 1);
   const prevDay = prevDate.getUTCDate();
@@ -298,20 +324,17 @@ const checkDateAvailability = (day, month, year) => {
   
   const prevDayAvailable = checkDateAvailability(prevDay, prevMonth, prevYear);
   if (prevDayAvailable) {
-    // نجيب أوقات اليوم السابق ونحولها
     const prevDateStr = `${String(prevDay).padStart(2, '0')} ${monthNames[prevMonth]} ${prevYear}`;
     const prevDayTimes = calculateEffectiveAvailableTimes(prevDay, prevMonth, prevYear);
     
-    // نشوف لو في أوقات من اليوم السابق هتظهر في اليوم الحالي
     for (let time of prevDayTimes) {
       const converted = convertDateTimeWithTimezone(prevDateStr, time, wsTimezone, selectedTimezone);
       if (converted.date === currentDateStr) {
-        return true; // ✅ فيه أوقات من اليوم السابق
+        return true; 
       }
     }
   }
   
-  // 3️⃣ نشيك اليوم التالي (للـ timezones اللي ورانا زي Hawaii -10)
   const nextDate = new Date(Date.UTC(year, month, day));
   nextDate.setUTCDate(nextDate.getUTCDate() + 1);
   const nextDay = nextDate.getUTCDate();
@@ -320,31 +343,28 @@ const checkDateAvailability = (day, month, year) => {
   
   const nextDayAvailable = checkDateAvailability(nextDay, nextMonth, nextYear);
   if (nextDayAvailable) {
-    // نجيب أوقات اليوم التالي ونحولها
     const nextDateStr = `${String(nextDay).padStart(2, '0')} ${monthNames[nextMonth]} ${nextYear}`;
     const nextDayTimes = calculateEffectiveAvailableTimes(nextDay, nextMonth, nextYear);
     
-    // نشوف لو في أوقات من اليوم التالي هتظهر في اليوم الحالي
     for (let time of nextDayTimes) {
       const converted = convertDateTimeWithTimezone(nextDateStr, time, wsTimezone, selectedTimezone);
       if (converted.date === currentDateStr) {
-        return true; // ✅ فيه أوقات من اليوم التالي
+        return true; 
       }
     }
   }
   
-  return false; // ❌ مفيش أوقات متاحة
+  return false; 
 };
 
   const formatDateString = (day, month, year) => {
     return `${String(day).padStart(2, '0')} ${monthAbbreviations[month]} ${year}`;
   };
 
-  // const getDaysInMonth = (m, y) => new Date(y, m + 1, 0).getDate();
 const getDaysInMonth = (m, y) => new Date(y, m + 1, 0).getDate();
 
 const getFirstDayOfMonth = (m, y) => {
-  const d = new Date(y, m, 1).getDay();  // غيرها من getUTCDay() لـ getDay()
+  const d = new Date(y, m, 1).getDay();  
   return d;  
 };
 
@@ -381,7 +401,12 @@ const getFirstDayOfMonth = (m, y) => {
           key={day}
           disabled={!available}
           className={className}
-          onClick={() => available && onDateSelect(dateStr) && onClose()}
+          onClick={() => {
+  if (available) {
+    onDateSelect(dateStr);
+    onClose();
+  }
+}}
         >
           {day}
         </button>
@@ -390,7 +415,6 @@ const getFirstDayOfMonth = (m, y) => {
     return days;
   };
 
-  // أضف ده فوق الدالة navigateMonth
 useEffect(() => {
   if (selectedDate && show) {
     const [day, monthAbbr, year] = selectedDate.split(' ');
@@ -411,44 +435,70 @@ useEffect(() => {
       else setCurrentMonth(m => m + 1);
     }
   };
+  console.log(secondColor);
+  
 
   if (!show) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={() => navigateMonth('prev')} className="p-2 hover:bg-gray-100 rounded">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h2 className="text-xl font-bold">{monthNames[currentMonth]} {currentYear}</h2>
-            <button onClick={() => navigateMonth('next')} className="p-2 hover:bg-gray-100 rounded">
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+ return (
+  <div className="absolute inset-0 flex items-center justify-center z-50 p-4">
+    <div className="rounded-lg shadow-2xl max-w-md w-full" style={{ backgroundColor: firstColor }}>
+      <div className="p-6" >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <button 
+            onClick={() => navigateMonth('prev')} 
+            className="p-2 rounded-lg hover:bg-black/10 transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" style={{ color: secondColor }} />
+          </button>
+          <h2 className="text-xl font-bold" style={{ color: textColor }}>
+            {monthNames[currentMonth]} {currentYear}
+          </h2>
+          <button 
+            onClick={() => navigateMonth('next')} 
+            className="p-2 rounded-lg hover:bg-black/10 transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" style={{ color: secondColor }} />
+          </button>
+        </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-600 mb-2">
-            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <div key={d}>{d}</div>)}
-          </div>
+        {/* Week Days */}
+        <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold mb-3" style={{ color: `${textColor}80` }}>
+          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+            <div key={d} className="py-2">{d}</div>
+          ))}
+        </div>
 
-          <div className="grid grid-cols-7 gap-1">
-            {generateCalendar()}
-          </div>
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1">
+          {generateCalendar()}
+        </div>
 
-          <div className="mt-6 flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium">
-              Cancel
-            </button>
-            <button onClick={() => { setCurrentMonth(new Date().getMonth()); setCurrentYear(new Date().getFullYear()); }}
-              className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
-              Today
-            </button>
-          </div>
+        {/* Footer Buttons */}
+        <div className="mt-6 flex gap-3">
+          <button 
+            onClick={onClose} 
+            className="flex-1 py-3 rounded-lg font-medium transition-all hover:bg-black/10"
+            style={{ background: `${textColor}15`, color: textColor }}
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => { 
+              setCurrentMonth(new Date().getMonth()); 
+              setCurrentYear(new Date().getFullYear()); 
+            }}
+            className="flex-1 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90"
+            style={{ background: secondColor }}
+          >
+            Today
+          </button>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default CalendarModal;

@@ -1,4 +1,5 @@
 import { Instagram, Linkedin, Twitter, Youtube } from 'lucide-react';
+import { FaXTwitter } from 'react-icons/fa6';
 
 const Footer = () => {
   const bottomLinks = [
@@ -46,7 +47,7 @@ const Footer = () => {
             {/* Copyright */}
             <div className="text-center lg:text-left">
               <p className="text-gray-600 text-sm leading-relaxed">
-                <span className="font-medium text-gray-800">© 2025 Appoint Roll</span>
+                <span className="font-medium text-gray-800">© 2026 Appoint Roll</span>
                 <span className="mx-2">•</span>
                 All Rights Reserved
               </p>
@@ -86,7 +87,7 @@ const Footer = () => {
                   className="group p-2 rounded-full hover:bg-gray-900 transition-all duration-300 hover:scale-110 hover:shadow-md"
                   aria-label="Twitter"
                 >
-                  <Twitter className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors duration-300" />
+                  <FaXTwitter className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors duration-300" />
                 </a>
                 <a 
                   href="#" 

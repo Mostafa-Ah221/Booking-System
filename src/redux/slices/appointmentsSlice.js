@@ -5,6 +5,7 @@ const appointmentsSlice = createSlice({
   initialState: {
     appointments: [],
     appointment: null,
+     pagination: null,
     loading: false,
     error: null,
   },
@@ -32,6 +33,9 @@ const appointmentsSlice = createSlice({
       }
       
       // console.log('✅ Final appointments array:', state.appointments);
+    },
+     setPagination: (state, action) => {
+      state.pagination = action.payload; 
     },
     setAppointment(state, action) {
       state.appointment = action.payload;

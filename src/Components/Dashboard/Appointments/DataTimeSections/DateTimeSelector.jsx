@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { PiCalendarBlank, PiMonitorLight, PiUsersThreeLight } from "react-icons/pi";
@@ -25,7 +26,7 @@ const DateTimeSelector = ({
   onStaffSelect,
   mode = 'schedule',
   selectedTimezone,
-  WORKSPACE_TIMEZONE = 'Africa/Cairo' 
+  WORKSPACE_TIMEZONE = 'UTC' 
 }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showTimeSlots, setShowTimeSlots] = useState(false);
@@ -43,7 +44,6 @@ const DateTimeSelector = ({
   
   const dispatch = useDispatch();
   const { interview } = useSelector(state => state.interview);
-console.log(interview);
 
   const isResourceMode = interview?.type === "resource";
   const isCollectiveMode = interview?.type === "collective-booking";
@@ -186,20 +186,21 @@ console.log(interview);
       const dayOfWeek = checkDate.getUTCDay();
       const dayId = dayOfWeek === 0 ? 1 : dayOfWeek + 1;
       
-      const dayAvailableTimes = availableTimesData.filter(timeRange => 
+      // ✅ Filter available and unavailable times for this day in UTC
+      const dayAvailableTimesUTC = availableTimesData.filter(timeRange => 
         timeRange.day_id.toString() === dayId.toString()
       );
 
-      if (dayAvailableTimes.length === 0) return [];
+      if (dayAvailableTimesUTC.length === 0) return [];
 
-      const shouldApplyUnavailableTimes = isDateInUnavailableDatesRange(checkDate);
-      const dayUnavailableTimes = shouldApplyUnavailableTimes
-        ? unavailableTimes.filter(timeRange => timeRange.day_id.toString() === dayId.toString())
-        : [];
+      const dayUnavailableTimesUTC = unavailableTimes.filter(timeRange => 
+        timeRange.day_id.toString() === dayId.toString()
+      );
 
+      // ✅ Convert times from UTC to user timezone and get final ranges
       const availableRanges = [];
       
-      dayAvailableTimes.forEach((availableRange) => {
+      dayAvailableTimesUTC.forEach((availableRange) => {
         if (!availableRange || !availableRange.from) return;
         
         const availableFromMinutes = utilTimeToMinutes(availableRange.from);
@@ -213,7 +214,7 @@ console.log(interview);
         
         let currentRanges = [{ from: availableFromMinutes, to: availableToMinutes }];
         
-        dayUnavailableTimes.forEach((unavailableRange) => {
+        dayUnavailableTimesUTC.forEach((unavailableRange) => {
           if (!unavailableRange || !unavailableRange.from) return;
           
           const unavailableFromMinutes = utilTimeToMinutes(unavailableRange.from);
@@ -244,19 +245,14 @@ console.log(interview);
         availableRanges.push(...currentRanges);
       });
 
-      const effectiveTimeSlots = [];
+      // ✅ Generate time slots from ranges IN UTC first
+      const utcTimeSlots = [];
       const durationCycle = parseInt(interviewData?.duration_cycle) || 15;
       const durationPeriod = interviewData?.duration_period || "minutes";
       const restCycle = parseInt(interviewData?.rest_cycle) || 0;
       
       const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
       const totalSlotDuration = durationInMinutes + restCycle;
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const selectedDateObj = new Date(targetISODate + 'T00:00:00.000Z');
-      const isToday = selectedDateObj.toDateString() === today.toDateString();
-      const nowMinutes = isToday ? (new Date().getHours() * 60 + new Date().getMinutes()) : -1;
       
       availableRanges.forEach((range) => {
         const startMinutes = range.from;
@@ -265,88 +261,107 @@ console.log(interview);
         for (let currentMinutes = startMinutes; currentMinutes + durationInMinutes <= endMinutes; currentMinutes += totalSlotDuration) {
           const hours = Math.floor(currentMinutes / 60);
           const minutes = currentMinutes % 60;
-          const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-          
-          let isPast = false;
-          if (isToday) {
-            const slotTimeMinutes = hours * 60 + minutes;
-            isPast = slotTimeMinutes < nowMinutes;
-          }
-          
-          if (!isPast) {
-            effectiveTimeSlots.push(formattedTime);
-          }
+          const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+         if (isSlotPastInUTC(targetISODate, formattedTime)) {
+    continue;
+  }
+          utcTimeSlots.push(formattedTime);
         }
       });
 
-      return [...new Set(effectiveTimeSlots)].sort();
+      return utcTimeSlots;
     };
-
-    const convertAndCheck = (cairoDateStr, cairoTime, targetDateStr) => {
-      const converted = convertDateTimeWithTimezone(
-        cairoDateStr,
-        cairoTime,
-        WORKSPACE_TIMEZONE,
-        userTimezone
-      );
-
-      if (converted.date !== targetDateStr) return null;
-
-      const timeKey = converted.time.slice(0, 5);
-      const isDisabled = !!disabledMap[timeKey];
-      const isPastTime = isTimePast(targetDateStr, converted.time);
-
-      return (!isDisabled && !isPastTime) ? converted.time : null;
-    };
-
+    
     const allUserTimes = [];
-
     const dateStr = selectedDate.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: 'short',
       year: 'numeric'
     });
 
-    // Current day
-    const currentDayTimes = generateTimesForDay(isoDate);
-    currentDayTimes.forEach(time => {
-      const result = convertAndCheck(dateStr, time, dateStr);
-      if (result) allUserTimes.push(result);
+    const currentDayTimesUTC = generateTimesForDay(isoDate);
+    
+    currentDayTimesUTC.forEach(utcTime => {
+      const converted = convertDateTimeWithTimezone(
+        dateStr,
+        utcTime,
+        WORKSPACE_TIMEZONE, 
+        userTimezone        
+      );
+      
+      // Only include if it falls on the target date after conversion
+      if (converted.date === dateStr) {
+        const timeKey = converted.time.slice(0, 5);
+        const isDisabled = !!disabledMap[timeKey];
+        const isPastTime = isTimePast(isoDate, converted.time);
+        
+        if (!isDisabled && !isPastTime) {
+          allUserTimes.push(converted.time);
+        }
+      }
     });
 
-    // Previous day (for timezone differences)
+    // ✅ Check previous day (for times that might shift to current day)
     if (userTimezone !== WORKSPACE_TIMEZONE) {
       const prevDate = new Date(isoDate + 'T00:00:00.000Z');
       prevDate.setUTCDate(prevDate.getUTCDate() - 1);
       const prevISO = prevDate.toISOString().split('T')[0];
-      const prevTimes = generateTimesForDay(prevISO);
+      const prevTimesUTC = generateTimesForDay(prevISO);
       
       const prevDay = String(prevDate.getUTCDate()).padStart(2, '0');
       const prevMonth = monthNames[prevDate.getUTCMonth()];
       const prevYear = prevDate.getUTCFullYear();
       const prevDateStr = `${prevDay} ${prevMonth} ${prevYear}`;
 
-      prevTimes.forEach(time => {
-        const result = convertAndCheck(prevDateStr, time, dateStr);
-        if (result) allUserTimes.push(result);
+      prevTimesUTC.forEach(utcTime => {
+        const converted = convertDateTimeWithTimezone(
+          prevDateStr,
+          utcTime,
+          WORKSPACE_TIMEZONE,
+          userTimezone
+        );
+        
+        if (converted.date === dateStr) {
+          const timeKey = converted.time.slice(0, 5);
+          const isDisabled = !!disabledMap[timeKey];
+          const isPastTime = isTimePast(isoDate, converted.time);
+          
+          if (!isDisabled && !isPastTime) {
+            allUserTimes.push(converted.time);
+          }
+        }
       });
     }
 
-    // Next day (for timezone differences)
+    // ✅ Check next day (for times that might shift from current day)
     if (userTimezone !== WORKSPACE_TIMEZONE) {
       const nextDate = new Date(isoDate + 'T00:00:00.000Z');
       nextDate.setUTCDate(nextDate.getUTCDate() + 1);
       const nextISO = nextDate.toISOString().split('T')[0];
-      const nextTimes = generateTimesForDay(nextISO);
+      const nextTimesUTC = generateTimesForDay(nextISO);
       
       const nextDay = String(nextDate.getUTCDate()).padStart(2, '0');
       const nextMonth = monthNames[nextDate.getUTCMonth()];
       const nextYear = nextDate.getUTCFullYear();
       const nextDateStr = `${nextDay} ${nextMonth} ${nextYear}`;
 
-      nextTimes.forEach(time => {
-        const result = convertAndCheck(nextDateStr, time, dateStr);
-        if (result) allUserTimes.push(result);
+      nextTimesUTC.forEach(utcTime => {
+        const converted = convertDateTimeWithTimezone(
+          nextDateStr,
+          utcTime,
+          WORKSPACE_TIMEZONE,
+          userTimezone
+        );
+        
+        if (converted.date === dateStr) {
+          const timeKey = converted.time.slice(0, 5);
+          const isDisabled = !!disabledMap[timeKey];
+          const isPastTime = isTimePast(isoDate, converted.time);
+          
+          if (!isDisabled && !isPastTime) {
+            allUserTimes.push(converted.time);
+          }
+        }
       });
     }
 
@@ -358,7 +373,11 @@ console.log(interview);
 
     return uniqueTimes;
   };
-
+const isSlotPastInUTC = (isoDate, utcTime) => {
+  const now = new Date();
+  const slotDateTimeUTC = new Date(`${isoDate}T${utcTime}Z`); // Z = UTC
+  return slotDateTimeUTC < now;
+};
   const isDateAvailable = (date) => {
     if (!date) return false;
 
@@ -368,10 +387,17 @@ console.log(interview);
     today.setHours(0, 0, 0, 0);
     if (checkDate < today) return false;
 
-    // ✅ الجزء المهم: نحسب الأوقات الفعلية (اللي بتشمل الأيام المجاورة)
-    const slots = calculateEffectiveAvailableTimes(checkDate, availableTimes, disabledTimes, interviewDetails);
+    if (!isDateInAvailableRange(checkDate, availableDates)) {
+      return false;
+    }
+
+    const slots = calculateEffectiveAvailableTimes(
+      checkDate, 
+      availableTimes, 
+      disabledTimes, 
+      interviewDetails
+    );
     
-    // لو فيه أي وقت متاح (حتى لو جاي من يوم تاني)، يبقى اليوم متاح
     return slots.length > 0;
   };
 
@@ -401,28 +427,28 @@ console.log(interview);
     setShowTimeSlots(false);
     
     if (staff) {
+      // All times from API are in UTC - no conversion needed here
       if (isResourceMode && interviewDetails) {
         setAvailableDates(interviewDetails.available_dates || []);
         setAvailableTimes(interviewDetails.available_times || []);
         setUnavailableDates(interviewDetails.un_available_dates || []);
         setUnavailableTimes(interviewDetails.un_available_times || []);
         setDisabledTimes(staff.disabled_times || []);
+      } else if (isCollectiveMode) {
+        setAvailableDates(staff.collective_available_dates || []);
+        setAvailableTimes(staff.collective_available_times || []);
+        setUnavailableDates(staff.collective_unavailable_dates || []);
+        setUnavailableTimes(staff.collective_unavailable_times || []);
+        setDisabledTimes(staff.disabled_times || []);
       } else {
+        // Regular staff mode
         setAvailableDates(staff.available_dates || []);
         setAvailableTimes(staff.available_times || []);
         setUnavailableDates(staff.un_available_dates || []);
         setUnavailableTimes(staff.un_available_times || []);
         setDisabledTimes(staff.disabled_times || []);
       }
-      if (isCollectiveMode) {
-        setAvailableDates(staff.collective_available_dates || []);
-        setAvailableTimes(staff.collective_available_times || []);
-        setUnavailableDates(staff.collective_unavailable_dates || []);
-        setUnavailableTimes(staff.collective_unavailable_times || []);
-        setDisabledTimes(staff.disabled_times || []);
-      }
       
-      // Find first available date/time after staff selection
       findFirstAvailableDateTime(staff);
     }
   };
@@ -446,8 +472,6 @@ console.log(interview);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // ✅ بدل ما نجمع بس الأيام من available_dates، 
-    // هنجمع كل الأيام في range واسع عشان نشوف الأيام الليممكن تفتح من timezones تانية
     const allPossibleDates = [];
     
     for (const dateRange of datesToUse) {
@@ -459,13 +483,12 @@ console.log(interview);
         
         if (isNaN(fromDate.getTime())) continue;
         
-        // ✅ نبدأ من يوم قبل الـ range عشان نشوف لو فيه أوقات من اليوم ده هتظهر
         const startDate = new Date(Math.max(fromDate.getTime(), today.getTime()));
-        startDate.setDate(startDate.getDate() - 1); // يوم قبل كده
+        startDate.setDate(startDate.getDate() - 1);
         
         const currentDate = new Date(Math.max(startDate.getTime(), today.getTime()));
         const endDate = new Date(toDate.getTime());
-        endDate.setDate(endDate.getDate() + 1); // يوم بعد كده
+        endDate.setDate(endDate.getDate() + 1);
         
         while (currentDate <= endDate) {
           allPossibleDates.push(new Date(currentDate));
@@ -479,7 +502,6 @@ console.log(interview);
     
     allPossibleDates.sort((a, b) => a - b);
 
-    // ✅ نفحص كل يوم بالـ calculateEffectiveAvailableTimes (اللي بتشوف الأيام المجاورة)
     for (const date of allPossibleDates) {
       const timeSlots = calculateEffectiveAvailableTimes(
         date,
@@ -521,26 +543,38 @@ console.log(interview);
         setStaffInterview(interviewData.staff);
       }
 
+      // ✅ CRITICAL: In reschedule mode, always use fresh interview data, not appointment.staff_resource
+      // appointment.staff_resource might have already converted times
       const useStaffResource = appointment?.staff_resource && 
-            typeof appointment.staff_resource === 'object' && 
-            Object.keys(appointment.staff_resource).length > 0;
+      typeof appointment.staff_resource === 'object' && 
+      Object.keys(appointment.staff_resource).length > 0;
 
       const dataSource = useStaffResource ? appointment.staff_resource : interviewData;
-
+      console.log(dataSource);
+      
       if (dataSource) {
         setInterviewDetails(interviewData);
+        console.log('📊 Data Source:', useStaffResource ? 'staff_resource' : 'fresh API');
+        console.log('⏰ Available Times (UTC):', dataSource.available_times);
+        
+        // All times from API are in UTC
         setAvailableDates(dataSource.available_dates || []);
         setAvailableTimes(dataSource.available_times || []);
         setUnavailableDates(dataSource.un_available_dates || []);
         setUnavailableTimes(dataSource.un_available_times || []);
-        
-        const disabledTimesToUse = isResourceMode && appointment?.resource?.disabled_times
-          ? [...(dataSource.disabled_times || []), ...appointment.resource.disabled_times]
-          : (dataSource.disabled_times || []);
+        let disabledTimesToUse = dataSource.disabled_times || [];
+
+      if (mode === 'reschedule') {
+        if (appointment?.staff_resource?.disabled_times) {
+          disabledTimesToUse = [...disabledTimesToUse, ...appointment.staff_resource.disabled_times];
+        }
+        if (appointment?.resource?.disabled_times) {
+          disabledTimesToUse = [...disabledTimesToUse, ...appointment.resource.disabled_times];
+        }
+      }
         
         setDisabledTimes(disabledTimesToUse);
 
-        // Find first available date/time for initial load
         if (dataSource.available_dates && dataSource.available_dates.length > 0) {
           const firstDate = new Date(dataSource.available_dates[0].from);
           setCurrentMonth(firstDate);
@@ -560,13 +594,12 @@ console.log(interview);
                 
                 if (isNaN(fromDate.getTime())) continue;
                 
-                // ✅ نبدأ من يوم قبل الـ range
                 const startDate = new Date(Math.max(fromDate.getTime(), today.getTime()));
                 startDate.setDate(startDate.getDate() - 1);
                 
                 const currentDate = new Date(Math.max(startDate.getTime(), today.getTime()));
                 const endDate = new Date(toDate.getTime());
-                endDate.setDate(endDate.getDate() + 1); // يوم بعد كده
+                endDate.setDate(endDate.getDate() + 1);
                 
                 while (currentDate <= endDate) {
                   allPossibleDates.push(new Date(currentDate));
@@ -635,7 +668,6 @@ console.log(interview);
     }
   }, [selectedDate, disabledTimes, availableTimes, interviewDetails]);
 
-  // Handle timezone changes
   useEffect(() => {
     if (selectedDate && interviewDetails && selectedTimezone) {
       const timeSlots = calculateEffectiveAvailableTimes(
@@ -645,15 +677,12 @@ console.log(interview);
         interviewDetails
       );
       
-      // Reset time if current selection is not available in new timezone
       if (selectedTime && !timeSlots.some(slot => normalizeTimeFormat(slot) === normalizeTimeFormat(selectedTime))) {
         const firstAvailable = getFirstAvailableTime(selectedDate, timeSlots);
         onTimeSelect(firstAvailable);
       }
       
-      // Check if the currently selected date is still available in the new timezone
       if (!isDateAvailable(selectedDate)) {
-        // Find first available date in new timezone
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -668,13 +697,12 @@ console.log(interview);
             
             if (isNaN(fromDate.getTime())) continue;
             
-            // ✅ نبدأ من يوم قبل الـ range عشان نلاقي الأيام اللي ممكن تفتح
             const startDate = new Date(Math.max(fromDate.getTime(), today.getTime()));
             startDate.setDate(startDate.getDate() - 1);
             
             const currentDate = new Date(Math.max(startDate.getTime(), today.getTime()));
             const endDate = new Date(toDate.getTime());
-            endDate.setDate(endDate.getDate() + 1); // يوم بعد كده
+            endDate.setDate(endDate.getDate() + 1);
             
             while (currentDate <= endDate) {
               allPossibleDates.push(new Date(currentDate));
@@ -703,7 +731,6 @@ console.log(interview);
           }
         }
         
-        // If no available date found, reset selections
         onDateSelect(null);
         onTimeSelect(null);
       }

@@ -69,10 +69,10 @@ const SettingsPage = () => {
                     <div>M/d/yy (3/19/25)</div>
                   </div>
                   <div className="p-2 border-b hover:bg-gray-100 cursor-pointer">
-                    <div>MMM d, yyyy HH:mm (GMT XXX) (Mar 19, 2025 05:21 (GMT -07:00))</div>
+                    <div>MMM d, yyyy HH:mm (GMT XXX) (Mar 19, 2026 05:21 (GMT -07:00))</div>
                   </div>
                   <div className="p-2 border-b hover:bg-gray-100 cursor-pointer">
-                    <div>d-M-y (19-3-2025)</div>
+                    <div>d-M-y (19-3-2026)</div>
                   </div>
                   <div className="p-2 hover:bg-gray-100 cursor-pointer">
                     <div>d-M-yy (19-3-25)</div>

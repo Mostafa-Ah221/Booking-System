@@ -208,9 +208,8 @@ export default function Analytics() {
         return filters[activeTab] || {};
     };
 
-    // ✅ إصلاح: إضافة مسح الخطأ عند التعديل
     const handleAppointmentFilterChange = (key, value) => {
-        setDateError(''); // مسح الخطأ عند التعديل
+        setDateError(''); 
         setLocalAppointmentFilters(prev => ({
             ...prev,
             [key]: value

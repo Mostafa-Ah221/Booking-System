@@ -60,7 +60,7 @@ const FilterSidebar = ({
     { id: 'rescheduled', name: 'Rescheduled', color: 'bg-yellow-500' },
     { id: 'ongoing', name: 'Ongoing', color: 'bg-blue-500' }, 
     { id: 'completed', name: 'Completed', color: 'bg-teal-500' },
-    { id: 'past', name: 'Past', color: 'bg-gray-500' },
+    { id: 'passed', name: 'Passed', color: 'bg-gray-500' },
     { id: 'cancelled', name: 'Cancelled', color: 'bg-red-500' }
   ];
 

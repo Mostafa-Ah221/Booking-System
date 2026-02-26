@@ -14,6 +14,7 @@ import ColumnManagerSidebar from '../Dashboard/Appointments/ColumnManagerSidebar
 import { useConfirmationToast } from '../Dashboard/Appointments/useConfirmationToast';
 import Loader from '../Loader';
 
+
 const StaffAppointments = () => {
   const [activeTab, setActiveTab] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -84,51 +85,61 @@ const StaffAppointments = () => {
   const dropdownRef = useRef(null);
   const dispatch = useDispatch();
   const { showConfirmationToast } = useConfirmationToast();
-  const {staff_interviews = [], staff_appointments = [],staff_workspaces = [], loading = false, error, } = useSelector(state => state.staffApis || {});
+  const {staff_interviews = [], staff_appointments = [],staff_workspaces = [],staff_pagination, loading = false, error, } = useSelector(state => state.staffApis || {});
 
+console.log(staff_appointments);
 
 
 useEffect(() => {
-  const fetchData = async () => {
-    const workspacesResult = await dispatch(staff_GetWorkspaces());
-    const interviewsResult = await dispatch(staff_FetchInterviews());
+    const fetchData = async () => {
+      await dispatch(staff_GetWorkspaces());
+      await dispatch(staff_FetchInterviews());
+    };
     
-  
-  };
-  
-  fetchData();
-}, [dispatch]);
+    fetchData();
+  }, [dispatch]);
 
-  useEffect(() => {
-    const queryParams = {};
+  // useEffect(() => {
+  //   const queryParams = {};
  
-    if (hasActiveFilters(currentFilters)) {
-      Object.assign(queryParams, buildQueryParams(currentFilters));
-    }
-    dispatch(satff_FetchAppointments(queryParams));
-  }, [dispatch, currentFilters]);
+  //   if (hasActiveFilters(currentFilters)) {
+  //     Object.assign(queryParams, buildQueryParams(currentFilters));
+  //   }
+  //   dispatch(satff_FetchAppointments(queryParams));
+  // }, [dispatch, currentFilters]);
 
   useEffect(() => {
-  if (selectWorkspace !== null && selectWorkspace !== undefined) {
-    const queryParams = {};
+    const queryParams = { page: currentPage };
     
     if (hasActiveFilters(currentFilters)) {
       Object.assign(queryParams, buildQueryParams(currentFilters));
     }
     
-    
-    if (selectWorkspace !== 0) { 
-      queryParams.work_space_id = selectWorkspace;
-    }
-    
-   
     dispatch(satff_FetchAppointments(queryParams));
-    setCurrentFilters(prev => ({
-      ...prev,
-      workspaces: selectWorkspace !== 0 ? [selectWorkspace] : []
-    }));
-  }
-}, [selectWorkspace, dispatch]);
+  }, [dispatch, currentFilters, currentPage]);
+
+ useEffect(() => {
+    if (staff_workspaces && staff_workspaces.length > 0) {
+      const queryParams = { page: currentPage };
+      
+      if (hasActiveFilters(currentFilters)) {
+        Object.assign(queryParams, buildQueryParams(currentFilters));
+      }
+      
+      if (selectWorkspace !== null && selectWorkspace !== undefined && selectWorkspace !== 0) {
+        queryParams.work_space_id = selectWorkspace;
+      }
+      
+      dispatch(satff_FetchAppointments(queryParams));
+      
+      if (selectWorkspace !== null && selectWorkspace !== undefined) {
+        setCurrentFilters(prev => ({
+          ...prev,
+          workspaces: selectWorkspace !== 0 ? [selectWorkspace] : []
+        }));
+      }
+    }
+  }, [selectWorkspace, dispatch, currentPage, staff_workspaces.length]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -217,30 +228,20 @@ useEffect(() => {
     return queryParams;
   };
 
-  const appointmentsArray = Array.isArray(staff_appointments) ? staff_appointments : [];
+   const appointmentsArray = Array.isArray(staff_appointments) ? staff_appointments : [];
+  
   const filteredAppointments = appointmentsArray.filter(app => {
-    if (!hasActiveFilters(currentFilters)) {
-      if (activeTab === 'Upcoming') {
-        return app.status === 'upcoming' || app.status === 'rescheduled';
-      }
-      if (activeTab === 'Past') {
-        return app.status === 'past' || app.status === 'completed';
-      }
-      return true;
-    }
-    let matches = true;
     if (currentFilters.clients && currentFilters.clients.length > 0) {
       const appointmentClientId = app.client_id || app.customer_id || app.clientId;
-      matches = matches && currentFilters.clients.includes(appointmentClientId);
+      return currentFilters.clients.includes(appointmentClientId);
     }
-    return matches;
+    return true;
   });
-
   // Pagination Logic
-  const indexOfLastAppointment = currentPage * appointmentsPerPage;
-  const indexOfFirstAppointment = indexOfLastAppointment - appointmentsPerPage;
-  const currentAppointments = filteredAppointments.slice(indexOfFirstAppointment, indexOfLastAppointment);
-  const totalPages = Math.ceil(filteredAppointments.length / appointmentsPerPage);
+  const totalPages = staff_pagination?.last_page || 1;
+  const totalAppointments = staff_pagination?.total || 0;
+  const fromAppointment = staff_pagination?.from || 0;
+  const toAppointment = staff_pagination?.to || 0;
 
   const paginate = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages) {
@@ -352,15 +353,14 @@ useEffect(() => {
     }
   };
 
-  const handleApplyFilters = (filters) => {
+   const handleApplyFilters = (filters) => {
     setCurrentFilters(filters);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
+    const queryParams = { page: 1 }; 
     if (hasActiveFilters(filters)) {
-      const queryParams = buildQueryParams(filters);
-      dispatch(satff_FetchAppointments(queryParams));
-    } else {
-      dispatch(satff_FetchAppointments());
+      Object.assign(queryParams, buildQueryParams(filters));
     }
+    dispatch(satff_FetchAppointments(queryParams));
     setIsFilterOpen(false);
   };
 
@@ -370,8 +370,8 @@ useEffect(() => {
 
   const handleClearFilters = () => {
     setCurrentFilters({});
-    setCurrentPage(1); // Reset to first page when clearing filters
-    dispatch(satff_FetchAppointments());
+    setCurrentPage(1);
+    dispatch(satff_FetchAppointments({ page: 1 }));
   };
 
 
@@ -402,7 +402,7 @@ useEffect(() => {
   };
 
   const renderAppointments = () => {
-    if (currentAppointments.length > 0) {
+    if (filteredAppointments.length > 0) {
       if (!columnOrder || !Array.isArray(columnOrder) || columnOrder.length === 0) {
         return <div className="p-4 text-center">Loading columns...</div>;
       }
@@ -437,7 +437,7 @@ useEffect(() => {
             ))}
           </div>
 
-          {currentAppointments.map((item, index) => (
+          {filteredAppointments.map((item, index) => (
             <div key={item.id} className="border-b last:border-b-0">
               <div className="bg-gray-50 px-6 py-3 border-b" style={{ minWidth: minWidth }}>
                 <div className="flex items-center justify-between">
@@ -445,8 +445,10 @@ useEffect(() => {
                     <CalendarDays size={16} className="text-gray-600" />
                     <span className="text-xs font-medium">{formatDate(item.date)}</span>
                   </div>
-                  <span className="text-xs text-gray-500">{indexOfFirstAppointment + index + 1} appointment</span>
-                </div>
+               <span className="text-xs text-gray-500">
+                {fromAppointment + index} appointment 
+              </span>          
+              </div>
               </div>
 
               <div
@@ -560,7 +562,7 @@ useEffect(() => {
                           </button>
                           {openDropdown === item.id && (
                             <div className={`absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10 ${
-                              index === currentAppointments.length - 1 ? 'bottom-full mb-1' : 'top-full'
+                              index === filteredAppointments.length - 1 ? 'bottom-full mb-1' : 'top-full'
                             }`}>
                               <div className="py-1">
                                
@@ -633,17 +635,25 @@ useEffect(() => {
   };
 
   const renderPagination = () => {
-    if (filteredAppointments.length <= appointmentsPerPage) return null;
+    if (totalPages <= 1) return null;
 
     const pageNumbers = [];
-    for (let i = 1; i <= totalPages; i++) {
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
       pageNumbers.push(i);
     }
 
     return (
       <div className="flex justify-between items-center mt-4">
         <div className="text-sm text-gray-600">
-          Showing {indexOfFirstAppointment + 1} to {Math.min(indexOfLastAppointment, filteredAppointments.length)} of {filteredAppointments.length} staff_appointments
+          Showing {fromAppointment} to {toAppointment} of {totalAppointments} appointments
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -657,6 +667,19 @@ useEffect(() => {
           >
             Previous
           </button>
+          
+          {startPage > 1 && (
+            <>
+              <button
+                onClick={() => paginate(1)}
+                className="px-3 py-1 text-sm rounded-md bg-white text-gray-600 hover:bg-gray-100"
+              >
+                1
+              </button>
+              {startPage > 2 && <span className="px-2 text-gray-500">...</span>}
+            </>
+          )}
+          
           {pageNumbers.map(number => (
             <button
               key={number}
@@ -670,6 +693,19 @@ useEffect(() => {
               {number}
             </button>
           ))}
+          
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="px-2 text-gray-500">...</span>}
+              <button
+                onClick={() => paginate(totalPages)}
+                className="px-3 py-1 text-sm rounded-md bg-white text-gray-600 hover:bg-gray-100"
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+          
           <button
             onClick={() => paginate(currentPage + 1)}
             disabled={currentPage === totalPages}

@@ -20,6 +20,7 @@ const TimeSection = ({
   const [weekDays, setWeekDays] = useState(initialWeekDays);
   const [isEditMode, setIsEditMode] = useState(true);
   const [displayWeekDays, setDisplayWeekDays] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
   const timezoneRef = useRef(null);
   
   const { workspace } = useSelector(state => state.workspace);
@@ -43,17 +44,15 @@ const TimeSection = ({
   };
 
   useEffect(() => {
-
-    
     if (workspace) {
-    
-     const timezoneValue = availabilityMode === 'available' 
-      ? workspace.available_times_time_zone 
-      : workspace.un_available_times_time_zone;
+      const timezoneValue = availabilityMode === 'available' 
+        ? workspace.available_times_time_zone 
+        : workspace.un_available_times_time_zone;
 
-    if (timezoneValue && onTimeZoneChange) {
-      onTimeZoneChange(timezoneValue);
-    }
+      if (timezoneValue && onTimeZoneChange) {
+        onTimeZoneChange(timezoneValue);
+      }
+      
       const timeSource = availabilityMode === 'available' 
         ? workspace.available_times 
         : workspace.un_available_times;
@@ -104,7 +103,7 @@ const TimeSection = ({
         setWeekDays(defaultWeekDays);
       }
     }
-  }, [workspace, availabilityMode]);
+  }, [workspace, availabilityMode, onTimeZoneChange]);
 
   useEffect(() => {
     if (onUpdateWeekDays) {
@@ -114,6 +113,8 @@ const TimeSection = ({
 
   const handleSaveAndSubmit = async () => {
     try {
+      setIsSaving(true);
+      
       const available_times = weekDays
         .filter(day => day.isChecked)
         .map(day => ({
@@ -126,7 +127,7 @@ const TimeSection = ({
       
       if (handleSave) {
         const formData = {
-          time_zone: timeZone
+          time_zone: typeof timeZone === 'object' ? timeZone.value : timeZone
         };
         
         if (availabilityMode === 'available') {
@@ -146,6 +147,8 @@ const TimeSection = ({
       }
     } catch (error) {
       toast.error(`Error saving times: ${error.message || 'An unexpected error occurred'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -173,7 +176,7 @@ const TimeSection = ({
   };
 
   const addTimeSlot = (dayId) => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     const updatedWeekDays = weekDays.map(day => {
       if (day.day_id === dayId) {
         const lastTimeSlot = day.timeSlots[day.timeSlots.length - 1];
@@ -190,7 +193,7 @@ const TimeSection = ({
   };
 
   const removeTimeSlot = (dayId, slotIndex) => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     if (weekDays.find(d => d.day_id === dayId)?.timeSlots.length <= 1) return;
     
     const updatedWeekDays = weekDays.map(day => {
@@ -205,7 +208,7 @@ const TimeSection = ({
   };
 
   const applyToAll = () => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     const firstDay = weekDays[0];
     if (!firstDay) return;
     
@@ -221,7 +224,7 @@ const TimeSection = ({
   };
 
   const handleTimeChange = (dayId, slotIndex, field, newValue) => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     const updatedWeekDays = weekDays.map(day => {
       if (day.day_id === dayId) {
         const newTimeSlots = [...day.timeSlots];
@@ -257,7 +260,7 @@ const TimeSection = ({
   };
 
   const handleDayToggle = (dayId) => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     const updatedWeekDays = weekDays.map(day => {
       if (day.day_id === dayId) {
         const updatedDay = { ...day, isChecked: !day.isChecked };
@@ -274,7 +277,7 @@ const TimeSection = ({
   };
 
   const handleCancelClick = () => {
-    if (isTimeSectionDisabled) return;
+    if (isTimeSectionDisabled || isSaving) return;
     if (onCancel) {
       onCancel();
     }
@@ -308,7 +311,7 @@ const TimeSection = ({
     }, [selectedTimeDropdown, dropdownId]);
 
     const handleToggle = () => {
-      if (isTimeSectionDisabled) return;
+      if (isTimeSectionDisabled || isSaving) return;
       handleTimeDropdownToggle(selectedTimeDropdown === dropdownId ? null : dropdownId);
     };
 
@@ -317,20 +320,20 @@ const TimeSection = ({
       : 'top-full mt-1';
 
     return (
-      <div ref={containerRef} className="relative w-20">
+      <div ref={containerRef} className="relative w-full sm:w-20">
         <button 
           ref={buttonRef}
           onClick={handleToggle}
-          className={`flex items-center justify-between w-full px-3 py-2 text-left border rounded-md bg-white transition-colors duration-200 ${
-            isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+          className={`flex items-center justify-between w-full px-2 sm:px-3 py-2 text-left border rounded-md bg-white transition-colors duration-200 ${
+            isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
           }`}
-          disabled={isTimeSectionDisabled}
+          disabled={isTimeSectionDisabled || isSaving}
         >
-          <span className="text-sm">{value}</span>
-          <ChevronDown size={16} className={`transition-transform duration-200 ${selectedTimeDropdown === dropdownId ? 'transform rotate-180' : ''}`} />
+          <span className="text-xs sm:text-sm">{value}</span>
+          <ChevronDown size={14} className={`sm:w-4 sm:h-4 transition-transform duration-200 ${selectedTimeDropdown === dropdownId ? 'transform rotate-180' : ''}`} />
         </button>
         
-        {selectedTimeDropdown === dropdownId && !isTimeSectionDisabled && (
+        {selectedTimeDropdown === dropdownId && !isTimeSectionDisabled && !isSaving && (
           <div 
             className={`absolute z-30 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto ${menuPositionClass}`}
             style={{ minWidth: '80px' }}
@@ -339,7 +342,7 @@ const TimeSection = ({
               timeOptions.map((option, idx) => (
                 <div 
                   key={idx} 
-                  className="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer transition-colors duration-150"
+                  className="px-2 sm:px-3 py-2 text-xs sm:text-sm hover:bg-gray-100 cursor-pointer transition-colors duration-150"
                   onClick={() => {
                     handleTimeChange(dayId, slotIndex, field, option);
                     handleTimeDropdownToggle(null);
@@ -349,7 +352,7 @@ const TimeSection = ({
                 </div>
               ))
             ) : (
-              <div className="px-3 py-2 text-gray-500 text-sm">
+              <div className="px-2 sm:px-3 py-2 text-gray-500 text-xs sm:text-sm">
                 No available times
               </div>
             )}
@@ -360,43 +363,43 @@ const TimeSection = ({
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between ">
+    <div className="p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
         <div className="flex items-center space-x-2">
           <div>
-            {/* <h3 className="font-medium">
+            <h3 className="font-medium text-sm sm:text-base">
               {availabilityMode === 'available' ? 'Working Hours' : 'Unavailable Hours'}
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
               {availabilityMode === 'available' ? 
                 'Set weekly available days and hours.' : 
                 'Set weekly unavailable days and hours.'
               }
-            </p> */}
+            </p>
           </div>
         </div>
         {isEditMode && (
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 justify-end">
             <button 
               onClick={handleCancelClick}
-              className={`px-4 py-1 border border-gray-300 rounded-md text-gray-700 transition-colors duration-200 ${
-                isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-md text-gray-700 transition-colors duration-200 ${
+                isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
               }`}
-              disabled={isTimeSectionDisabled}
+              disabled={isTimeSectionDisabled || isSaving}
             >
-              <span className='text-sm'>Cancel</span>
+              <span className='text-xs sm:text-sm'>Cancel</span>
             </button>
             <button 
               onClick={handleSaveAndSubmit}
-              className={`px-4 py-1 text-white rounded-md shadow-sm flex items-center transition-colors duration-200 ${
+              className={`px-3 sm:px-4 py-1.5 sm:py-2 text-white rounded-md shadow-sm flex items-center transition-colors duration-200 ${
                 availabilityMode === 'available' ? 
                 'bg-blue-600 hover:bg-blue-700' : 
                 'bg-red-600 hover:bg-red-700'
-              } ${isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={isTimeSectionDisabled}
+              } ${isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isTimeSectionDisabled || isSaving}
             >
-              <Send size={16} className="mr-2" />
-              <span className='text-sm'>Save</span>
+              <Send size={14} className="mr-1.5 sm:mr-2 sm:w-4 sm:h-4" />
+              <span className='text-xs sm:text-sm'>{isSaving ? 'Saving...' : 'Save'}</span>
             </button>
           </div>
         )}
@@ -408,95 +411,89 @@ const TimeSection = ({
         className="mb-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-64">
+        <div className="w-full sm:w-64">
           <TimezoneSelect
             value={timeZone}
             onChange={onTimeZoneChange}
-            className="text-sm"
+            className="text-xs sm:text-sm"
+            isDisabled={isTimeSectionDisabled || isSaving}
           />
         </div>
       </div>
 
-      <div className="border rounded-lg p-4">
-        <div className="space-y-4">
+      <div className="border rounded-lg p-2 sm:p-3 md:p-4">
+        <div className="space-y-3 sm:space-y-4">
           {weekDays.map((day) => (
-            <div key={day.day_id} className="flex">
-              <div className="flex items-center gap-3">
+            <div key={day.day_id} className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <input 
                   type="checkbox" 
                   checked={day.isChecked} 
                   onChange={() => handleDayToggle(day.day_id)} 
-                  className={`w-3 h-3 rounded border-gray-300 cursor-pointer ${
-                    isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                  className={`w-3 h-3 sm:w-4 sm:h-4 rounded border-gray-300 cursor-pointer ${
+                    isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
-                  disabled={isTimeSectionDisabled}
+                  disabled={isTimeSectionDisabled || isSaving}
                 />
-                <span className="w-24 text-sm">{dayIdToName[day.day_id]}</span>
+                <span className="w-20 sm:w-24 text-xs sm:text-sm font-medium">{dayIdToName[day.day_id]}</span>
               </div>
-              <div className='flex flex-col gap-1'>
+              <div className='flex flex-col gap-2 w-full sm:ml-8'>
                 {day.isChecked && day.timeSlots.map((slot, slotIndex) => (
-                  <div key={`${day.day_id}-${slotIndex}`} className="flex items-center gap-2 ml-8 text-xs">
-                    <TimeDropdown 
-                      value={slot.from}
-                      dayId={day.day_id}
-                      slotIndex={slotIndex}
-                      field="from"
-                    />
-                    
-                    <span>—</span>
-                    
-                    <TimeDropdown 
-                      value={slot.to}
-                      dayId={day.day_id}
-                      slotIndex={slotIndex}
-                      field="to"
-                    />
+                  <div key={`${day.day_id}-${slotIndex}`} className="flex flex-wrap items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 flex-1 md:flex-none min-w-0">
+                      <TimeDropdown 
+                        value={slot.from}
+                        dayId={day.day_id}
+                        slotIndex={slotIndex}
+                        field="from"
+                      />
+                      
+                      <span className="flex-shrink-0">—</span>
+                      
+                      <TimeDropdown 
+                        value={slot.to}
+                        dayId={day.day_id}
+                        slotIndex={slotIndex}
+                        field="to"
+                      />
+                    </div>
 
-                    {day.day_id === 1 && slotIndex === 0 && (
-                      <>
+                    <div className="flex items-center gap-2">
+                      {day.timeSlots.length > 1 && (
+                        <button 
+                          onClick={() => removeTimeSlot(day.day_id, slotIndex)}
+                          className={`border rounded-md w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-red-600 transition-colors duration-200 ${
+                            isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                          }`}
+                          disabled={isTimeSectionDisabled || isSaving}
+                        >
+                          <X size={14} className="sm:w-4 sm:h-4" />
+                        </button>
+                      )}
+
+                      {slotIndex === day.timeSlots.length - 1 && (
                         <button 
                           onClick={() => addTimeSlot(day.day_id)}
-                          className={`border rounded-md w-8 h-8 flex items-center justify-center text-indigo-600 transition-colors duration-200 ${
-                            isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                          className={`border rounded-md w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-indigo-600 transition-colors duration-200 ${
+                            isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
                           }`}
-                          disabled={isTimeSectionDisabled}
+                          disabled={isTimeSectionDisabled || isSaving}
                         >
-                          +
+                          <span className="text-base sm:text-lg">+</span>
                         </button>
+                      )}
+
+                      {day.day_id === 1 && slotIndex === 0 && (
                         <span 
-                          className={`text-indigo-600 cursor-pointer ml-1 hover:underline ${
-                            isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                          className={`text-indigo-600 cursor-pointer text-xs sm:text-sm hover:underline whitespace-nowrap ${
+                            isTimeSectionDisabled || isSaving ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                           onClick={applyToAll}
                         >
                           Apply to all
                         </span>
-                      </>
-                    )}
-
-                    {day.timeSlots.length > 1 && (
-                      <button 
-                        onClick={() => removeTimeSlot(day.day_id, slotIndex)}
-                        className={`border rounded-md w-8 h-8 flex items-center justify-center text-red-600 transition-colors duration-200 ${
-                          isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
-                        }`}
-                        disabled={isTimeSectionDisabled}
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-
-                    {slotIndex === day.timeSlots.length - 1 && (
-                      <button 
-                        onClick={() => addTimeSlot(day.day_id)}
-                        className={`border rounded-md w-8 h-8 flex items-center justify-center text-indigo-600 transition-colors duration-200 ${
-                          isTimeSectionDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
-                        }`}
-                        disabled={isTimeSectionDisabled}
-                      >
-                        +
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -505,7 +502,7 @@ const TimeSection = ({
         </div>
       </div>
 
-      <div className="mt-4 text-gray-600 text-sm">
+      <div className="mt-3 sm:mt-4 text-gray-600 text-xs sm:text-sm">
         Configure {availabilityMode} working hours
       </div>
     </div>

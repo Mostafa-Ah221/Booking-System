@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Camera, ChevronDown, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { createInterview, fetchAllInterviews } from '../../../redux/apiCalls/interviewCallApi';
+import { createInterview, fetchAllInterviews, fetchInterviews } from '../../../redux/apiCalls/interviewCallApi';
 import { getAllWorkspaces,getAvailableStaffForWorkspace } from '../../../redux/apiCalls/workspaceCallApi';
 import ImageUploadCrop from '../InterviewsPages/InterViewPage/ImageUploadCrop';
 import Select from "react-select";
@@ -92,7 +92,7 @@ const handleFinalSubmit = async (createdGroups) => {
     resource_id: formData.resource_id ? parseInt(formData.resource_id) : null,
   };
 
-    if (isCollective && createdGroups && createdGroups.length > 0) {
+  if (isCollective && createdGroups && createdGroups.length > 0) {
     const validGroups = createdGroups
       .filter(g => g.name && g.staff_ids && g.staff_ids.length > 0)
       .map(g => ({
@@ -104,19 +104,22 @@ const handleFinalSubmit = async (createdGroups) => {
       dataToSend.groups = validGroups;
     }
   }
- if (formData.status !== 'paid') {
+  
+  if (formData.status !== 'paid') {
     delete dataToSend.price;
     delete dataToSend.currency;
     delete dataToSend.payment_details;
   } else {
     dataToSend.price = formData.price ? parseFloat(formData.price) : null;
   }
+  
   console.log('Data to send:', dataToSend); 
 
   try {
     const result = await dispatch(createInterview(dataToSend));
     if (result && result.success) {
-      dispatch(fetchAllInterviews());
+      await dispatch(fetchInterviews({ work_space_id: formData.work_space_id }));
+      
       navigate('/layoutDashboard/interviews');
     } else if (result.errors) {
       setErrors(result.errors);
@@ -496,10 +499,10 @@ const handleInputChange = (e) => {
   )}
 </div>
 
-{formData.inperson_mode === 'inhouse' && (
+{(formData.inperson_mode === 'inhouse' || formData.mode === 'online/inperson') &&  (
   <div className="space-y-2">
     <label className="block text-sm font-medium text-gray-700">
-      Location <span className="text-red-500">*</span>
+      Location {formData.inperson_mode === 'inhouse' && <span className="text-red-500">*</span>}
     </label>
     <textarea
       name="location"

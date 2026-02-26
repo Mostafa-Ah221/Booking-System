@@ -8,6 +8,7 @@ import ImageUploadCrop from '../../Dashboard/InterviewsPages/InterViewPage/Image
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { requestForToken } from '../../../firebase';
 
 const Signup = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -60,24 +61,26 @@ const handleOpenApp = () => {
   });
 
   const handlePhoneChange = (value, country) => {
-    setPhoneValue(value);
+  setPhoneValue(value);
 
-    formik.setFieldValue('phone', value.replace(`+${country.dialCode}`, ""));
-    formik.setFieldValue('code_phone', `+${country.dialCode}`);
+  const phoneWithoutCode = value.replace(`+${country.dialCode}`, "").trim();
+  
+  formik.setFieldValue('phone', phoneWithoutCode);
+  formik.setFieldValue('code_phone', `+${country.dialCode}`);
 
-    if (!value || value.length <= country.dialCode.length + 1) {
-      setPhoneError("Please enter a valid phone number");
-      return;
-    }
+  if (!phoneWithoutCode || phoneWithoutCode.length === 0) {
+    setPhoneError("");
+    return;
+  }
 
-    const phoneNumber = parsePhoneNumberFromString(value, country.countryCode?.toUpperCase());
-    
-    if (!phoneNumber || !phoneNumber.isValid()) {
-      setPhoneError("The phone number is invalid for this country");
-    } else {
-      setPhoneError("");
-    }
-  };
+  const phoneNumber = parsePhoneNumberFromString(value, country.countryCode?.toUpperCase());
+  
+  if (!phoneNumber || !phoneNumber.isValid()) {
+    setPhoneError("The phone number is invalid for this country");
+  } else {
+    setPhoneError("");
+  }
+};
 
   const getRegisterData = async (token) => {
     try {
@@ -135,7 +138,7 @@ const handleOpenApp = () => {
     fetchData();
   }, [token, isStaffRegistration]);
 
-  const handleRegister = async (values) => {
+ const handleRegister = async (values) => {
     setIsLoading(true);
     setApiError(null);
     try {
@@ -148,11 +151,22 @@ const handleOpenApp = () => {
       if (!isStaffRegistration) {
         formData.append("email", values.email);
       }
-      if (values.code_phone) {
-        formData.append("code_phone", values.code_phone);
-      }
-      if (values.phone) {
+      
+      // Only send phone data if phone number exists
+      if (values.phone && values.phone.trim() !== "" && values.phone.length > 2) {
+        if (values.code_phone) {
+          formData.append("code_phone", values.code_phone);
+        }
         formData.append("phone", values.phone);
+      }
+      
+      const fcmToken = await requestForToken();
+      
+      console.log(fcmToken);
+      
+      if(fcmToken) {
+        formData.append("fcm_token", fcmToken);
+        formData.append("device_type", "web");
       }
 
       const photoToSend = tempImage || values.photo;
@@ -687,7 +701,7 @@ const handleOpenApp = () => {
             {/* Footer */}
             <div className="text-center mt-8">
               <p className="text-gray-600 text-sm leading-relaxed">
-                <span className="font-medium text-gray-800">© 2025 Appointroll</span>
+                <span className="font-medium text-gray-800">© 2026 Appointroll</span>
                 <span className="mx-2">•</span>
                 All Rights Reserved
               </p>

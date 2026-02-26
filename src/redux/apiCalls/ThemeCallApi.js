@@ -23,6 +23,11 @@ export function getCustomerTheme() {
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message;
       
+      if (errorMessage.includes('No query results')) {
+        dispatch(themeActions.setTheme(null));
+        return { success: true, data: null, isNew: true };
+      }
+      
       dispatch(themeActions.setError(errorMessage)); 
 
       toast.error(errorMessage, {
@@ -85,6 +90,11 @@ export function getStaffTheme() {
 
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message;
+      
+      if (errorMessage.includes('No query results')) {
+        dispatch(themeActions.setTheme(null));
+        return { success: true, data: null, isNew: true };
+      }
       
       dispatch(themeActions.setError(errorMessage)); 
 
