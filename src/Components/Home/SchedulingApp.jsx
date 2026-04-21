@@ -4,11 +4,12 @@ import bookingVideo from '../../assets/image/New folder/Get booked.mp4';
 import smsIntegrationVideo from '../../assets/image/New folder/Appoint Roll - Brave.mp4';
 import remendVideo from '../../assets/image/New folder/Notify and remind.mp4';
 import shareLinkVideo from '../../assets/image/New folder/Share your booking link.mp4';
+import shareLinkpro from '../../assets/image/New folder/pro 2.mp4';
 
 const menuItems = [
   { id: 1, title: 'Booking page', icon: '📅', type: 'video', src: bookingVideo },
   { id: 2, title: 'Intergrate with sms', icon: '👥', type: 'image', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-team-scheduling.jpg" },
-  { id: 3, title: 'Scheduling rules', icon: '⚙️', type: 'image', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-scheduling-rules.jpg" }, // تأكد من صحة الرابط
+  { id: 3, title: 'Scheduling rules', icon: '⚙️', type: 'video', src: shareLinkpro}, 
   { id: 4, title: 'Sms Integration', icon: '🗓️', type: 'video', src: smsIntegrationVideo },
   { id: 5, title: 'Meet online', icon: '💻', type: 'image', src: "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-meet-online.jpg" },
   { id: 6, title: 'Update your CRM', icon: '📊', type: 'image', src: image6 },

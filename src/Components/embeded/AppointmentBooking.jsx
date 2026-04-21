@@ -73,7 +73,18 @@ const [firstColor, secondColor] =
 
 const textColor = colors.text_color;
 
-console.log(theme);
+const getTextColor = (hexColor) => {
+  if (!hexColor) return '#ffffff';
+  const hex = hexColor.replace('#', '');
+  if (hex.length < 6) return '#ffffff';
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 128 ? '#000000' : '#ffffff';
+};
+
+const buttonTextColor = getTextColor(secondColor);
 
   const manualSelections = useRef({
     resource: null,
@@ -372,14 +383,12 @@ console.log(theme);
   };
 
   const handleInterviewSelect = (interview) => {
-    console.log('👤 Manually selected interview:', interview.name);
     setSelectedInterview(interview);
     setShowInterviewDropdown(false);
     manualSelections.current.interview = interview;
   };
 
   const handleResourceSelect = (resource) => {
-    console.log('📦 Manually selected resource:', resource.name);
     setSelectedResource(resource);
     setShowResourceDropdown(false);
     manualSelections.current.resource = resource;
@@ -755,11 +764,11 @@ return (
           </div>
         )}
 
-        {/* Type Dropdown */}
-        {bookingData?.mode === 'online/inperson' && (
+       {/* Type Dropdown */}
+        {bookingData?.mode === 'online/inperson' && bookingData?.extra_modes?.length > 0 && (
           <div ref={typeDropdownRef} className="relative">
-            <div 
-              className="flex overflow-hidden cursor-pointer hover:shadow-md transition-shadow h-full" 
+            <div
+              className="flex overflow-hidden cursor-pointer hover:shadow-md transition-shadow h-full"
               style={{ background: `${textColor}30` }}
               onClick={() => setShowTypeDropdown(!showTypeDropdown)}
             >
@@ -769,37 +778,34 @@ return (
               <div className="flex-1 p-4 flex justify-between items-center">
                 <h3 className="font-medium" style={{ color: textColor }}>
                   {selectedType ? (
-                    selectedType === 'online' ? 'Online' :
+                    selectedType === 'online'  ? 'Online'   :
                     selectedType === 'inhouse' ? 'In House' :
-                    'At Home'
+                                                'At Home'
                   ) : 'Select Type...'}
                 </h3>
                 <ChevronsUpDown className="w-5 h-5 flex-shrink-0 ml-2" style={{ color: secondColor }} />
               </div>
             </div>
+
             {showTypeDropdown && (
               <div className="absolute top-full left-0 right-0 mt-1 z-50">
                 <div className="shadow-lg border" style={{ background: firstColor, borderColor: `${firstColor}40` }}>
-                  <div
-                    className="p-3 hover:bg-black/10 cursor-pointer border-b"
-                    style={{ borderColor: `${textColor}20` }}
-                    onClick={() => { setSelectedType('online'); setShowTypeDropdown(false); }}
-                  >
-                    <span style={{ color: textColor }}>Online</span>
-                  </div>
-                  <div
-                    className="p-3 hover:bg-black/10 cursor-pointer border-b"
-                    style={{ borderColor: `${textColor}20` }}
-                    onClick={() => { setSelectedType('inhouse'); setShowTypeDropdown(false); }}
-                  >
-                    <span style={{ color: textColor }}>In House</span>
-                  </div>
-                  <div
-                    className="p-3 hover:bg-black/10 cursor-pointer"
-                    onClick={() => { setSelectedType('athome'); setShowTypeDropdown(false); }}
-                  >
-                    <span style={{ color: textColor }}>At Home</span>
-                  </div>
+                  {bookingData.extra_modes.map((modeVal, index) => (
+                    <div
+                      key={modeVal}
+                      className={`p-3 hover:bg-black/10 cursor-pointer ${
+                        index < bookingData.extra_modes.length - 1 ? 'border-b' : ''
+                      }`}
+                      style={{ borderColor: `${textColor}20` }}
+                      onClick={() => { setSelectedType(modeVal); setShowTypeDropdown(false); }}
+                    >
+                      <span style={{ color: textColor }}>
+                        {modeVal === 'online'  ? 'Online'   :
+                        modeVal === 'inhouse' ? 'In House' :
+                                                'At Home'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -925,18 +931,18 @@ return (
         </div>
 
         {/* Book Button */}
-        <button
-          className={`flex overflow-hidden text-white font-medium shadow-lg transition-opacity ${
-            isBookButtonDisabled() ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'
-          }`}
-          style={{ background: secondColor }}
-          onClick={handleBookAppointment}
-          disabled={isBookButtonDisabled()}
-        >
-          <div className="flex-1 p-4 flex justify-center items-center">
-            {getBookButtonText()}
-          </div>
-        </button>
+       <button
+  className={`flex overflow-hidden font-medium shadow-lg transition-opacity ${
+    isBookButtonDisabled() ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'
+  }`}
+  style={{ background: secondColor, color: buttonTextColor }}
+  onClick={handleBookAppointment}
+  disabled={isBookButtonDisabled()}
+>
+  <div className="flex-1 p-4 flex justify-center items-center">
+    {getBookButtonText()}
+  </div>
+</button>
 
       </div>
     </div>

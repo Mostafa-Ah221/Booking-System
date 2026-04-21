@@ -105,7 +105,7 @@ console.log(theme);
     if (isInterviewMode) {
       list.push({
         step: counter++,
-        label: 'Interview',
+        label: theme?.interview_text || 'Interview', 
         icon: PiBaseballCap,
         value: selectedInterview?.name,
         key: 'interview',
@@ -116,7 +116,7 @@ console.log(theme);
     if (hasStaff) {
       list.push({
         step: counter++,
-        label: availableStaffGroups?.length > 0 ? 'Staff Group' : 'Staff',
+        label: theme?.staff_text || (availableStaffGroups?.length > 0 ? 'Staff Group' : 'Staff'),  // ✅
         icon: availableStaffGroups?.length > 0 ? PiUsersThreeLight : UserRound,
         value: selectedStaffGroup?.group_name || selectedStaff?.name,
         key: 'staff',
@@ -133,21 +133,19 @@ console.log(theme);
       });
     }
 
-    if (bookingData?.mode === 'online/inperson') {
-      list.push({
-        step: counter++,
-        label: 'Type',
-        icon: MapPin,
-        value: selectedType
-          ? selectedType === 'online'
-            ? 'Online'
-            : selectedType === 'inhouse'
-            ? 'In House'
+    if (bookingData?.mode === 'online/inperson' && bookingData?.extra_modes?.length > 0) {
+        list.push({
+          step: counter++,
+         label: theme?.mode_text || 'Type',
+          icon: MapPin,
+          value: selectedType
+            ? selectedType === 'online'  ? 'Online'
+            : selectedType === 'inhouse' ? 'In House'
             : 'At Home'
-          : null,
-        key: 'type',
-      });
-    }
+            : null,
+          key: 'type',
+        });
+      }
 
     const dateTimeValue = selectedDate && selectedTime ? `${selectedDate}, ${selectedTime}` : null;
     list.push({
@@ -168,20 +166,12 @@ console.log(theme);
 
     return list;
   }, [
-    isInterviewMode,
-    selectedInterview,
-    availableStaff,
-    availableStaffGroups,
-    selectedStaff,
-    selectedStaffGroup,
-    availableResources,
-    selectedResource,
-    bookingData?.mode,
-    selectedType,
-    selectedDate,
-    selectedTime,
-  ]);
-const hasAnySocial = 
+  isInterviewMode, selectedInterview, availableStaff, availableStaffGroups,
+  selectedStaff, selectedStaffGroup, availableResources, selectedResource,
+  bookingData?.mode, bookingData?.extra_modes, selectedType, selectedDate, selectedTime, theme
+]);
+
+  const hasAnySocial = 
     (theme?.show_email === "1" && theme?.footer_email) ||
     (theme?.show_phone === "1" && theme?.footer_phone) ||
     (theme?.show_facebook === "1" && theme?.footer_facebook) ||
@@ -658,75 +648,57 @@ const hasAnySocial =
                 </div>
               )}
 
+              {/* Step 4 – Type */}
+              {currentStep === steps.find((s) => s.key === "type")?.step &&
+                bookingData?.mode === "online/inperson" &&
+                bookingData?.extra_modes?.length > 0 && (
+                  <div className="space-y-4">
+                    {bookingData.extra_modes.map((modeVal) => {
+                      const label =
+                        modeVal === 'online'  ? 'Online'   :
+                        modeVal === 'inhouse' ? 'In House' : 'At Home';
+                      const abbr =
+                        modeVal === 'online'  ? 'O'  :
+                        modeVal === 'inhouse' ? 'IH' : 'AT';
 
-            {/* Step 4 – Type */}
-           {currentStep === steps.find((s) => s.key === "type")?.step &&
-  bookingData?.mode === "online/inperson" && (
-    <div className="space-y-4">
-      {[
-        { value: "online", label: "Online" },
-        { value: "inhouse", label: "In House" },
-        { value: "athome", label: "At Home" },
-      ].map((type) => (
-        <div
-          key={type.value}
-          className={`group p-5 cursor-pointer transition-all hover:shadow-sm ${
-            selectedType === type.value
-              ? ""
-              : "border border-gray-400 border-opacity-40"
-          }`}
-          style={{
-            background:
-              selectedType === type.value
-                ? secondColor
-                : undefined,
-            borderColor:
-              selectedType === type.value ? textColor : undefined,
-          }}
-          onClick={() => {
-            setSelectedType(type.value);
-            // goToNextStep();
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div
-                className="w-12 h-12 rounded-sm flex items-center justify-center font-semibold text-lg border"
-                style={{
-                  background:
-                    selectedType === type.value
-                      ? secondColor
-                      : "rgba(0,0,0,0.15)",
-                  borderColor:
-                    selectedType === type.value
-                      ? textColor
-                      : "transparent",
-                  color: textColor,
-                }}
-              >
-                {type.value === "online"
-                  ? "O"
-                  : type.value === "inhouse"
-                  ? "IH"
-                  : "AT"}
-              </div>
-
-              <h3 className="font-semibold" style={{ color: textColor }}>
-                {type.label}
-              </h3>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {selectedType === type.value && (
-                <Check className="w-5 h-5" style={{ color: textColor }} />
-              )}
-              <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
+                      return (
+                        <div
+                          key={modeVal}
+                          className={`group p-5 cursor-pointer transition-all hover:shadow-sm ${
+                            selectedType === modeVal ? '' : 'border border-gray-400 border-opacity-40'
+                          }`}
+                          style={{
+                            background:   selectedType === modeVal ? secondColor : undefined,
+                            borderColor:  selectedType === modeVal ? textColor   : undefined,
+                          }}
+                          onClick={() => setSelectedType(modeVal)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div
+                                className="w-12 h-12 rounded-sm flex items-center justify-center font-semibold text-lg border"
+                                style={{
+                                  background:  selectedType === modeVal ? secondColor : 'rgba(0,0,0,0.15)',
+                                  borderColor: selectedType === modeVal ? textColor   : 'transparent',
+                                  color: textColor,
+                                }}
+                              >
+                                {abbr}
+                              </div>
+                              <h3 className="font-semibold" style={{ color: textColor }}>{label}</h3>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {selectedType === modeVal && (
+                                <Check className="w-5 h-5" style={{ color: textColor }} />
+                              )}
+                              <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
 
             {/* Step 5 – Date & Time */}
@@ -809,12 +781,12 @@ const hasAnySocial =
                   totalPrice={totalPrice}
                   numberOfSlots={numberOfSlots}
                   themeColor={theme?.colors}
+                  theme={theme}
                 />
               </div>
             )}
           </div>
          
-
         </div>
          {/* footer */}
 {/* footer */}

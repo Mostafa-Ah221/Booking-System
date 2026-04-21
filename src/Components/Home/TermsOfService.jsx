@@ -15,44 +15,73 @@ const TermsOfService = () => {
     {
       id: 'beta',
       icon: AlertCircle,
-      title: 'Beta Experimental Service',
+      title: 'Beta & Experimental Services',
       color: 'from-orange-500 to-red-500',
-      content: `Some Services may be offered as "Experimental Services" or "Beta Services" (collectively, "Experimental Services"). These services are provided for testing and evaluation purposes only. We make no warranties regarding the availability, performance, or evaluation of these Experimental Services. As such, we may modify, suspend, or discontinue these services at any time without prior notice. You acknowledge that you will use these services at your own risk, and Appoint Roll shall not be responsible for any damages, losses, or consequences arising from your use of the Experimental Services without limitation.`
+      content: `Some features may be offered as Beta or Experimental Services, provided for testing and evaluation purposes.
+      These services may be limited, unstable, or subject to change.
+       Appoint Roll does not guarantee their availability, performance, or continuity, and may modify, suspend, or discontinue them at any time without prior notice.
+      By using these services, you acknowledge that they are provided “as is” and that use is at your own risk.
+      `
     },
     {
       id: 'trial',
       icon: Clock,
       title: 'Free Trial Period',
       color: 'from-blue-500 to-cyan-500',
-      content: `To access the free trial, you must register for a Appoint Roll account. By registering, you agree to provide accurate, current, and complete information. The trial period begins when you subscribe to the Service through your Organization Account and will remain active until the subscription expires. We reserve the right to suspend or terminate your access to the Service if we suspect unauthorized use, violation of terms, or fraudulent activity. The trial may not be reactivated if terminated, and we are not liable for any damages resulting from suspension or termination. You may register for a trial only once per service.`
+      content: `To access the free trial, you must create an Appoint Roll account and provide accurate and complete information.
+The trial begins upon activation and remains valid until its expiration.
+ We reserve the right to suspend or terminate access in cases of misuse, violations, or suspicious activity.
+Each user may register for a free trial once per service, and terminated trials cannot be reactivated.
+`
     },
     {
       id: 'usage',
       icon: Shield,
-      title: 'Acceptable Use Restrictions',
+      title: 'Acceptable Use Policy',
       color: 'from-purple-500 to-pink-500',
-      content: `You must comply with all applicable laws, regulations, and these Terms in addition to our other policies. You agree not to access or use the Services in any manner that violates any applicable law. The Services must only be used for lawful business purposes. Additionally, you agree not to engage in any unauthorized or improper use, including but not limited to transmitting harmful code, interfering with system integrity, attempting unauthorized access, or any activity that disrupts service availability or violates intellectual property rights.`
+      content: `You agree to use Appoint Roll only for lawful business purposes and in compliance with all applicable laws and regulations.
+        You must not misuse the platform, including but not limited to:
+        •	Attempting unauthorized access 
+        •	Disrupting system performance 
+        •	Transmitting harmful or malicious content 
+        •	Violating intellectual property rights 
+        Any misuse may result in suspension or termination of access.
+        `
     },
     {
       id: 'commitment',
       icon: Scale,
-      title: 'Registration Requirements',
+      title: 'Registration & Account Responsibility',
       color: 'from-green-500 to-teal-500',
-      content: `You may register for a free trial account to access certain services provided by Appoint Roll. By registering, you agree to: (1) provide accurate, truthful, current, and complete information as required during registration; (2) maintain and promptly update your registration information to keep it accurate and current; (3) maintain the security and confidentiality of your password and account; (4) be fully responsible for all activities conducted through your account; and (5) immediately notify Appoint Roll of any unauthorized use or security breach. Appoint Roll reserves the right to suspend or terminate accounts that violate these terms or engage in fraudulent activity.`
+      content: `By registering for an account, you agree to:
+          •	Provide accurate and up-to-date information 
+          •	Maintain the security and confidentiality of your account 
+          •	Take full responsibility for all activities under your account 
+          •	Notify us immediately of any unauthorized access or security breach 
+          Appoint Roll reserves the right to suspend or terminate accounts that violate these terms.
+          `
     },
     {
       id: 'acceptance',
       icon: FileText,
       title: 'Agreement Acceptance',
       color: 'from-indigo-500 to-blue-500',
-      content: `By accessing and using the Services, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service. This agreement constitutes a binding legal contract between you (or the entity you represent) and Appoint Roll Corporation. If you do not agree to these terms, you must not access or use the Services. Your continued use of the Services following any modifications to these Terms constitutes acceptance of those changes. We reserve the right to modify these Terms at any time, and modifications become effective immediately upon posting.`
+      content: `By accessing or using Appoint Roll, you confirm that you have read, understood, and agreed to these Terms.
+      This Agreement forms a binding legal relationship between you (or your organization) and Appoint Roll.
+      If you do not agree to these Terms, you must not use the Services.
+      We may update these Terms at any time, and continued use of the platform constitutes acceptance of any changes.
+      `
     },
     {
       id: 'description',
       icon: FileText,
       title: 'Service Description',
       color: 'from-yellow-500 to-orange-500',
-      content: `Appoint Roll provides various software applications and services accessible via the Internet for business use. These Services may include features such as data storage, collaboration tools, communication platforms, and business management solutions. The Services are provided "as is" and may be subject to modifications, updates, or changes at Appoint Roll's discretion. We strive to maintain high availability and reliability but do not guarantee uninterrupted access. Certain features may require additional subscriptions or may be subject to usage limits. You are responsible for maintaining compatible hardware, software, and internet connectivity to access the Services.`
+      content: `Appoint Roll provides cloud-based software solutions designed to support business scheduling, communication, and workflow management.
+      The Services are provided “as is” and may be updated, modified, or enhanced at any time.
+      While we strive to ensure reliability and availability, uninterrupted access is not guaranteed.
+      Some features may require additional subscriptions or be subject to usage limits.
+      You are responsible for maintaining the necessary devices, software, and internet connection to access the Services.`
     }
   ];
 
@@ -82,8 +111,7 @@ const TermsOfService = () => {
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Agreement Overview</h2>
           <p className="text-gray-600 leading-relaxed">
-            This Terms of Service agreement ("Agreement" or "Terms") is between you (or the entity you represent) and Appoint Roll Corporation ("Appoint Roll" or "Company"). By accessing or using Appoint Roll's services through our production and testing websites, you agree to be bound by these Terms and all applicable laws and regulations. Your use of the Services constitutes acceptance of this Agreement.
-          </p>
+By using <strong>Appoint Roll</strong>, you agree to these Terms and all applicable laws.<br />This Agreement forms a binding relationship between you and <strong>Appoint Roll</strong> .          </p>
         </div>
 
         {/* Sections */}
@@ -134,7 +162,11 @@ const TermsOfService = () => {
             <div>
               <h3 className="text-lg font-bold text-amber-900 mb-2">Important Notice</h3>
               <p className="text-amber-800 leading-relaxed">
-                Please read these Terms of Service carefully before using our Services. By accessing or using the Services, you acknowledge that you have read, understood, and agree to be bound by these Terms. If you do not agree with any part of these Terms, please do not use our Services.
+                Important Notice
+                Please review these Terms of Service carefully before using Appoint Roll.
+                By accessing or using the platform, you confirm that you have read, understood, and agreed to these Terms.
+                If you do not agree with any part of them, you must not use the Services.
+
               </p>
             </div>
           </div>

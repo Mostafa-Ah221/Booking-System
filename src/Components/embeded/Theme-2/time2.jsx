@@ -1,5 +1,5 @@
 import { Clock } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const TimeSelectionSection2 = ({
   selectedTime,
@@ -7,14 +7,18 @@ const TimeSelectionSection2 = ({
   availableTimes = [],
   selectedDate,
   disabledTimes = [],
+  convertedDisabledTimes = [],
   unavailableTimes = [],
   unavailableDates = [],
   requireEndTime = false,
   selectedEndTime = '',
   setSelectedEndTime,
-  themeColor
+  themeColor,
+   workspaceTimezone = 'Africa/Cairo',  
+  userTimezone = 'Africa/Cairo',
 }) => {
   const [activeSelection, setActiveSelection] = useState('start');
+  const firstTimeButtonRef = useRef(null);
 
   // Theme
   const colors = themeColor ? JSON.parse(themeColor) : {};
@@ -23,7 +27,26 @@ const TimeSelectionSection2 = ({
   const textColor = colors?.text_color || "#ffffff";
 
   const timeToMinutes = (t) => (t ? +t.split(':')[0] * 60 + +t.split(':')[1] : 0);
+useEffect(() => {
+  if (!selectedDate || !availableTimes?.length) return;
+  
+  const filtered = availableTimes
+    .map(t => typeof t === 'string' ? t : t?.time)
+    .filter(t => t && !isTimeBooked(selectedDate, t));
+  
+  if (filtered.length > 0 && (!selectedTime || !filtered.includes(selectedTime))) {
+    onTimeSelect(filtered[0]);
+  }
+}, [selectedDate, availableTimes, disabledTimes]);
 
+  // Auto-scroll to first time on mobile
+  useEffect(() => {
+    if (firstTimeButtonRef.current && selectedDate) {
+      setTimeout(() => {
+        firstTimeButtonRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 150);
+    }
+  }, [selectedDate]);
   const convertDateFormat = (d) => {
     const months = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
     const [day, mon, year] = d.split(' ');
@@ -34,7 +57,21 @@ const TimeSelectionSection2 = ({
     if (!date || !time) return false;
     const formatted = convertDateFormat(date);
     const clean = time.slice(0, 5);
-    return disabledTimes.some(t => t.date === formatted && t.time.startsWith(clean));
+    
+    // ✅ استخدم الـ converted أولاً، لو مش موجود fallback للـ raw
+    const timesToCheck = convertedDisabledTimes.length > 0 
+      ? convertedDisabledTimes 
+      : disabledTimes;
+
+    const result = timesToCheck.some(t => {
+      return t.date === formatted && t.time.startsWith(clean);
+    });
+
+    if (result) {
+      console.log(`🚫 Time ${date} ${time} is BOOKED (disabled)`);
+    }
+
+    return result;
   };
 
   const getFilteredTimes = () => {
@@ -150,8 +187,9 @@ const TimeSelectionSection2 = ({
                 {titles[period]}
               </h3>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-2.5 md:gap-3">
-                {displayTimes.map(time => {
+                {displayTimes.map((time, idx) => {
                   const booked = isTimeBooked(selectedDate, time);
+                  const isFirstTime = idx === 0 && period === 'morning';
                   
                   let isSelected = false;
                   if (activeSelection === 'start') {
@@ -162,6 +200,7 @@ const TimeSelectionSection2 = ({
 
                   return (
                     <button
+                      ref={isFirstTime ? firstTimeButtonRef : null}
                       key={time}
                       disabled={booked}
                       onClick={() => {

@@ -8,8 +8,9 @@ import { Link } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 
 const LayoutThemPanel = () => {
-  const [layout, setLayout] = useState('default');
-  const [themeColor, setThemeColor] = useState('bg-indigo-600');
+  const [layout, setLayout] = useState('sleek');
+  const DEFAULT_COLOR = { color1: '#A6517D', color2: '#F5F5F5', textColor: '#000000', type: 'split' };
+const [themeColor, setThemeColor] = useState(DEFAULT_COLOR);
   const [header, setHeader] = useState({ 
     title: '', 
     logo: null,
@@ -41,6 +42,13 @@ const [footer, setFooter] = useState({
   visiblePhone: true,
   email: '', 
   visibleEmail: true,
+});
+const [pageTexts, setPageTexts] = useState({
+  work_space_text: '',
+  interview_text: '',
+  staff_text: '',
+  mode_text: '',
+  details_text: '',
 });
   const [isPanelVisible, setIsPanelVisible] = useState(false);
   const [isCompactView, setIsCompactView] = useState(false);
@@ -164,6 +172,8 @@ useEffect(() => {
             onColorChange={setThemeColor}            
             onPagePropertiesChange={setPageProperties}
             onFooterChange={setFooter}
+            pageTexts={pageTexts}
+            onPageTextsChange={setPageTexts}
           />
         </div>
       </div>

@@ -193,26 +193,32 @@ export function createInterview(formData) {
     try { 
       const data = new FormData(); 
       
-      for (const key in formData) { 
-        if (formData[key] !== null && formData[key] !== '') { 
-          if (key === 'groups' && Array.isArray(formData[key])) {
-            formData[key].forEach((group, groupIndex) => {
-              data.append(`groups[${groupIndex}][name]`, group.name);
-              if (Array.isArray(group.staff_ids)) {
-                group.staff_ids.forEach((staffId, staffIndex) => {
-                  data.append(`groups[${groupIndex}][staff_ids][${staffIndex}]`, staffId);
-                });
-              }
-            });
-          } else if (formData[key] instanceof File) {
-            data.append(key, formData[key]);
-          } else if (typeof formData[key] === 'object') {
-            data.append(key, JSON.stringify(formData[key]));
-          } else {
-            data.append(key, formData[key]);
-          }
-        } 
-      } 
+
+for (const key in formData) { 
+  if (formData[key] !== null && formData[key] !== undefined && formData[key] !== '') { 
+    if (key === 'groups' && Array.isArray(formData[key])) {
+      formData[key].forEach((group, groupIndex) => {
+        data.append(`groups[${groupIndex}][name]`, group.name);
+        if (Array.isArray(group.staff_ids)) {
+          group.staff_ids.forEach((staffId, staffIndex) => {
+            data.append(`groups[${groupIndex}][staff_ids][${staffIndex}]`, staffId);
+          });
+        }
+      });
+    } else if (key === 'extra_modes' && Array.isArray(formData[key])) {
+      formData[key].forEach(mode => {
+        data.append('extra_modes[]', mode);
+      });
+
+    } else if (formData[key] instanceof File) {
+      data.append(key, formData[key]);
+    } else if (typeof formData[key] === 'object') {
+      data.append(key, JSON.stringify(formData[key]));
+    } else {
+      data.append(key, formData[key]);
+    }
+  } 
+}
  
       const response = await axiosInstance.post('/interview/store', data, { 
         headers: { 'Content-Type': 'multipart/form-data' }, 
@@ -281,13 +287,11 @@ export function updateAvailability(id, formData) {
         throw new Error("Invalid availability data format");
       }
 
-      // بناء requestBody مع time_zone
       const requestBody = {
         available_times: formData.available_times || [],
         available_dates: formData.available_dates || []
       };
 
-      // إضافة time_zone إذا كان موجود
       if (formData.time_zone) {
         requestBody.time_zone = formData.time_zone;
       }
@@ -351,17 +355,14 @@ export function updateUnAvailability(id, formData) {
       
       const requestBody = {};
       
-      // إضافة un_available_times إذا كان موجود
       if (formData.un_available_times) {
         requestBody.un_available_times = formData.un_available_times;
       }
       
-      // إضافة un_available_dates إذا كان موجود
       if (formData.un_available_dates) {
         requestBody.un_available_dates = formData.un_available_dates;
       }
 
-      // إضافة time_zone إذا كان موجود
       if (formData.time_zone) {
         requestBody.time_zone = formData.time_zone;
       }
@@ -534,11 +535,9 @@ export function assignInterViewToStaff(id, formData) {
           },
         });
 
-        // ✅ حدّث الـ interview state
         if (response.data.data) {
           dispatch(interviewAction.setInterview(response.data.data));
         } else {
-          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
           dispatch(editInterviewById(id));
         }
 
@@ -575,11 +574,9 @@ export function unAssignStaffFromInterview(id, formData) {
           },
         });
 
-        // ✅ حدّث الـ interview state
         if (response.data.data) {
           dispatch(interviewAction.setInterview(response.data.data));
         } else {
-          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
           dispatch(editInterviewById(id));
         }
 
@@ -684,11 +681,9 @@ export function addNewGroupToInterview(id, formData) {
           },
         });
 
-        // ✅ حدّث الـ interview state
         if (response.data.data) {
           dispatch(interviewAction.setInterview(response.data.data));
         } else {
-          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
           dispatch(editInterviewById(id));
         }
 
@@ -748,11 +743,9 @@ export function updateNewGroupToInterview(idGroup, idInterview, formData) {
           },
         });
 
-        // ✅ حدّث الـ interview state
         if (response.data.data) {
           dispatch(interviewAction.setInterview(response.data.data));
         } else {
-          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
           dispatch(editInterviewById(idInterview));
         }
 
@@ -811,11 +804,9 @@ export function deleteGroup(idGroup, idInterview) {
           },
         });
 
-        // ✅ حدّث الـ interview state بالـ data الصحيحة
         if (response.data.data) {
           dispatch(interviewAction.setInterview(response.data.data));
         } else {
-          // لو الـ API مش راجع الـ data كاملة، اجلبها من جديد
           dispatch(editInterviewById(idInterview));
         }
 
@@ -837,6 +828,46 @@ export function deleteGroup(idGroup, idInterview) {
       });
 
       return { success: false };
+    }
+  };
+}
+
+export function duplicateInterview(id) {
+  return async (dispatch) => {
+    dispatch(interviewAction.setLoading(true));
+
+    try {
+      const response = await axiosInstance.post(`/interview/duplicate/${id}`);
+
+      if (response.data.status) {
+        const duplicatedInterview = response?.data?.data?.interview;
+
+        if (duplicatedInterview) {
+          dispatch(interviewAction.addInterviewToList(duplicatedInterview));
+        }
+
+        dispatch(interviewAction.setError(null));
+
+        return {
+          success: true,
+          message: response?.data?.message || "Interview duplicated successfully",
+          data: duplicatedInterview,
+        };
+      }
+    } catch (error) {
+      console.error("Error duplicating interview:", error);
+      const errorMessage =
+        error?.response?.data?.message || "Failed to duplicate interview";
+
+      dispatch(interviewAction.setError(errorMessage));
+
+      return {
+        success: false,
+        message: errorMessage,
+        errors: error?.response?.data?.errors || null,
+      };
+    } finally {
+      dispatch(interviewAction.setLoading(false));
     }
   };
 }

@@ -15,7 +15,18 @@ const ModernWebLayout = ({ themeData }) => {
   : [themeData.color || '#FFFFFF', themeData.color || "rgb(241 82 179)"];
  
 
+const getTextColor = (hexColor) => {
+  if (!hexColor) return '#ffffff';
+  const hex = hexColor.replace('#', '');
+  if (hex.length < 6) return '#ffffff';
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 128 ? '#000000' : '#ffffff';
+};
 
+const buttonTextColor = getTextColor(secondColor);
  
 
   return (
@@ -102,14 +113,13 @@ const ModernWebLayout = ({ themeData }) => {
 
           {/* Book Button */}
           <div
-            className=" flex overflow-hidden  font-medium shadow-lg"
-            style={{ background: secondColor, color:textColor  }}
-
-          >
-            <div className="flex-1  p-4 flex justify-center items-center">
-              {buttonText}
+              className="flex overflow-hidden font-medium shadow-lg"
+              style={{ background: secondColor, color: buttonTextColor }}
+            >
+              <div className="flex-1 p-4 flex justify-center items-center">
+                {buttonText}
+              </div>
             </div>
-          </div>
         </div>
 
         

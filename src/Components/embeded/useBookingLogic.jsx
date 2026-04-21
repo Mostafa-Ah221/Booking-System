@@ -149,56 +149,45 @@ const refreshTimesForModal = (date) => {
   }
 
   const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;
-
-  // ✅ حول disabled_times من UTC للـ user timezone
-  const convertedDisabledTimes = (bookingData.disabled_times || []).map(disabled => {
+const convertedDisabledTimes = (bookingData.disabled_times || []).map(disabled => {
     try {
-      let { date: origDate, time } = disabled;
-      if (!origDate || !time) return disabled;
+        let { date: origDate, time } = disabled;
+        if (!origDate || !time) return disabled;
 
-      let dateISO = origDate;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(origDate)) {
-        dateISO = convertDateToISO(origDate);
-      }
-      if (!dateISO) return disabled;
+        // الباك بيرجع UTC date + UTC time
+        let dateISO = origDate;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(origDate)) {
+            dateISO = convertDateToISO(origDate);
+        }
+        if (!dateISO) return disabled;
 
-      const [h, m] = time.split(':').map(Number);
-      const utcTimestamp = Date.UTC(
-        parseInt(dateISO.split('-')[0]),
-        parseInt(dateISO.split('-')[1]) - 1,
-        parseInt(dateISO.split('-')[2]),
-        h,
-        m,
-        0
-      );
-      
-      const utcDate = new Date(utcTimestamp);
-      
-      const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: userTimezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      });
+        const [h, m] = time.split(':').map(Number);
+        
+        // ✅ صح: بنبني UTC timestamp صريح
+        const utcDate = new Date(Date.UTC(
+            parseInt(dateISO.split('-')[0]),
+            parseInt(dateISO.split('-')[1]) - 1,
+            parseInt(dateISO.split('-')[2]),
+            h, m, 0
+        ));
 
-      const parts = formatter.formatToParts(utcDate);
-      const map = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+            timeZone: userTimezone, // timezone المستخدم
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false,
+        });
 
-      const convertedISO = `${map.year}-${map.month}-${map.day}`;
-      const convertedTime = `${map.hour}:${map.minute}:00`;
+        const parts = formatter.formatToParts(utcDate);
+        const map = parts.reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
 
-      return {
-        date: convertedISO,
-        time: convertedTime
-      };
+        return {
+            date: `${map.year}-${map.month}-${map.day}`,
+            time: `${map.hour}:${map.minute}:00`
+        };
     } catch (err) {
-      console.error('❌ Failed to convert disabled time:', disabled, err);
-      return disabled;
+        return disabled;
     }
-  });
+});
 
   const times = generateTimeSlots(
     bookingData.raw_available_times,
@@ -420,45 +409,46 @@ const isTimeInUnavailableRange = (timeStr, dayId) => {
 };
 
   // Helper: Convert UTC time to target timezone
-  const convertUTCTimeToTimezone = (utcDateISO, utcTime, targetTz) => {
-    try {
-      const [hours, minutes] = utcTime.split(':').map(Number);
-      const utcTimestamp = Date.UTC(
-        parseInt(utcDateISO.split('-')[0]),
-        parseInt(utcDateISO.split('-')[1]) - 1,
-        parseInt(utcDateISO.split('-')[2]),
-        hours,
-        minutes,
-        0
-      );
-      const utcDate = new Date(utcTimestamp);
-      
-      const formatter = new Intl.DateTimeFormat('en-GB', {
-        timeZone: targetTz,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      });
+ const convertUTCTimeToTimezone = (utcDateISO, utcTime, targetTz) => {
+  try {
+    const [hours, minutes] = utcTime.split(':').map(Number);
+    const utcTimestamp = Date.UTC(
+      parseInt(utcDateISO.split('-')[0]),
+      parseInt(utcDateISO.split('-')[1]) - 1,
+      parseInt(utcDateISO.split('-')[2]),
+      hours, minutes, 0
+    );
+    const utcDate = new Date(utcTimestamp);
 
-      const formatted = formatter.format(utcDate);
-      const [datePart, timePart] = formatted.split(', ');
-      const [day, month, year] = datePart.split('/');
-      const [hour, minute] = timePart.split(':');
+    // ✅ استخدم formatToParts بدل format + split
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: targetTz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
 
-      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const newDate = `${day} ${monthNames[parseInt(month) - 1]} ${year}`;
-      const newTime = `${hour}:${minute}`;
-      const isoDate = `${year}-${month}-${day}`;
+    const parts = formatter.formatToParts(utcDate);
+    const map = parts.reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
 
-      return { date: newDate, time: newTime, isoDate };
-    } catch (err) {
-      console.error('❌ Conversion failed:', err);
-      return null;
-    }
-  };
+    // fix hour "24" bug
+    let hour = map.hour;
+    if (hour === '24') hour = '00';
+
+    const isoDate = `${map.year}-${map.month}-${map.day}`;
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const newDate = `${map.day} ${monthNames[parseInt(map.month) - 1]} ${map.year}`;
+    const newTime = `${hour}:${map.minute}`;
+
+    return { date: newDate, time: newTime, isoDate };
+  } catch (err) {
+    console.error('❌ Conversion failed:', err);
+    return null;
+  }
+};
 
   // Helper: Generate UTC slots for a specific day_id
 const generateUTCSlotsForDay = (dayId) => {
@@ -548,7 +538,6 @@ const generateUTCSlotsForDay = (dayId) => {
     const readableDate = `${d} ${monthNames[parseInt(m)-1]} ${y}`;
 
    utcSlots.forEach(utcTime => {
-  // 1. افحص إن الـ slot في UTC لسه لم يمرّ
   const [hours, minutes] = utcTime.split(':').map(Number);
   const slotUTC = Date.UTC(
     parseInt(iso.split('-')[0]),
@@ -558,7 +547,10 @@ const generateUTCSlotsForDay = (dayId) => {
     minutes,
     0
   );
-
+  console.log(`🕐 Slot: ${iso} ${utcTime} UTC`);
+  console.log(`   slotUTC: ${new Date(slotUTC).toISOString()}`);
+  console.log(`   Date.now(): ${new Date(Date.now()).toISOString()}`);
+  console.log(`   isPast: ${slotUTC < Date.now()}`);
   if (slotUTC < Date.now()) {
     console.log(`   ⏭️ ${iso} ${utcTime} UTC → skipped (past in UTC)`);
     return;
@@ -566,6 +558,7 @@ const generateUTCSlotsForDay = (dayId) => {
 
   const converted = convertUTCTimeToTimezone(iso, utcTime, targetTimezone);
   if (!converted) return;
+console.log(`🔄 UTC ${iso} ${utcTime} → ${targetTimezone}: date=${converted.isoDate} time=${converted.time} | targetDate=${targetDateISO} | match=${converted.isoDate === targetDateISO}`);
 
   if (converted.isoDate !== targetDateISO) {
     return;
@@ -662,8 +655,9 @@ useEffect(() => {
   const isoDate = convertDateToISO(selectedDate);
   if (!isoDate) return;
 
-  const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;;
+  const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;
 
+  // ✅ تحويل disabled_times من UTC → user timezone
   const convertedDisabledTimes = (bookingData.disabled_times || []).map(disabled => {
     try {
       let { date: origDate, time } = disabled;
@@ -676,17 +670,16 @@ useEffect(() => {
       if (!dateISO) return disabled;
 
       const [h, m] = time.split(':').map(Number);
-      const utcTimestamp = Date.UTC(
+
+      console.log(`🔄 Converting disabled: ${dateISO} ${time} UTC → ${userTimezone}`);
+
+      const utcDate = new Date(Date.UTC(
         parseInt(dateISO.split('-')[0]),
         parseInt(dateISO.split('-')[1]) - 1,
         parseInt(dateISO.split('-')[2]),
-        h,
-        m,
-        0
-      );
-      
-      const utcDate = new Date(utcTimestamp);
-      
+        h, m, 0
+      ));
+
       const formatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: userTimezone,
         year: 'numeric',
@@ -700,13 +693,16 @@ useEffect(() => {
       const parts = formatter.formatToParts(utcDate);
       const map = parts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
 
-      const convertedISO = `${map.year}-${map.month}-${map.day}`;
-      const convertedTime = `${map.hour}:${map.minute}:00`;
+      // ✅ Fix: hour "24" bug
+      let hour = map.hour;
+      if (hour === '24') hour = '00';
 
-      return {
-        date: convertedISO,
-        time: convertedTime
-      };
+      const convertedISO = `${map.year}-${map.month}-${map.day}`;
+      const convertedTime = `${hour}:${map.minute}:00`;
+
+      console.log(`✅ Converted: ${convertedISO} ${convertedTime} (${userTimezone})`);
+
+      return { date: convertedISO, time: convertedTime };
     } catch (err) {
       console.error('❌ Failed to convert disabled time:', disabled, err);
       return disabled;
@@ -714,19 +710,78 @@ useEffect(() => {
   });
 
 
+  const convertedUnavailableTimes = (bookingData.unavailable_times || []).map(unavailable => {
+    try {
+      if (!unavailable?.day_id || !unavailable?.from || !unavailable?.to) return unavailable;
+
+      const [fromH, fromM] = unavailable.from.split(':').map(Number);
+      const [toH, toM] = unavailable.to.split(':').map(Number);
+
+      const referenceDate = new Date();
+      const refISO = referenceDate.toISOString().split('T')[0];
+
+      const fromUTC = new Date(Date.UTC(
+        parseInt(refISO.split('-')[0]),
+        parseInt(refISO.split('-')[1]) - 1,
+        parseInt(refISO.split('-')[2]),
+        fromH, fromM, 0
+      ));
+
+      const toUTC = new Date(Date.UTC(
+        parseInt(refISO.split('-')[0]),
+        parseInt(refISO.split('-')[1]) - 1,
+        parseInt(refISO.split('-')[2]),
+        toH, toM, 0
+      ));
+
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: userTimezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
+      const fromParts = formatter.formatToParts(fromUTC);
+      const toParts = formatter.formatToParts(toUTC);
+
+      const fromMap = fromParts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+      const toMap = toParts.reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+
+      let fromHour = fromMap.hour;
+      let toHour = toMap.hour;
+      if (fromHour === '24') fromHour = '00';
+      if (toHour === '24') toHour = '00';
+
+      return {
+        ...unavailable,
+        from: `${fromHour}:${fromMap.minute}:00`,
+        to: `${toHour}:${toMap.minute}:00`
+      };
+    } catch (err) {
+      console.error('❌ Failed to convert unavailable time:', unavailable, err);
+      return unavailable;
+    }
+  });
+
+  console.log('📋 Converted unavailable times:', convertedUnavailableTimes);
+
   const times = generateTimeSlots(
     bookingData.raw_available_times,
     parseInt(bookingData.duration_cycle),
     bookingData.duration_period || 'minutes',
-    selectedDate, 
-    convertedDisabledTimes,
-    bookingData.unavailable_times || [],
+    selectedDate,
+    convertedDisabledTimes, // ✅ محوّلة
+    convertedUnavailableTimes, // ✅ محوّلة الآن
     bookingData.unavailable_dates || [],
     parseInt(bookingData.rest_cycle || '0'),
-    userTimezone 
+    userTimezone
   );
+
+  console.log('⏰ Generated times after filtering disabled:', times);
+
   setDisplayedTimes(times);
 
+  // ✅ خزّن converted_disabled_times في bookingData عشان TimeSelectionSection2 تستخدمها
   setBookingData(prev => ({
     ...prev,
     available_times: times.map(t => ({ time: t })),
@@ -734,9 +789,8 @@ useEffect(() => {
   }));
 
   if (times.length > 0) {
-    const currentTime = selectedTime;
-    if (currentTime && times.includes(currentTime)) {
-    
+    if (selectedTime && times.includes(selectedTime)) {
+      // keep current
     } else {
       setSelectedTime(times[0]);
     }
@@ -745,7 +799,6 @@ useEffect(() => {
   }
 
 }, [selectedDate, selectedTimezone, bookingData?.raw_available_times, bookingData?.disabled_times]);
-
 
 const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavailableTimes = [], unavailableDates = []) => {
     if (!date || !availableTimes || !Array.isArray(availableTimes)) {
@@ -766,12 +819,16 @@ const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavail
   };
 
 const fetchInterviewData = async (interviewId) => {
-  const response = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}`);
+  
+   const url = isStaff && share_link
+    ? `https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}&from_staff=1`
+    : `https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}`;
+
+  const response = await fetch(url);
   
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
-  
   const apiData = await response.json();
 
   console.log(apiData);
@@ -801,7 +858,7 @@ const fetchInterviewData = async (interviewId) => {
       const staffMember = interview.staff.find(staff => staff.share_link === share_link);
       if (staffMember) {
         initialSelectedStaff = staffMember;
-        availableStaff = []; // مسح availableStaff كما في الكود الأصلي
+        availableStaff = []; 
       }
     }
   }
@@ -859,11 +916,50 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
       disabled_times: selectedStaffGroup.disabled_times || []
     };
   } else if (selectedStaff || initialSelectedStaff) {
-    // تفضيل initialSelectedStaff لو موجود (لأنه synchronous في التحميل الأولي)
     sourceData = initialSelectedStaff || selectedStaff;
   } else {
     sourceData = interview;
   }
+
+  const rawDisabledTimes = sourceData.disabled_times || [];
+
+  // ✅ حول disabled_times من UTC لـ user timezone فوراً
+  const convertedDisabled = rawDisabledTimes.map(disabled => {
+    try {
+      const { date: dateISO, time } = disabled;
+      if (!dateISO || !time) return disabled;
+
+      const [h, m] = time.split(':').map(Number);
+      
+      const utcDate = new Date(Date.UTC(
+        parseInt(dateISO.split('-')[0]),
+        parseInt(dateISO.split('-')[1]) - 1,
+        parseInt(dateISO.split('-')[2]),
+        h, m, 0
+      ));
+
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: selectedTimezone || 'Africa/Cairo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
+      const parts = formatter.formatToParts(utcDate);
+      const map = parts.reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
+
+      return {
+        date: `${map.year}-${map.month}-${map.day}`,
+        time: `${map.hour}:${map.minute}:00`
+      };
+    } catch (err) {
+      console.error('❌ Failed to convert disabled time in transform:', disabled, err);
+      return disabled;
+    }
+  });
 
   return {
     available_dates: sourceData.available_dates || [],
@@ -878,7 +974,8 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
     duration: `${interview.duration_cycle}${interview.duration_period}`,
     work_space_id: interview.work_space_id,
     photo: interview.photo,
-    disabled_times: sourceData.disabled_times || [],
+    disabled_times: rawDisabledTimes,
+    converted_disabled_times: convertedDisabled, // ✅ جاهز من الأول
     created_at: interview.created_at,
     raw_available_times: sourceData.available_times || [],
     duration_cycle: interview.duration_cycle,
@@ -888,6 +985,7 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
     price: interview.price || '0',
     payment_details: interview.payment_details || null,
     mode: interview.mode,
+    extra_modes: interview.extra_modes || [],
     inperson_mode: interview.inperson_mode,
     currency: interview.currency,
     has_staff: availableStaff.length > 0,
@@ -899,7 +997,6 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
     resources: availableResources
   };
 };
-
 
 
   const formatDateForAPI = (dateString) => {
@@ -1024,10 +1121,41 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
       setShowBookingSummary(false);
       setFormData({ name: '', email: '', phone: '', code_phone: '', address: '' });
 
-      const newDisabledTime = {
-        date: formattedDate,
-        time: selectedTime + ':00'
-      };
+      const convertUserTimeToUTC = (isoDate, localTime, userTimezone) => {
+  try {
+    const [h, m] = localTime.split(':').map(Number);
+    let utcGuess = new Date(`${isoDate}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00Z`);
+    
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: userTimezone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+    
+    for (let i = 0; i < 3; i++) {
+      const parts = formatter.formatToParts(utcGuess);
+      const map = parts.reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
+      const localH = parseInt(map.hour);
+      const localM = parseInt(map.minute);
+      const diffMinutes = (h * 60 + m) - (localH * 60 + localM);
+      if (diffMinutes === 0) break;
+      utcGuess = new Date(utcGuess.getTime() - diffMinutes * 60000);
+    }
+    
+    return {
+      date: utcGuess.toISOString().split('T')[0],
+      time: `${String(utcGuess.getUTCHours()).padStart(2,'0')}:${String(utcGuess.getUTCMinutes()).padStart(2,'0')}:00`
+    };
+  } catch (err) {
+    return { date: isoDate, time: localTime + ':00' };
+  }
+};
+
+const utcDisabled = convertUserTimeToUTC(formattedDate, selectedTime, selectedTimezone);
+const newDisabledTime = {
+  date: utcDisabled.date,
+  time: utcDisabled.time
+};
 
       setBookingData(prevData => ({
         ...prevData,

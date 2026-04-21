@@ -18,7 +18,8 @@ const BookingSummarySidebar2 = ({
   selectedType,
   totalPrice,
   numberOfSlots,
-   themeColor
+  themeColor,
+  theme,
 }) => {
   const [phoneValue, setPhoneValue] = useState(
     formData.code_phone && formData.phone 
@@ -26,69 +27,77 @@ const BookingSummarySidebar2 = ({
       : ""
   );
   const [phoneError, setPhoneError] = useState("");
-console.log(bookingData?.payment_details);
 
-const colors = themeColor ? JSON.parse(themeColor) : {};
+  const colors = themeColor ? JSON.parse(themeColor) : {};
   const primary = colors?.primary || "";
   const [firstColor, secondColor] = primary.split("-");
   const textColor = colors?.text_color;
+
+  const getTextColor = (hexColor) => {
+    if (!hexColor) return '#ffffff';
+    const hex = hexColor.replace('#', '');
+    if (hex.length < 6) return '#ffffff';
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 128 ? '#000000' : '#ffffff';
+  };
+
+  const buttonTextColor = getTextColor(firstColor);
+
+  const isDisabled =
+    !formData.name ||
+    !formData.email ||
+    !!phoneError ||
+    ((bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && !formData.address) ||
+    isBooking;
+
   const handlePhoneChange = (value, country) => {
     setPhoneValue(value);
-
     const phoneWithoutCode = value.replace(country.dialCode, '').trim();
+    onFormChange('phone', phoneWithoutCode);
+    onFormChange('code_phone', `+${country.dialCode}`);
 
-    // Update form data
-    onFormChange('phone', phoneWithoutCode);  
-    onFormChange('code_phone', `+${country.dialCode}`); 
-
-    // Validate phone number
     if (!value || value.length <= country.dialCode.length + 1) {
       setPhoneError("Please enter a valid phone number");
       return;
     }
-
     const phoneNumber = parsePhoneNumberFromString(value, country.countryCode?.toUpperCase());
-    
     if (!phoneNumber || !phoneNumber.isValid()) {
       setPhoneError("The phone number is invalid for this country");
     } else {
       setPhoneError("");
     }
   };
-const renderPaymentDetails = (text) => {
-  if (!text) return null;
 
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const parts = text.split(urlRegex);
-
-  return parts.map((part, index) => {
-    if (urlRegex.test(part)) {
-      return (
-        <a
-          key={index}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-500 underline break-all"
-        >
-          {part}
-        </a>
-      );
-    }
-    return <span key={index}>{part}</span>;
-  });
-};
+  const renderPaymentDetails = (text) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, index) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a key={index} href={part} target="_blank" rel="noopener noreferrer"
+            className="text-blue-500 underline break-all">
+            {part}
+          </a>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
 
   return (
-    <div className=" rounded-lg p-5">
-      <h2 className=" font-semibold text-gray-800 mb-6 pb-4 text-center" style={{ color: textColor }}>
-        Please enter your details
+    <div className="rounded-lg p-5">
+      <h2 className="font-semibold text-gray-800 mb-6 pb-4 text-center" style={{ color: textColor }}>
+        {theme?.details_text || 'Please enter your details'}
       </h2>
-      {/* Form Fields */}
+
       <div className="space-y-4">
-        {/* Name Field */}
+        {/* Name */}
         <div>
-          <label className="block text-sm font-medium  mb-2" style={{ color: textColor }}>
+          <label className="block text-sm font-medium mb-2" style={{ color: textColor }}>
             Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -97,13 +106,13 @@ const renderPaymentDetails = (text) => {
             value={formData.name}
             onChange={(e) => onFormChange('name', e.target.value)}
             className="w-full p-3 bg-transparent border border-gray-300 rounded-sm outline-none transition-colors"
-            style={{color:textColor}}
+            style={{ color: textColor }}
           />
         </div>
-        
-        {/* Email Field */}
+
+        {/* Email */}
         <div>
-          <label className="block text-sm font-medium  mb-2" style={{ color: textColor }}>
+          <label className="block text-sm font-medium mb-2" style={{ color: textColor }}>
             Email <span className="text-red-500">*</span>
           </label>
           <input
@@ -111,12 +120,12 @@ const renderPaymentDetails = (text) => {
             placeholder="Email"
             value={formData.email}
             onChange={(e) => onFormChange('email', e.target.value)}
-            className="w-full p-3 bg-transparent border border-gray-300 rounded-sm  outline-none transition-colors"
-            style={{color:textColor}}
+            className="w-full p-3 bg-transparent border border-gray-300 rounded-sm outline-none transition-colors"
+            style={{ color: textColor }}
           />
         </div>
-        
-        {/* Phone Field */}
+
+        {/* Phone */}
         <div>
           <label className="block text-sm font-medium mb-2" style={{ color: textColor }}>
             Contact Number
@@ -134,7 +143,7 @@ const renderPaymentDetails = (text) => {
                 placeholder: "Enter your mobile number"
               }}
               containerClass="w-full bg-transparent"
-              buttonClass="!border-r  !bg-transparent !px-3 !py-3 !rounded-l-sm !border-gray-300"
+              buttonClass="!border-r !bg-transparent !px-3 !py-3 !rounded-l-sm !border-gray-300"
               dropdownClass="!bg-white !border !shadow-lg !rounded-lg !mt-1 !z-[9999]"
               searchClass="!p-3 !border-b !border-gray-200"
               style={{ color: textColor }}
@@ -148,10 +157,10 @@ const renderPaymentDetails = (text) => {
           </div>
         </div>
 
-        {/* Address Field - Conditional */}
+        {/* Address */}
         {(bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && (
           <div>
-            <label className="block text-sm font-medium  mb-2" style={{ color: textColor }}>
+            <label className="block text-sm font-medium mb-2" style={{ color: textColor }}>
               Address <span className="text-red-500">*</span>
             </label>
             <input
@@ -159,95 +168,69 @@ const renderPaymentDetails = (text) => {
               placeholder="Enter your address"
               value={formData.address}
               onChange={(e) => onFormChange('address', e.target.value)}
-              className="w-full p-3 bg-transparent border border-gray-300 rounded-ms  outline-none transition-colors"
+              className="w-full p-3 bg-transparent border border-gray-300 rounded-sm outline-none transition-colors"
               style={{ color: textColor }}
             />
           </div>
         )}
-        
-        {/* Price Info - Conditional */}
+
+        {/* Price */}
         {bookingData?.price && bookingData?.price > 0 && (
           <div>
             <div className="block text-sm font-medium text-gray-700 mb-2 border border-gray-300 rounded-sm p-4 bg-black/15">
-              <div className="flex  justify-between items-center">
-                <span style={{color:textColor}}>Payment Amount</span>
-                <span className="font-bold " style={{color:textColor}}>
-                  {bookingData?.require_end_time && totalPrice > 0 
-                    ? `${totalPrice} ${bookingData.currency}` 
-                    : `${bookingData.price} ${bookingData.currency}`
-                  }
+              <div className="flex justify-between items-center">
+                <span style={{ color: textColor }}>Payment Amount</span>
+                <span className="font-bold" style={{ color: textColor }}>
+                  {bookingData?.require_end_time && totalPrice > 0
+                    ? `${totalPrice} ${bookingData.currency}`
+                    : `${bookingData.price} ${bookingData.currency}`}
                 </span>
               </div>
-              
               {bookingData?.require_end_time && totalPrice > 0 && (
-                <div className="text-xs  mt-2 pt-2 border-t border-gray-200" style={{color:textColor}}>
+                <div className="text-xs mt-2 pt-2 border-t border-gray-200" style={{ color: textColor }}>
                   {numberOfSlots} slot{numberOfSlots > 1 ? 's' : ''} × {bookingData.price} {bookingData.currency} per slot
                 </div>
               )}
             </div>
           </div>
         )}
-       {bookingData?.payment_details && (
+
+        {/* Payment Details */}
+        {bookingData?.payment_details && (
           <div className="block text-sm font-medium text-gray-700 mb-2 border border-gray-300 rounded-sm p-4 bg-black/15">
             <div className="flex justify-center flex-col gap-2 items-start">
               <span style={{ color: textColor }}>Payment Details</span>
               <span className="font-bold" style={{ color: textColor }}>
                 {renderPaymentDetails(bookingData?.payment_details)}
               </span>
-
             </div>
           </div>
         )}
       </div>
 
-      {/* Submit Button */}
+      {/* ✅ Submit Button مع لون النص الديناميكي */}
       <button
-  onClick={onScheduleAppointment}
-  className="
-    w-full 
-    py-3 
-    rounded-sm
-    font-semibold 
-    mt-6 
-    transition-all 
-    shadow-md
-    disabled:cursor-not-allowed
-  "
-  style={{
-    background: isBooking || 
-      !formData.name || 
-      !formData.email || 
-      phoneError || 
-      ((bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && !formData.address)
-      ? firstColor  
-      : firstColor,        
-    color: textColor,
-    filter: isBooking || 
-      !formData.name || 
-      !formData.email || 
-      phoneError || 
-      ((bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && !formData.address)
-      ? "blur(0.8px)" : "none",
-  }}
-  disabled={
-    !formData.name || 
-    !formData.email || 
-    phoneError || 
-    ((bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && !formData.address) ||
-    isBooking
-  }
->
-  {isBooking ? (
-    <div className="flex items-center justify-center">
-      <div className="animate-spin rounded-full h-5 w-5 border-b-2 mr-2" 
-           style={{ borderColor: secondColor }}>
-      </div>
-      Booking...
-    </div>
-  ) : (
-    'Schedule Appointment'
-  )}
-</button>
+        onClick={onScheduleAppointment}
+        className="w-full py-3 rounded-sm font-semibold mt-6 transition-all shadow-md disabled:cursor-not-allowed"
+        style={{
+          background: firstColor,
+          color: buttonTextColor,
+          opacity: isDisabled ? 0.5 : 1,
+        }}
+        disabled={isDisabled}
+      >
+        {isBooking ? (
+          <div className="flex items-center justify-center">
+            <div
+              className="animate-spin rounded-full h-5 w-5 border-b-2 mr-2"
+              style={{ borderColor: buttonTextColor }}
+            />
+            Booking...
+          </div>
+        ) : (
+          'Schedule Appointment'
+        )}
+      </button>
     </div>
   );
 };

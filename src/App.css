@@ -97,3 +97,20 @@ body {
 	.st4{fill:#FFFFFF;}
 
 
+/* hide number input arrows */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spinner {
+  -moz-appearance: textfield; /* Firefox */
+}
+.ellipsis-ar {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: right;
+}

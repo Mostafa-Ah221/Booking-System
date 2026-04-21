@@ -29,30 +29,15 @@ export default function SideBarDashbord() {
   const mySpaceRef = useRef(null);
   const menuRef = useRef(null);
   const toggleButtonRef = useRef(null);
-  const manualWorkspaceSelection = useRef(false); // ✅ لتتبع الاختيار اليدوي
+  const manualWorkspaceSelection = useRef(false);
   const dispatch = useDispatch();
   
   const { workspaces, workspace } = useSelector(state => state.workspace);
-  const previousWorkspace = useRef(workspace); // ✅ لحفظ آخر workspace تم اختياره يدوياً
+  const previousWorkspace = useRef(workspace); 
   
   const navigate = useNavigate();
 
-  // ✅ حماية الـ workspace من التغيير غير المقصود
-  useEffect(() => {
-    // إذا تغير الـ workspace ولم يكن تغيير يدوي
-    if (workspace && previousWorkspace.current && 
-        workspace.id !== previousWorkspace.current.id && 
-        !manualWorkspaceSelection.current) {
-      
-      // إرجاع الـ workspace للقيمة السابقة
-      console.log("Preventing automatic workspace change, restoring previous workspace");
-      dispatch(workspaceAction.setWorkspace(previousWorkspace.current));
-    } else if (manualWorkspaceSelection.current) {
-      // إذا كان التغيير يدوي، حفظ القيمة الجديدة
-      previousWorkspace.current = workspace;
-      manualWorkspaceSelection.current = false; // إعادة تعيين الـ flag
-    }
-  }, [workspace, dispatch]);
+  
 
    useEffect(() => {
     dispatch(getWorkspace({ force: true }));
@@ -75,32 +60,41 @@ export default function SideBarDashbord() {
     };
   }, [dispatch]);
 
-  // ✅ Re-fetch when modals close to ensure fresh data
-  useEffect(() => {
-    if (!isEditModalOpen && !isNewWorkspaceModalOpen && !isDeleteModalOpen) {
-      dispatch(getWorkspace({ force: true }));
-    }
-  }, [isEditModalOpen, isNewWorkspaceModalOpen, isDeleteModalOpen, dispatch]);
+useEffect(() => {
+  if (!isEditModalOpen && !isNewWorkspaceModalOpen && !isDeleteModalOpen) {
+    dispatch(getWorkspace({ force: true })).then((result) => {
+      if (workspace && workspace.id !== 0) {
+        const updatedList = result?.payload?.data || result?.payload || [];
+        const updatedWorkspace = updatedList.find(w => w.id === workspace.id);
+        if (updatedWorkspace) {
+          dispatch(workspaceAction.setWorkspace(updatedWorkspace));
+        }
+      }
+    });
+  }
+}, [isEditModalOpen, isNewWorkspaceModalOpen, isDeleteModalOpen, dispatch]);
 
   useEffect(() => {
-    const currentPath = location.pathname.includes("interviews")
-      ? "interviews"
-      : location.pathname.includes("booking-pages") || location.pathname.includes("bookPage")
-      ? "bookPage"
-      : location.pathname.includes("analytics")
-      ? "analytics"
-      : location.pathname.includes("my-profile") || location.pathname.includes("profilepage")
-      ? "profilepage"
-      : location.pathname.includes("userDashboard")
-      ? "userDashboard"
-      : location.pathname.includes("WorkspaceAvailability")
-      ? "WorkspaceAvailability"
-      : location.pathname.includes("recruiter")
-      ? "recruiterPage"
-      : "";
-    
-    setActive(currentPath);
-  }, [location.pathname]);
+  const currentPath = location.pathname.includes("interviews")
+    ? "interviews"
+    : location.pathname.includes("booking-pages") || location.pathname.includes("bookPage")
+    ? "bookPage"
+    : location.pathname.includes("analytics")
+    ? "analytics"
+    : location.pathname.includes("my-profile") || location.pathname.includes("profilepage")
+    ? "profilepage"
+    : location.pathname.includes("userDashboard")
+    ? "userDashboard"
+    : location.pathname.includes("WorkspaceAvailability")
+    ? "WorkspaceAvailability"
+    : location.pathname.includes("recruiter")
+    ? "recruiterPage"
+    : location.pathname === "/layoutDashboard"
+    ? "analytics"
+    : "";
+  
+  setActive(currentPath);
+}, [location.pathname]);
   
   const canViewAppointments = usePermission("view appointment");
   const canViewInterview = usePermission("view interview");
@@ -128,9 +122,9 @@ export default function SideBarDashbord() {
   useEffect(() => {
     const visibleItems = menuItems.filter(item => item.canShow);
 
-    if (visibleItems.length > 0 && !active) { // ✅ فقط إذا لم يكن هناك active path
+    if (visibleItems.length > 0 && !active) { 
       setActive(prev => {
-        if (prev) return prev; // ✅ الحفاظ على القيمة الحالية
+        if (prev) return prev;
         const stillVisible = visibleItems.some(item => item.path === prev);
         const newPath = stillVisible ? prev : visibleItems[0].path;
         return newPath;
@@ -166,10 +160,9 @@ export default function SideBarDashbord() {
   };
 
   const handleSelectWorkspace = (selectedWorkspace) => {
-    manualWorkspaceSelection.current = true; // ✅ تسجيل أن المستخدم اختار workspace يدوياً
+    // manualWorkspaceSelection.current = true; 
     dispatch(workspaceAction.setWorkspace(selectedWorkspace));
     
-    // ✅ التوجه لصفحة الـ workspace
     if (selectedWorkspace.id !== 0) {
       setActive("WorkspaceAvailability");
       navigate("WorkspaceAvailability");
@@ -180,7 +173,7 @@ export default function SideBarDashbord() {
   };
 
   const handleSelectMySpace = () => {
-    manualWorkspaceSelection.current = true; // ✅ تسجيل أن المستخدم اختار My Space يدوياً
+    manualWorkspaceSelection.current = true; 
     const mySpace = {
       id: 0,
       name: "My Space"
@@ -236,7 +229,6 @@ export default function SideBarDashbord() {
     setWorkspaceToDelete(null);
   };
 
-  // ✅ تحسين الـ delete handler
   const handleConfirmDelete = async () => {
     if (!workspaceToDelete) return;
     
@@ -351,70 +343,74 @@ export default function SideBarDashbord() {
                     {filteredWorkspaces.length > 0 ? (
                       filteredWorkspaces.map((workspaceItem) => (
                         <div 
-                          key={workspaceItem.id} 
-                          className={`cursor-pointer p-2 my-1 rounded-md border-b border-gray-100 flex items-center justify-between ${workspace && workspace.id === workspaceItem.id ? "bg-purple-100":"bg-transparent"} hover:bg-purple-50`}
-                          onClick={() => handleSelectWorkspace(workspaceItem)}
-                        >
-                          <div className="flex items-center flex-col gap-2">
-                            <div className="flex gap-2 items-center">
-                              <div className="w-6 h-6 bg-pink-200 rounded-full flex items-center justify-center text-pink-600 font-bold">
-                                {workspaceItem.name?.slice(0, 1).toUpperCase()}
-                              </div>
-                              <div className="truncate max-w-[120px]">
+  key={workspaceItem.id} 
+  className={`cursor-pointer p-2 my-1 rounded-md border-b border-gray-100 flex items-center justify-between ${workspace && workspace.id === workspaceItem.id ? "bg-purple-100":"bg-transparent"} hover:bg-purple-50`}
+  onClick={() => handleSelectWorkspace(workspaceItem)}
+  dir="ltr"
+>
+  <div className="flex items-center flex-col gap-2">
+    <div className="flex gap-2 items-center">
+      <div className="w-6 h-6 bg-pink-200 rounded-full flex items-center justify-center text-pink-600 font-bold">
+        {workspaceItem.name?.slice(0, 1).toUpperCase()}
+      </div>
+      <div
+  className="max-w-[120px] overflow-hidden whitespace-nowrap text-ellipsis text-right"
+  dir="auto"
+>
+  {searchQuery ? (
+    <span
+      dangerouslySetInnerHTML={{
+        __html: workspaceItem.name.replace(
+          new RegExp(`(${searchQuery})`, "gi"),
+          '<mark class="bg-yellow-200">$1</mark>'
+        ),
+      }}
+    />
+  ) : (
+    workspaceItem.name
+  )}
+</div>
+    </div>
+  </div>
 
-                              <span className="text-sm text-gray-800 ">
-                                {searchQuery ? (
-                                  <span dangerouslySetInnerHTML={{
-                                    __html: workspaceItem.name.replace(
-                                      new RegExp(`(${searchQuery})`, 'gi'),
-                                      '<mark class="bg-yellow-200">$1</mark>'
-                                    )
-                                  }} />
-                                ) : (
-                                  workspaceItem.name
-                                )}
-                              </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 items-center relative">
-                            <div 
-                              onClick={(e) => toggleMenu(workspaceItem.id, e)}
-                              className={`w-5 h-5 rounded-full flex justify-center items-center border border-transparent hover:border-purple-500 duration-300`}
-                            >
-                              <BsThreeDots className="text-[13px] cursor-pointer text-purple-500"/>
-                            </div>
-                            {activeMenuId === workspaceItem.id && (
-                              <div ref={menuRef} className={`absolute bottom-6 right-2 bg-white shadow-lg rounded-lg z-10 py-2 w-40`}>
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setWorkspaceToEdit(workspaceItem);
-                                    setIsEditModalOpen(true);
-                                    setActiveMenuId(null);
-                                  }}
-                                  className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <FiEdit2 size={16} className="mr-2" />
-                                  Edit
-                                </button>
-                                
-                                <button
-                                  onClick={(e) => handleDeleteClick(workspaceItem, e)}
-                                  className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                                >
-                                  <Trash2 size={16} className="mr-2" />
-                                  Delete
-                                </button>
-                              </div>
-                            )}
-                            <div className={`flex justify-center items-center w-5 h-5 rounded-full ${workspace && workspace.id === workspaceItem.id ? "bg-purple-500":"bg-transparent"}`}>
-                              {workspace && workspace.id === workspaceItem.id && (
-                                <FaCheck className="text-white text-sm" />
-                              )}
-                            </div>
-                          </div>
-                        </div>
+  <div className="flex gap-2 items-center relative" dir="ltr">
+    <div 
+      onClick={(e) => toggleMenu(workspaceItem.id, e)}
+      className={`w-5 h-5 rounded-full flex justify-center items-center border border-transparent hover:border-purple-500 duration-300`}
+    >
+      <BsThreeDots className="text-[13px] cursor-pointer text-purple-500"/>
+    </div>
+    {activeMenuId === workspaceItem.id && (
+      <div ref={menuRef} className={`absolute bottom-6 right-2 bg-white shadow-lg rounded-lg z-10 py-2 w-40`}>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            setWorkspaceToEdit(workspaceItem);
+            setIsEditModalOpen(true);
+            setActiveMenuId(null);
+          }}
+          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+        >
+          <FiEdit2 size={16} className="mr-2" />
+          Edit
+        </button>
+        
+        <button
+          onClick={(e) => handleDeleteClick(workspaceItem, e)}
+          className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+        >
+          <Trash2 size={16} className="mr-2" />
+          Delete
+        </button>
+      </div>
+    )}
+    <div className={`flex justify-center items-center w-5 h-5 rounded-full ${workspace && workspace.id === workspaceItem.id ? "bg-purple-500":"bg-transparent"}`}>
+      {workspace && workspace.id === workspaceItem.id && (
+        <FaCheck className="text-white text-sm" />
+      )}
+    </div>
+  </div>
+</div>
                       ))
                     ) : (
                       <div className="text-center py-4">

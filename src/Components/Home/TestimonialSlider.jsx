@@ -1,25 +1,32 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
-
+import img1 from '../../assets/image/home-11.avif';
+import img2 from '../../assets/image/home-7.jpg';
+import img3 from '../../assets/image/home-8.jpg';
 const testimonials = [
   {
-    name: 'Gray Kimmer',
-    company: 'BSRP, Inc',
-    quote: 'Appoint Roll has been a godsend for my business, not only is the rate competitive. It works well with my word press site, integrates with my zoho invoices and google calendar, takes payments and offers me the full functionality of text message reminders too.',
-    image: 'https://www.zoho.com/sites/zweb/images/bookings/home/zbs-morgan-digiorgio.png'
+    name: 'All About Embroidery',
+    company: 'Fashion Business ',
+    quote: 'Managing workshop bookings used to take so much time.With Appointroll, everything is organized in one place — from scheduling to confirmations.It made our process smoother and more professional.',
+    image: img1
   },
   {
-    name: 'Jane Doe',
-    company: 'Tech Innovations',
-    quote: 'Our productivity skyrocketed after implementing this scheduling solution. The seamless integration with our existing tools made the transition incredibly smooth.',
-    image: 'https://www.zoho.com/sites/zweb/images/bookings/home/zbs-gray-kinnney.png'
+    name: 'EGYdesigner',
+    company: 'Advertising & Marketing',
+    quote: 'Appointroll helped us streamline how we manage meetings and client bookings.The system is simple, efficient, and fits perfectly with our workflow.',
+    image: img2
   },
-  {
-    name: 'John Smith',
-    company: 'Global Services',
-    quote: 'The advanced features and user-friendly interface have transformed how we manage client appointments. Highly recommended for any business looking to streamline their scheduling.',
-    image: 'https://www.zoho.com/sites/zweb/images/bookings/home/zbs-lokesh-mitta.png'
-  }
+ {
+  name: ' المحمود للسياحة',
+company: 'Tourism Services',
+  quote: (
+    <span dir="rtl">
+      تنظيم المواعيد بقى أسهل بكتير مع{" "}
+      <span dir="ltr">Appointroll</span>. قدرنا نوفر وقت كبير ونحسن تجربة العملاء بدون أي تعقيد.
+    </span>
+  ),
+  image: img3
+}
 ];
 
 const TestimonialSlider = () => {
@@ -37,7 +44,8 @@ const TestimonialSlider = () => {
     <div className="relative w-full max-w-4xl mx-auto  bg-purple-50 p-4 sm:p-6 lg:p-8 rounded-lg shadow-lg my-8 sm:my-16 lg:my-32">
       {/* Title */}
       <h2 className='w-full lg:w-3/4 xl:w-1/2 mx-auto text-xl sm:text-2xl lg:text-3xl font-semibold text-center mb-6 sm:mb-8 lg:mb-12 leading-tight px-2'>
-        Scheduling stories from businesses like yours
+       Scheduling Success
+       from Businesses Like Yours
       </h2>
       
       <div className="relative">
@@ -138,12 +146,12 @@ const TestimonialSlider = () => {
         </div>
         
         {/* More Stories Button */}
-        <div className="order-1 sm:order-2">
+        {/* <div className="order-1 sm:order-2">
           <button className='bg-green-500 hover:bg-green-600 mb-1 text-white px-3 py-2 sm:px-4 sm:py-2 rounded text-xs sm:text-sm font-medium transition-colors duration-200 flex items-center space-x-2'>
             <span>MORE STORIES</span>
             <ArrowRight className='w-3 h-3 sm:w-4 sm:h-4'/>
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -149,7 +149,7 @@ export function updataWorkspace(id, name) {
         });
         
         if (response.data.data) {
-          dispatch(workspaceAction.updateWorkspaceInList(response.data.data));
+           dispatch(workspaceAction.updateWorkspaceInList({ id: id, name: name }));
         } else {
           dispatch(getWorkspace({ force: true }));
         }
@@ -400,7 +400,7 @@ export const updateShareLinkWorkspace = (newShareLink, id) => {
 
       if (response.data) {
         dispatch(workspaceAction.setWorkspace(response.data.data));
-        dispatch(workspaceAction.updateWorkspaceInList(response.data.data));
+        dispatch(workspaceAction.updateWorkspaceInList({ id: id, name: name }));
 
         toast.success("Share link updated successfully");
       }

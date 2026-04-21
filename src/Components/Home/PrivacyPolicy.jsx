@@ -228,7 +228,7 @@ We encourage you to review this Privacy Policy periodically to stay informed abo
           </p>
           <div className="mt-10 text-center">
             <span className="inline-block bg-white/20 backdrop-blur-sm px-6 py-2 rounded-full text-sm font-medium">
-              Last Updated: October 27, 2026
+              Last Updated: May 15, 2026
             </span>
           </div>
         </div>

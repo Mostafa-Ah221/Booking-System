@@ -10,22 +10,22 @@ const Steps = () => {
     {
       number: '1',
       label: 'STEP 01',
-      title: 'Customize availability',
-      description: 'Add your available times and sync your calendars.',
+      title: 'Set Availability',
+      description: 'Sync your calendar. Define your time.',
       video: CustomizeAvailability
     },
     {
       number: '2',
       label: 'STEP 02',
-      title: 'Share your booking link',
-      description: 'Let clients see your availability from a custom booking page.',
+      title: 'Share Your Link',
+      description: 'One link. Endless bookings.',
       video: shareLink
     },
     {
       number: '3',
       label: 'STEP 03',
-      title: 'Get booked',
-      description: 'Have clients schedule appointments for their preferred time slots in just a few clicks.',
+      title: 'Get Booked',
+      description: 'Appointments are scheduled automatically — no manual work needed.',
       video: getBooked
     }
   ];
@@ -45,9 +45,9 @@ const Steps = () => {
         {/* Header */}
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
-            Take back your time with
-            <br />
-            effortless scheduling
+            Take Control of Your Time
+with<br /> Smart Scheduling
+
           </h2>
         </div>
 

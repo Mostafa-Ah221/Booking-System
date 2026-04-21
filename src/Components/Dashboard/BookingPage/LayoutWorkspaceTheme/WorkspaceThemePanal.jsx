@@ -49,7 +49,13 @@ console.log(theme);
   phone: '', visiblePhone: true,
   email: '', visibleEmail: true,
 });
-
+const [pageTexts, setPageTexts] = useState({
+  work_space_text: '',
+  interview_text: '',
+  staff_text: '',
+  mode_text: '',
+  details_text: '',
+});
   const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
   const [isBackgroundUploadOpen, setIsBackgroundUploadOpen] = useState(false);
   const [isColorModalOpen, setIsColorModalOpen] = useState(false);
@@ -128,6 +134,13 @@ console.log(theme);
         email: theme.footer_email || '',
         visibleEmail: toBool(theme.show_email),
       });
+      setPageTexts({
+      work_space_text: theme.work_space_text || '',
+      interview_text: theme.interview_text || '',
+      staff_text: theme.staff_text || '',
+      mode_text: theme.mode_text || '',
+      details_text: theme.details_text || '',
+    });
     } else {
       setSelectedLayout('modernWeb');
       const firstColor = colorOptions[0];
@@ -149,6 +162,7 @@ console.log(theme);
       buttonText,
       preSelect,
       socialLinks,
+      pageTexts, 
     });
   }, [selectedLayout, selectedColor, backgroundImage, backgroundOpacity, header, pageProperties, buttonText, preSelect, socialLinks, textColor, onThemeChange]);
 
@@ -398,6 +412,22 @@ console.log(theme);
 
     dispatch(updateTheme(payload));
   };
+
+  const handleSavePageTexts = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const payload = {
+    ...(isInterview ? { interview_id: currentId } : { work_space_id: currentId }),
+    work_space_text: pageTexts.work_space_text,
+    interview_text: pageTexts.interview_text,
+    staff_text: pageTexts.staff_text,
+    mode_text: pageTexts.mode_text,
+    details_text: pageTexts.details_text,
+  };
+
+  dispatch(updateTheme(payload));
+};
 
   return (
     <div className="w-full max-w-md bg-white rounded-lg shadow pb-3">
@@ -1018,11 +1048,11 @@ console.log(theme);
                   </button>
                 </div>
              <textarea
-  value={pageProperties.description}
-  onChange={(e) => setPageProperties({ ...pageProperties, description: e.target.value })}
-  placeholder="Page Description"
-  className="w-full h-32 p-2 border rounded-lg mb-4 text-sm"
-/>
+                value={pageProperties.description}
+                onChange={(e) => setPageProperties({ ...pageProperties, description: e.target.value })}
+                placeholder="Page Description"
+                className="w-full h-32 p-2 border rounded-lg mb-4 text-sm"
+              />
               </div>
               
       {/* Save Button */}
@@ -1041,7 +1071,79 @@ console.log(theme);
       
       </div>
 
+{/* Page Texts Section */}
+<div>
+  <div
+    className="flex justify-between items-center p-4 cursor-pointer"
+    onClick={() => toggleSection('pageTexts')}
+  >
+    <span className="text-sm">Page Texts</span>
+    {openSection === 'pageTexts' ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+  </div>
 
+  {openSection === 'pageTexts' && (
+    <div className="p-4 bg-gray-50 space-y-4">
+      
+      {/* interview_text — يظهر بس لو interview */}
+      {!isInterview && (
+        <div>
+          <label className="block text-sm font-medium mb-1">Interview Text</label>
+          <input
+            type="text"
+            value={pageTexts.interview_text}
+            onChange={(e) => setPageTexts({ ...pageTexts, interview_text: e.target.value })}
+            placeholder="Enter interview text..."
+            className="w-full p-2 border rounded-lg text-sm"
+          />
+        </div>
+      )}
+
+      {/* staff_text — يظهر دايمًا */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Staff Text</label>
+        <input
+          type="text"
+          value={pageTexts.staff_text}
+          onChange={(e) => setPageTexts({ ...pageTexts, staff_text: e.target.value })}
+          placeholder="Enter staff text..."
+          className="w-full p-2 border rounded-lg text-sm"
+        />
+      </div>
+
+      {/* mode_text — يظهر دايمًا */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Mode Text</label>
+        <input
+          type="text"
+          value={pageTexts.mode_text}
+          onChange={(e) => setPageTexts({ ...pageTexts, mode_text: e.target.value })}
+          placeholder="Enter mode text..."
+          className="w-full p-2 border rounded-lg text-sm"
+        />
+      </div>
+
+      {/* details_text — يظهر دايمًا */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Details Text</label>
+        <input
+          type="text"
+          value={pageTexts.details_text}
+          onChange={(e) => setPageTexts({ ...pageTexts, details_text: e.target.value })}
+          placeholder="Enter details text..."
+          className="w-full p-2 border rounded-lg text-sm"
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={handleSavePageTexts}
+        className="py-2 px-5 text-sm rounded-lg w-24 text-white bg-[#5646A5]"
+      >
+        Save
+      </button>
+    </div>
+  )}
+</div>
       {/* ImageUploadCrop Component for Logo */}
       <ImageUploadCrop
         isOpen={isImageUploadOpen}

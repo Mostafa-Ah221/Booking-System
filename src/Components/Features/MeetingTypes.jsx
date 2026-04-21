@@ -41,15 +41,15 @@ const MeetingTypes = () => {
           <div className="">
             <div>
               <h1 className="text-left text-2xl font-bold text-white leading-tight mb-6">
-                Meeting types that suit your business
+                Smart Scheduling Rules
+That Work for You
+
               </h1>
               
               <p className=" text-white leading-relaxed mb-8 max-w-md text-left">
-                Host all your day-to-day meetings—such as sales calls, consultations, interviews, customer support calls, healthcare appointments, online classes, and more—with an array of meeting types. Share your availability with invitees and let them pick their time slot.              </p>
+Set your availability, control booking limits, and define how your schedule runs — all with flexible rules built to match your workflow.
+              </p>              
               
-              <button className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-md text-sm transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl  flex gap-1">
-                Learn more <MoveRight className="text-white"/>
-              </button>
             </div>
           </div>
 

@@ -7,11 +7,12 @@ const AppointmentManagementApp = () => {
       <div className="w-full lg:w-1/2 bg-[#1a1a2e] text-white flex flex-col justify-center items-center p-6 sm:p-8 lg:p-12 order-2 lg:order-1">
         <div className="max-w-md text-center lg:text-left">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold mb-4 sm:mb-6 leading-tight">
-            Manage<br/> appointments <br/>on the go
+            Control Your Time.Effortlessly.
+
           </h1>
           
           <p className="text-sm sm:text-base lg:text-lg opacity-80 mb-6 sm:mb-8 max-w-xs sm:max-w-sm mx-auto lg:mx-0">
-            Gain complete control of your schedule, all just a click away.
+            Manage bookings with clarity, speed, and precision.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 items-center lg:items-start">
@@ -22,7 +23,6 @@ const AppointmentManagementApp = () => {
         </div>
       </div>
 
-      {/* القسم الأيمن (صور التطبيق) */}
       <div className="w-full lg:w-1/2 bg-[#ebdffa] flex justify-center items-center p-4 sm:p-6 lg:p-8 relative min-h-64 sm:min-h-80 lg:min-h-screen order-1 lg:order-2">
         {/* Container for mobile stacked layout */}
         <div className="block sm:hidden w-full max-w-xs">

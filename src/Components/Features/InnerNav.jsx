@@ -66,7 +66,7 @@ export default function InnerNav() {
           Streamline meetings with
         </h1>
         <h2 className="text-4xl md:text-5xl font-bold text-white">
-          scheduling automation
+          with Smart Scheduling Automation
         </h2>
       </div>
 

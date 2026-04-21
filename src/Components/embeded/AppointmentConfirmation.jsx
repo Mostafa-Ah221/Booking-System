@@ -317,7 +317,7 @@ END:VCALENDAR
               <div className="mb-4">
                 <p className="text-sm text-purple-100 mb-2">Powered by</p>
               </div>
-
+ّّ
               <h2 className="text-2xl font-bold mb-4">
                 Simplify appointment scheduling for your business
               </h2>

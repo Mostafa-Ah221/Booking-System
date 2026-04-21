@@ -28,7 +28,15 @@ const interviewsSlice = createSlice({
       }
       state.loading = false;
       state.error = null;
-    },
+    },updateInterviewPin(state, action) {
+    const { id, is_pinned } = action.payload;
+    if (state.interviews) {
+      const interview = state.interviews.find(i => i.id === id);
+      if (interview) {
+        interview.is_pinned = is_pinned;
+      }
+    }
+  },
     setAllInterviews(state, action) {
       state.allInterviews = action.payload;
       state.loading = false;

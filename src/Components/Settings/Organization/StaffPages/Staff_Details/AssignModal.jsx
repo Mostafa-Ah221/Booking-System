@@ -82,7 +82,6 @@ useEffect(() => {
   };
 
   const handleAssign = async () => {
-  if (selectedItems.length === 0) return;
 
   setIsLoading(true);
   try {
@@ -129,7 +128,14 @@ useEffect(() => {
   const getEmptyMessage = () => {
     return activeTab === 'workspace' ? 'No workspaces found' : 'No interviews found';
   };
-
+const hasChanges = () => {
+  if (!Array.isArray(interviewsAssigned)) return selectedItems.length > 0;
+  
+  const assignedIds = interviewsAssigned.map(i => i.id).sort();
+  const currentIds = [...selectedItems].sort();
+  
+  return JSON.stringify(assignedIds) !== JSON.stringify(currentIds);
+};
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-end z-50">
       <div 
@@ -251,7 +257,7 @@ useEffect(() => {
           </button>
           <button
             onClick={handleAssign}
-            disabled={selectedItems.length === 0 || isLoading}
+            disabled={!hasChanges() || isLoading}
             className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isLoading && (

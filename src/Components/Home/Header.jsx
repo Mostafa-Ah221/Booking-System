@@ -10,13 +10,17 @@ const HeroSection = () => {
           {/* Left Column - Text Content */}
           <div className="z-10">
             <h1 className="text-[3.2rem] md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
-              Online appointment scheduling made simple
+              Schedule Smarter.<br/>Work Better.
             </h1>
             <p className="text-gray-600 text-lg mb-8 max-w-lg">
-              Appoint Roll is intuitive appointment scheduling software that empowers everyone to schedule meetings effortlessly. With Bookings, you can avoid phone calls, back-and-forth emails, and repetitive tasks. Let customers self-schedule while you grow your business.
+              Appointroll transforms the way you manage bookings —
+              no calls, no emails, no chaos.
+              Just a seamless scheduling experience
+              for you and your clients.
+
             </p>
             <Link to="/signup" className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-md font-medium transition-colors">
-              SIGN UP FOR FREE
+              Start Your Free Trial now
             </Link>
           </div>
 

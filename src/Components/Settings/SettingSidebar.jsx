@@ -26,19 +26,16 @@ import {
   AppWindow
 } from 'lucide-react';
 import { IoTvOutline } from "react-icons/io5";
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { setCurrentPath, setExpandedSection } from '../../redux/slices/navigationSlice';
 import { usePermission } from "../hooks/usePermission";
 
 const SettingSidebar = ({ iconOnly = false }) => {
   const dispatch = useDispatch();
-  const { currentPath, expandedSection } = useSelector(state => state.navigation);
+  const { expandedSection } = useSelector(state => state.navigation);
   const [isHovering, setIsHovering] = useState(null);
-
-  // Simulating useLocation hook since we don't have react-router-dom
-  const location = {
-    pathname: '/' + currentPath
-  };
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const menuItems = [
     {
@@ -46,8 +43,6 @@ const SettingSidebar = ({ iconOnly = false }) => {
       icon: Settings,
       items: [
         { title: 'Basic Information', icon: Layout, path: "basic-info" },
-        // { title: 'Business Hours', icon: Clock, path: "business-hours" },
-        // { title: 'Custom Domain', icon: Globe, path: "custom-domain" },
         { title: 'Recruiter', icon: Globe, path: "recruiterPage", permission: "view staff" }
       ]
     },
@@ -56,17 +51,14 @@ const SettingSidebar = ({ iconOnly = false }) => {
       icon: Layout,
       items: [
         { title: 'Workspaces', icon: Layout, path: "workspaces" },
-        { title: 'Resources', icon: IoTvOutline , path: "resources-section" },
+        { title: 'Resources', icon: IoTvOutline, path: "resources-section" },
         { title: 'Clients', icon: User, path: "clients", permission: "view clients" },
-        // { title: 'Reports', icon: BarChart, path: "reports" }
       ]
     },
     {
       title: 'Integrations',
       icon: Plug,
       items: [
-        // { title: 'Calendar', icon: Calendar, path: "integrations-page#calendar" },
-        // { title: 'Video Conferencing', icon: Video, path: "integrations-page#video" },
         { title: 'Mail', icon: Settings, path: "integrations-page#email" },
         { title: 'SMS', icon: MessageSquare, path: "integrations-page#sms" },
         { title: 'WhatsApp', icon: Globe2, path: "integrations-page#whatsapp" },
@@ -77,7 +69,6 @@ const SettingSidebar = ({ iconOnly = false }) => {
       icon: Settings,
       items: [
         { title: 'In-product Notifications', icon: Bell, path: "notification-settings" },
-        // { title: 'Custom Labels', icon: Tag, path: "custom-labels" },
         { title: 'Roles and Permissions', icon: Users, path: "roles-permissions", permission: "view roles" }
       ]
     },
@@ -85,43 +76,35 @@ const SettingSidebar = ({ iconOnly = false }) => {
       title: 'Data Administration',
       icon: Lock,
       items: [
-        // { title: 'Privacy and Security', icon: Lock, path: "privacy-and-security" },
         { title: 'Export', icon: FileText, path: "export-data" }
       ]
     }
   ];
 
+  const isLinkActive = (path) => {
+    const currentPathname = location.pathname;
+    
+  console.log("currentPathname:", currentPathname, "| path:", path);
+    if (path.includes('#')) {
+      const [basePath] = path.split('#');
+      return currentPathname.includes(basePath);
+    }
+
+    return currentPathname.includes(path);
+  };
+
   useEffect(() => {
-    const activePath = location.pathname.slice(1);
     const activeSection = menuItems.find(section =>
-      section.items.some(item => activePath.includes(item.path))
+      section.items.some(item => isLinkActive(item.path))
     );
 
     if (activeSection) {
       dispatch(setExpandedSection(activeSection.title));
     }
-  }, [dispatch, location.pathname]); 
+  }, [location.pathname]);
 
   const handleSectionClick = (title) => {
     dispatch(setExpandedSection(expandedSection === title ? null : title));
-  };
-
-  const isLinkActive = (path) => {
-    const currentPathClean = location.pathname.slice(1);
-    
-    if (path.includes('#')) {
-      const [basePath, hash] = path.split('#');
-      
-      if (!currentPathClean.includes(basePath)) {
-        return false;
-      }
-      
-   
-      return currentPathClean === path || currentPathClean.endsWith(`#${hash}`);
-    }
-    
-
-    return currentPathClean === path || currentPathClean.includes(path);
   };
 
   const handleNavigate = (path) => {
@@ -135,14 +118,12 @@ const SettingSidebar = ({ iconOnly = false }) => {
             behavior: "smooth",
             block: "start"
           });
-        } else {
-          console.log(`Element with ID ${hash} not found`);
         }
       }, 500);
     }
   };
 
-  const MenuItem = ({ item, itemIndex }) => {
+  const MenuItem = ({ item }) => {
     const hasPermission = item.permission ? usePermission(item.permission) : true;
     
     if (item.permission && !hasPermission) {
@@ -154,7 +135,6 @@ const SettingSidebar = ({ iconOnly = false }) => {
     return (
       <Link 
         to={item.path}
-        key={item.title}
         onClick={() => handleNavigate(item.path)}
         className={`w-full flex items-center gap-2 p-2 rounded-md hover:bg-gray-50 pl-6 transition-colors ${
           isActive ? 'text-blue-600 font-semibold bg-blue-50' : 'text-gray-600'
@@ -174,12 +154,15 @@ const SettingSidebar = ({ iconOnly = false }) => {
       <div className="p-4 border-b">
         {!iconOnly && (
           <div className="flex items-center gap-2 -mb-0.5">
-            <Link to='/layoutDashboard' className="text-lg font-semibold flex-1 flex items-center gap-1"> 
-              <button className="hover:bg-gray-100 p-1 rounded-full">
+            <button 
+              onClick={() => navigate(-1)}
+              className="text-lg font-semibold flex-1 flex items-center gap-1"
+            > 
+              <div className="hover:bg-gray-100 p-1 rounded-full">
                 <ArrowLeft size={20} />
-              </button>
+              </div>
               <span className='text-[16px]'>Admin Center</span>
-            </Link>
+            </button>
           </div>
         )}
         
@@ -212,11 +195,9 @@ const SettingSidebar = ({ iconOnly = false }) => {
                 </div>
                 
                 {!iconOnly && (
-                  expandedSection === section.title ? (
-                    <ChevronDown size={18} />
-                  ) : (
-                    <ChevronRight size={18} />
-                  )
+                  expandedSection === section.title 
+                    ? <ChevronDown size={18} />
+                    : <ChevronRight size={18} />
                 )}
                 
                 {iconOnly && isHovering === section.title && (
@@ -228,8 +209,8 @@ const SettingSidebar = ({ iconOnly = false }) => {
 
               {expandedSection === section.title && !iconOnly && (
                 <div className="ml-2 mt-1 space-y-1 text-sm">
-                  {section.items.map((item, itemIndex) => (
-                    <MenuItem key={item.title} item={item} itemIndex={itemIndex} />
+                  {section.items.map((item) => (
+                    <MenuItem key={item.title} item={item} />
                   ))}
                 </div>
               )}

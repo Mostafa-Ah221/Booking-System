@@ -15,25 +15,16 @@ const IntegrationComponent = () => {
         {/* Left Content */}
         <div className="space-y-6">
           <h2 className="text-3xl text-left font-bold leading-tight">
-            Integrate with your
-            <br />
-            favorite apps
+            Integrate with the Tools You Love
           </h2>
           
           <p className="text-purple-100 leading-relaxed text-sm text-left">
-            Integrate Appoint Roll with your favorite apps to 
-            automate the entire scheduling process, from 
-            syncing calendars and connecting video 
-            conferencing apps to collecting payments and 
-            completing other routine tasks. This enables you to 
-            focus on the things that matter the most for your 
-            business.
+            Sync calendars, connect meeting platforms,
+            and automate payments — all within Appoint Roll.<br />
+            Focus on your business,
+            while everything else runs in the background.
+
           </p>
-          
-          <button className="bg-blue-600 hover:bg-blue-700 transition-colors px-6 py-3 rounded-lg flex items-center gap-2 group text-sm">
-            LEARN MORE
-           
-          </button>
         </div>
         
         {/* Right Visual */}

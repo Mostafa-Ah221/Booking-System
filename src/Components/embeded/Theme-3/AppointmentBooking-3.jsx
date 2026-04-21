@@ -28,6 +28,9 @@ const AppointmentBooking_3 = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [bookingDataLoading, setBookingDataLoading] = useState(false);
   const [theme, setTheme] = useState(null);
+  const [firstAvailableDate, setFirstAvailableDate] = useState(null);
+
+console.log(theme);
 
   // ── Refs (dropdowns) ───────────────────────────────────────────────────────
   const staffDropdownRef = useRef(null);
@@ -39,9 +42,10 @@ const AppointmentBooking_3 = () => {
   const colors = theme?.colors ? JSON.parse(theme.colors) : {};
   const primary = colors?.primary || "";
   const [firstColor, secondColor] = primary.split("-");
-  console.log(theme);
+  
   
   const textColor = colors?.text_color;
+  
 useEffect(() => {
   if (selectedTimezone) return;
 
@@ -168,17 +172,15 @@ useEffect(() => {
       });
     }
 
-    if (bookingData?.mode === 'online/inperson') {
+    if (bookingData?.mode === 'online/inperson' && bookingData?.extra_modes?.length > 0) {
       list.push({
         step: counter++,
         label: 'Type',
         icon: MapPin,
         value: selectedType
-          ? selectedType === 'online'
-            ? 'Online'
-            : selectedType === 'inhouse'
-            ? 'In House'
-            : 'At Home'
+          ? selectedType === 'online'  ? 'Online'
+          : selectedType === 'inhouse' ? 'In House'
+          : 'At Home'
           : null,
         key: 'type',
       });
@@ -203,23 +205,16 @@ useEffect(() => {
 
     return list;
   }, [
-    idAdmin,
-    workspaces,
-    selectedWorkspace,
-    isInterviewMode,
-    selectedInterview,
-    availableStaff,
-    availableStaffGroups,
-    selectedStaff,
-    selectedStaffGroup,
-    availableResources,
-    selectedResource,
-    bookingData?.mode,
-    selectedType,
-    selectedDate,
-    selectedTime,
-  ]);
-
+  idAdmin, workspaces, selectedWorkspace, isInterviewMode, selectedInterview,
+  availableStaff, availableStaffGroups, selectedStaff, selectedStaffGroup,
+  availableResources, selectedResource, bookingData?.mode, bookingData?.extra_modes,
+  selectedType, selectedDate, selectedTime,
+]);
+useEffect(() => {
+  if (selectedDate && !firstAvailableDate) {
+    setFirstAvailableDate(selectedDate);
+  }
+}, [selectedDate]);
   const hasAnySocial = 
     (theme?.show_email === "1" && theme?.footer_email) ||
     (theme?.show_phone === "1" && theme?.footer_phone) ||
@@ -398,7 +393,6 @@ useEffect(() => {
             title="Back"
             onClick={() => {
               if (currentStep === 1) return; 
-
               const prevStep = steps.find(
                 (s) => s.step === currentStep - 1
               );
@@ -465,7 +459,7 @@ useEffect(() => {
           {currentStep === steps.find((s) => s.key === 'workspace')?.step && idAdmin && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold mb-6" style={{ color: textColor }}>
-                Select Workspace
+                {theme?.work_space_text || 'Select Workspace'}
               </h2>
               
               {workspacesLoading ? (
@@ -520,7 +514,7 @@ useEffect(() => {
           {currentStep === steps.find((s) => s.key === 'interview')?.step && isInterviewMode && (
             <div className="space-y-6">
                 <h2 className="text-2xl font-bold mb-6" style={{ color: textColor }}>
-                Pick an Interview
+                  {theme?.interview_text || 'Pick an Interview'}
                 </h2>
 
                 {interviewsLoading ? (
@@ -537,7 +531,7 @@ useEffect(() => {
                         }}
                         onClick={() => handleInterviewSelect(interview)}
                     >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-start gap-4">
                         <div
                             className="w-12 h-12 border rounded-lg flex items-center justify-center font-semibold"
                             style={{
@@ -582,7 +576,7 @@ useEffect(() => {
                 {availableStaffGroups?.length > 0 && (
                 <div className="space-y-4">
                     <h3 className="text-xl font-semibold" style={{ color: firstColor }}>
-                    Select Staff Group
+                      {theme?.staff_text || 'Select Staff Group'}
                     </h3>
                     {availableStaffGroups.map((group) => (
                     <div
@@ -628,7 +622,7 @@ useEffect(() => {
                 {!availableStaffGroups?.length && availableStaff?.length > 0 && (
                 <div className="space-y-4">
                     <h3 className="text-xl font-semibold" style={{ color: textColor }}>
-                    Select Staff Member
+                      {theme?.staff_text || 'Select Staff Member'}
                     </h3>
                     {availableStaff.map((staff) => (
                     <div
@@ -697,7 +691,7 @@ useEffect(() => {
                     }}
                     onClick={() => setSelectedResource(resource)}
                     >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-start gap-4">
                         <div
                         className="w-12 h-12 border rounded-lg flex items-center justify-center font-semibold"
                         style={{
@@ -731,79 +725,59 @@ useEffect(() => {
             )}
 
             {/* ────────────── Type Selection ────────────── */}
-            {currentStep === steps.find((s) => s.key === 'type')?.step && bookingData?.mode === 'online/inperson' && (
-           <div className="space-y-6">
-  <h2
-    className="text-2xl font-bold mb-6"
-    style={{ color: firstColor }}
-  >
-    Select Type
-  </h2>
+            {currentStep === steps.find((s) => s.key === 'type')?.step &&
+                bookingData?.mode === 'online/inperson' &&
+                bookingData?.extra_modes?.length > 0 && (
+                <div className="space-y-6">
+                  <h2 className="text-2xl font-bold mb-6" style={{ color: firstColor }}>
+                    {theme?.mode_text || 'Select Type'}
+                  </h2>
 
-  <div className="space-y-4">
-    {[
-      { value: "online", label: "Online", icon: Wifi },
-      { value: "inhouse", label: "In House", icon: FaBuilding },
-      { value: "athome", label: "At Home", icon: FaHome },
-    ].map((type) => {
-      const Icon = type.icon;
+                  <div className="space-y-4">
+                    {bookingData.extra_modes.map((modeVal) => {
+                      const typeMap = {
+                        online:  { label: 'Online',   icon: Wifi       },
+                        inhouse: { label: 'In House', icon: FaBuilding },
+                        athome:  { label: 'At Home',  icon: FaHome     },
+                      };
+                      const { label, icon: Icon } = typeMap[modeVal] || { label: modeVal, icon: MapPin };
 
-      return (
-        <div
-          key={type.value}
-          className="mx-2 p-6 cursor-pointer transition-all hover:shadow-md"
-          style={{
-            background:
-              selectedType === type.value
-                ? firstColor + "20"
-                : "transparent",
-            borderRadius: "0.5rem",
-          }}
-          onClick={() => setSelectedType(type.value)}
-        >
-          <div className="flex items-center gap-4">
-            {/* Icon Box */}
-            <div
-              className="w-12 h-12 border rounded-lg flex items-center justify-center"
-              style={{
-                color:
-                  selectedType === type.value
-                    ? firstColor
-                    : textColor,
-                border: "1px solid " + textColor,
-              }}
-            >
-              <Icon size={22} />
-            </div>
+                      return (
+                        <div
+                          key={modeVal}
+                          className="mx-2 p-6 cursor-pointer transition-all hover:shadow-md"
+                          style={{
+                            background: selectedType === modeVal ? firstColor + '20' : 'transparent',
+                            borderRadius: '0.5rem',
+                          }}
+                          onClick={() => setSelectedType(modeVal)}
+                        >
+                          <div className="flex items-start gap-4">
+                            <div
+                              className="w-12 h-12 border rounded-lg flex items-center justify-center"
+                              style={{
+                                color:  selectedType === modeVal ? firstColor : textColor,
+                                border: '1px solid ' + textColor,
+                              }}
+                            >
+                              <Icon size={22} />
+                            </div>
 
-            {/* Label + Check */}
-            <div className="flex-1 flex justify-between items-center border-b border-gray-50">
-              <h3
-                style={{
-                  color:
-                    selectedType === type.value
-                      ? firstColor
-                      : textColor,
-                }}
-              >
-                {type.label}
-              </h3>
-
-              {selectedType === type.value && (
-                <Check
-                  className="w-5 h-5"
-                  style={{ color: firstColor }}
-                />
+                            <div className="flex-1 flex justify-between items-center border-b border-gray-50">
+                              <h3 style={{ color: selectedType === modeVal ? firstColor : textColor }}>
+                                {label}
+                              </h3>
+                              {selectedType === modeVal && (
+                                <Check className="w-5 h-5" style={{ color: firstColor }} />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
-            </div>
-          </div>
-        </div>
-      );
-    })}
-  </div>
-</div>
-
-            )}
 
 
           {/* ────────────────────────────────────────────────────────────────── */}
@@ -832,13 +806,14 @@ useEffect(() => {
                         onDateSelect={(date) => {
                           setSelectedDate(date);
                         }}
+                         initialDate={firstAvailableDate} 
                         availableDates={bookingData?.available_dates || []}
                         availableTimes={bookingData?.available_times || []}
                         availableTimesFromAPI={bookingData?.raw_available_times || []}
                         unavailableDates={bookingData?.unavailable_dates || []}
                         unavailableTimes={bookingData?.unavailable_times || []}
-                        disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
-                        durationCycle={parseInt(bookingData?.duration_cycle) || 15}
+                        disabledTimes={bookingData?.disabled_times || []}
+                         durationCycle={parseInt(bookingData?.duration_cycle) || 15}
                         durationPeriod={bookingData?.duration_period || "minutes"}
                         restCycle={parseInt(bookingData?.rest_cycle) || 0}
                         setSelectedTimezone={setSelectedTimezone}
@@ -856,7 +831,8 @@ useEffect(() => {
           availableTimes={bookingData?.available_times || []}
           availableTimesFromAPI={bookingData?.raw_available_times || []}
           selectedDate={selectedDate}
-          disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
+            disabledTimes={bookingData?.disabled_times || []}
+  convertedDisabledTimes={bookingData?.converted_disabled_times || []}
           unavailableTimes={bookingData?.unavailable_times || []}
           unavailableDates={bookingData?.unavailable_dates || []}
           requireEndTime={bookingData?.require_end_time}
@@ -893,6 +869,7 @@ useEffect(() => {
                 totalPrice={totalPrice}
                 numberOfSlots={numberOfSlots}
                 themeColor={theme?.colors}
+                theme={theme}
               />
             </div>
           )}

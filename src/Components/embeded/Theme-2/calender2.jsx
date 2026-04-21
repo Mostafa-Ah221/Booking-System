@@ -12,6 +12,7 @@ const CalendarSection2 = ({
   unavailableTimes = [],
   availableTimesFromAPI = [],
   durationCycle = 15,
+  initialDate,
   durationPeriod = "minutes",
   restCycle = 0,
   setSelectedTimezone,
@@ -20,12 +21,28 @@ const CalendarSection2 = ({
   workspaceTimezone
 }) => {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  if (initialDate) {
+    const parts = initialDate.split(' ');
+    const months = {
+      'Jan':0,'Feb':1,'Mar':2,'Apr':3,'May':4,'Jun':5,
+      'Jul':6,'Aug':7,'Sep':8,'Oct':9,'Nov':10,'Dec':11
+    };
+    const date = new Date(
+      parseInt(parts[2]),
+      months[parts[1]],
+      parseInt(parts[0])
+    );
+    const dayOfWeek = date.getDay();
+    const monday = new Date(date);
+    monday.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
     return monday;
-  });
+  }
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  return monday;
+});
   
   console.log(availableDates);
 
@@ -38,6 +55,8 @@ const CalendarSection2 = ({
   const primary = colors?.primary || "";
   const [firstColor, secondColor] = primary.split("-");
   const textColor = colors?.text_color;
+const [hasNavigated, setHasNavigated] = useState(false);
+const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   const monthAbbreviations = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -48,7 +67,48 @@ const CalendarSection2 = ({
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
+useEffect(() => {
+  if (!initialDate) return;
+  if (hasAutoNavigated.current) return; 
+  
+  const parts = initialDate.split(' ');
+  const months = {
+    'Jan':0,'Feb':1,'Mar':2,'Apr':3,'May':4,'Jun':5,
+    'Jul':6,'Aug':7,'Sep':8,'Oct':9,'Nov':10,'Dec':11
+  };
+  const date = new Date(
+    parseInt(parts[2]),
+    months[parts[1]],
+    parseInt(parts[0])
+  );
 
+  setCurrentWeekStart(date);
+  hasAutoNavigated.current = true;
+  setIsFirstLoad(false);
+}, [initialDate]);
+
+
+const hasSetInitialWeek = useRef(false);
+
+useEffect(() => {
+  if (!initialDate) return;
+  
+  // شغّل بس أول مرة أو لما initialDate يتغير لقيمة مختلفة
+  const parts = initialDate.split(' ');
+  const months = {
+    'Jan':0,'Feb':1,'Mar':2,'Apr':3,'May':4,'Jun':5,
+    'Jul':6,'Aug':7,'Sep':8,'Oct':9,'Nov':10,'Dec':11
+  };
+  const date = new Date(
+    parseInt(parts[2]),
+    months[parts[1]],
+    parseInt(parts[0])
+  );
+
+  setCurrentWeekStart(date);
+  hasSetInitialWeek.current = true;
+  setIsFirstLoad(false);
+}, [initialDate]);
   // Close popup when clicking outside
   useEffect(() => {
     if (!showMonthPicker) return;
@@ -154,15 +214,15 @@ const CalendarSection2 = ({
     const updateVisibleDays = () => {
       const width = window.innerWidth;
       
-      if (width < 480) {          // هواتف صغيرة جدًا
+      if (width < 480) {          
         setVisibleDaysCount(2);
-      } else if (width < 640) {   // هواتف عادية
+      } else if (width < 640) {   
         setVisibleDaysCount(3);
-      } else if (width < 768) {   // شاشات صغيرة–متوسطة
+      } else if (width < 768) {   
         setVisibleDaysCount(4);
-      } else if (width < 1024) {  // تابلت
+      } else if (width < 1024) {  
         setVisibleDaysCount(5);
-      } else {                    // لاب توب وديسكتوب
+      } else {                    
         setVisibleDaysCount(7);
       }
     };
@@ -282,14 +342,12 @@ const CalendarSection2 = ({
       const nextDayOfWeek = nextDate.getUTCDay();
       const nextDayId = nextDayOfWeek === 0 ? 1 : nextDayOfWeek + 1;
 
-      // نجيب أوقات اليوم التالي
       const nextDayAvailableTimes = (availableTimesFromAPI && availableTimesFromAPI.length > 0 
         ? availableTimesFromAPI 
         : availableTimes || []
       ).filter(timeRange => String(timeRange.day_id) === String(nextDayId));
 
       if (nextDayAvailableTimes.length > 0) {
-        // نولد الأوقات لليوم التالي
         const nextAvailableRanges = [];
         nextDayAvailableTimes.forEach((availableRange) => {
           if (!availableRange || !availableRange.from || !availableRange.to) return;
@@ -306,7 +364,6 @@ const CalendarSection2 = ({
             const minutes = currentMinutes % 60;
             const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
             
-            // نحول الوقت ده من اليوم التالي للـ user timezone
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             const nextDateStr = `${String(nextDay).padStart(2, '0')} ${monthNames[nextMonth]} ${nextYear}`;
             
@@ -442,11 +499,9 @@ const CalendarSection2 = ({
     
     const nextDayAvailable = checkDateAvailability(nextDay, nextMonth, nextYear);
     if (nextDayAvailable) {
-      // نجيب أوقات اليوم التالي ونحولها
       const nextDateStr = `${String(nextDay).padStart(2, '0')} ${monthNames[nextMonth]} ${nextYear}`;
       const nextDayTimes = calculateEffectiveAvailableTimes(nextDay, nextMonth, nextYear);
       
-      // نشوف لو في أوقات من اليوم التالي هتظهر في اليوم الحالي
       for (let time of nextDayTimes) {
         const converted = convertDateTimeWithTimezone(nextDateStr, time, wsTimezone, selectedTimezone);
         if (converted.date === currentDateStr) {
@@ -512,28 +567,29 @@ const CalendarSection2 = ({
 
 
 
-  const getDaysInWeek = () => {
-    const startDate = new Date(currentWeekStart);
-    const days = [];
-    
-    for (let i = 0; i < 7; i++) {
-      const day = new Date(startDate);
-      day.setDate(startDate.getDate() + i);
-      days.push(day);
-    }
-    
-    return days;
-  };
+ const getDaysInWeek = () => {
+  const startDate = new Date(currentWeekStart);
+  const days = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(startDate);
+    day.setDate(startDate.getDate() + i);
+    days.push(day);
+  }
+  
+  return days;
+};
 
-  const navigateWeek = (direction) => {
-    const newDate = new Date(currentWeekStart);
-    if (direction === 'prev') {
-      newDate.setDate(newDate.getDate() - visibleDaysCount);
-    } else {
-      newDate.setDate(newDate.getDate() + visibleDaysCount);
-    }
-    setCurrentWeekStart(newDate);
-  };
+ const navigateWeek = (direction) => {
+  setHasNavigated(true);
+  const newDate = new Date(currentWeekStart);
+  if (direction === 'prev') {
+    newDate.setDate(newDate.getDate() - visibleDaysCount);
+  } else {
+    newDate.setDate(newDate.getDate() + visibleDaysCount);
+  }
+  setCurrentWeekStart(newDate);
+};
 
   const formatDateString = (date) => {
     const day = date.getDate().toString().padStart(2, '0');
@@ -557,16 +613,10 @@ const CalendarSection2 = ({
     setSelectedYear(prev => direction === 'next' ? prev + 1 : prev - 1);
   };
 
-  const getVisibleDays = () => {
-    const allWeekDays = getDaysInWeek(); // الـ 7 أيام كاملة
-    const middleIndex = Math.floor(allWeekDays.length / 2); 
-    
-    const startIndex = Math.max(0, middleIndex - Math.floor(visibleDaysCount / 2));
-    const endIndex = Math.min(allWeekDays.length, startIndex + visibleDaysCount);
-    
-    return allWeekDays.slice(startIndex, endIndex);
-  };
-
+ const getVisibleDays = () => {
+  const allWeekDays = getDaysInWeek();
+  return allWeekDays.slice(0, visibleDaysCount);
+};
   const visibleDays = getVisibleDays();
 
   // ═══════════════════════════════════════════════════════════════════
@@ -583,8 +633,8 @@ const CalendarSection2 = ({
     
     return cache;
   }, [
-    currentWeekStart,           // ده الأهم - لما الأسبوع يتغير
-    visibleDaysCount,           // لما عدد الأيام المرئية يتغير
+    currentWeekStart,         
+    visibleDaysCount,           
     availableDates,
     disabledTimes,
     availableTimesFromAPI,
@@ -607,8 +657,72 @@ const CalendarSection2 = ({
     setSelectedYear(currentYear);
   }, [currentMonth, currentYear]);
 
+  // ═══════════════════════════════════════════════════════════════════
+  // Auto-navigate on mobile to show the first available date
+  // ═══════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (visibleDaysCount >= 7 || hasNavigated || isFirstLoad || availableDatesCache.size === 0) {
+      return; 
+    }
 
+    const firstAvailableInView = visibleDays.find(date => {
+      const dateStr = formatDateString(date);
+      return availableDatesCache.get(dateStr);
+    });
 
+    if (firstAvailableInView) {
+      return; 
+    }
+
+    const allDays = getDaysInWeek();
+    const firstAvailableOverall = allDays.find(date => {
+      const dateStr = formatDateString(date);
+      const isAvailable = isDateAvailable(date.getDate(), date.getMonth(), date.getFullYear());
+      return isAvailable;
+    });
+
+    if (firstAvailableOverall && !visibleDays.includes(firstAvailableOverall)) {
+      const newDate = new Date(firstAvailableOverall);
+      newDate.setDate(newDate.getDate() - (newDate.getDay() === 0 ? 6 : newDate.getDay() - 1));
+      setCurrentWeekStart(newDate);
+      setHasNavigated(true);
+    }
+  }, [visibleDaysCount, hasNavigated, isFirstLoad, availableDatesCache, visibleDays]);
+// أضف ده بعد كل الـ useEffects الموجودة
+const hasAutoNavigated = useRef(false);
+
+useEffect(() => {
+  // لو الداتا لسه ماجتش أو اليوزر عمل navigate → وقف
+  if (hasAutoNavigated.current || hasNavigated) return;
+  if (!availableDates?.length || !availableTimesFromAPI?.length) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // ابحث عن أول يوم متاح ابتداءً من النهارده
+  let checkDate = new Date(today);
+  let found = null;
+
+  // نفحص لمدة 365 يوم
+  for (let i = 0; i < 365; i++) {
+    const d = checkDate.getDate();
+    const m = checkDate.getMonth();
+    const y = checkDate.getFullYear();
+
+    if (isDateAvailable(d, m, y)) {
+      found = new Date(checkDate);
+      break;
+    }
+
+    checkDate.setDate(checkDate.getDate() + 1);
+  }
+
+  if (found) {
+    setCurrentWeekStart(new Date(found)); 
+    hasAutoNavigated.current = true;
+    setIsFirstLoad(false);
+  }
+}, [availableDates, availableTimesFromAPI, disabledTimes]);
   return (
     <div className="w-full px-2 sm:px-0">
       {/* Month Selector */}

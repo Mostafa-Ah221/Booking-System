@@ -48,16 +48,14 @@ const Trusted = () => {
 
           {/* Main Headline */}
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-6 relative z-10">
-            8M+ appointments
-            <br />
-            scheduled around
-            <br />
-            the world
+            Growing with Every Booking
           </h1>
 
           {/* Subtitle */}
           <p className="text-xl md:text-2xl text-purple-100 mb-8 relative z-10">
-            With a new appointment scheduled<br/> every 5 seconds
+           Appointroll is helping businesses simplify scheduling
+           and manage appointments more efficiently — every day.
+
           </p>
 
 

@@ -75,7 +75,8 @@ export default function Slider() {
   return (
     <div className="relative w-full max-w-4xl mx-auto px-4">
       <h2 className="text-center text-2xl md:text-3xl w-full md:w-80 mx-auto font-semibold mb-16">
-        Scheduling solutions to scale your business
+        Scale Smarter with Intelligent Scheduling
+
       </h2>
       
       <button

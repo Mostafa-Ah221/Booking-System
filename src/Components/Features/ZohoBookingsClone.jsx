@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import feature from '../../assets/image/featuer-2.PNG';
 import feature2 from '../../assets/image/featuer-3.PNG';
+import { Link } from 'react-router-dom';
 
 const ZohoBookingsClone = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -40,18 +41,20 @@ const ZohoBookingsClone = () => {
           <div className="">
             <div>
               <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-                Beyond
-                appointment<br />
-                scheduling
+                Not Just Scheduling
+                it’s a Complete System
+
               </h1>
               
               <p className="text-lg text-gray-700 leading-relaxed mb-8 max-w-md">
-                Take the hassle out of scheduling with Appoint Roll. Automate your meetings, emails, payments, team collaboration, and integrations for a seamless appointment scheduling experience.
+                Appoint Roll brings everything together —
+                appointments, workflows, teams, and integrations —
+                in one powerful experience.
               </p>
               
-              <button className="bg-red-500 hover:bg-red-600 text-white font-semibold px-8 py-4 rounded-md text-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
-                ACCESS Appoint Roll
-              </button>
+               <Link to="/signup" className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-md font-medium transition-colors">
+                            Start Your Free Trial now
+                          </Link>
             </div>
           </div>
 

@@ -7,33 +7,33 @@ const SecurityPage = () => {
   const securityFeatures = [
     {
       icon: Lock,
-      title: 'End-to-End Encryption',
-      description: 'All data is encrypted using industry-standard AES-256 encryption both in transit and at rest.'
+      title: 'End-to-End Data Protection',
+      description: 'Your data is encrypted and secured at every stage — ensuring maximum privacy and protection.'
     },
     {
       icon: Key,
-      title: 'Two-Factor Authentication',
-      description: 'Add an extra layer of security to your account with 2FA using authenticator apps or SMS.'
+      title: 'Secure Authentication Layers',
+      description: 'Multiple authentication methods add extra layers of security to protect your account from unauthorized access.'
     },
     {
       icon: Server,
-      title: 'Secure Infrastructure',
-      description: 'Our servers are hosted in certified data centers with 24/7 monitoring and physical security.'
+      title: 'Scalable & Secure Infrastructure',
+      description: 'Hosted on reliable, enterprise-level environments designed for stability, performance, and security.'
     },
     {
       icon: Eye,
-      title: 'Access Controls',
-      description: 'Granular permissions and role-based access control to ensure data is only accessible by authorized users.'
+      title: 'Granular Access Management',
+      description: 'Full control over user permissions, ensuring the right people access the right data — nothing more.'
     },
     {
       icon: Activity,
-      title: 'Real-Time Monitoring',
-      description: 'Continuous monitoring of systems to detect and respond to security threats in real-time.'
+      title: 'Intelligent Security Monitoring',
+      description: 'Advanced monitoring systems track activity and detect anomalies in real time.'
     },
     {
       icon: FileCheck,
-      title: 'Regular Audits',
-      description: 'Independent security audits and penetration testing conducted regularly by third-party experts.'
+      title: 'Ongoing Security Assessments',
+      description: 'Continuous testing and security reviews to keep your platform protected against evolving threats.'
     }
   ];
 
@@ -59,46 +59,46 @@ const SecurityPage = () => {
   const bestPractices = [
     {
       icon: Smartphone,
-      title: 'Use Strong Passwords',
+      title: 'Use Strong & Secure Credentials',
       tips: [
-        'Create passwords with at least 12 characters',
-        'Use a mix of uppercase, lowercase, numbers, and symbols',
-        'Avoid using personal information or common words',
-        'Use a password manager to store passwords securely',
-        'Change passwords regularly, especially after security incidents'
+        'Create passwords with high complexity (12+ characters) ',
+        'Use a mix of letters, numbers, and symbols ',
+        'Avoid predictable or personal information ',
+        'Store passwords securely using a trusted manager ',
+        'Update your credentials periodically '
       ]
     },
     {
       icon: Key,
-      title: 'Enable Two-Factor Authentication',
+      title: 'Enable Multi-Layer Authentication',
       tips: [
-        'Activate 2FA on your account settings',
-        'Use authenticator apps like Google Authenticator or Authy',
-        'Keep backup codes in a secure location',
-        'Never share your 2FA codes with anyone',
-        'Update your authentication method if you change devices'
+        'Activate two-factor authentication (2FA) for your account ',
+        'Use trusted authenticator apps instead of SMS when possible ',
+        'Store backup codes securely ',
+        'Never share verification codes ',
+        'Update authentication methods when switching devices '
       ]
     },
     {
       icon: Eye,
-      title: 'Be Vigilant',
+      title: 'Stay Alert & Proactive',
       tips: [
-        'Watch for phishing emails and suspicious links',
-        'Verify sender addresses before clicking links',
-        'Never share sensitive information via email',
-        'Report suspicious activity immediately',
-        'Keep your software and applications updated'
+        'Be cautious of phishing attempts and suspicious links ',
+        'Always verify the source before taking action ',
+        'Avoid sharing sensitive data ',
+        'Report unusual activity immediately ',
+        'Keep your system and applications up to date '
       ]
     },
     {
       icon: Users,
-      title: 'Manage Access Carefully',
+      title: 'Control Access & Permissions',
       tips: [
-        'Review user permissions regularly',
-        'Remove access for inactive users promptly',
-        'Use role-based access control',
-        'Limit admin privileges to necessary personnel',
-        'Monitor login activity and unusual access patterns'
+        'Regularly review user roles and permissions ',
+        'Remove access for inactive or former users ',
+        'Limit administrative privileges to essential users only ',
+        'Monitor login activity and unusual behavior ',
+        'Apply role-based access for better control '
       ]
     }
   ];
@@ -107,32 +107,32 @@ const SecurityPage = () => {
     {
       step: '1',
       title: 'Detection',
-      description: 'Our automated systems continuously monitor for security threats and anomalies 24/7.'
+      description: 'Advanced monitoring systems track activity continuously to identify potential threats and anomalies in real time.'
     },
     {
       step: '2',
       title: 'Analysis',
-      description: 'Security team investigates alerts to determine the nature and severity of potential incidents.'
+      description: 'Our security team investigates alerts quickly and accurately to assess the nature, scope, and severity of the incident.'
     },
     {
       step: '3',
       title: 'Containment',
-      description: 'Immediate action is taken to isolate affected systems and prevent further damage.'
+      description: 'Immediate actions are taken to isolate affected systems and prevent further exposure or damage.'
     },
     {
       step: '4',
       title: 'Remediation',
-      description: 'We eliminate the threat, restore services, and implement measures to prevent recurrence.'
+      description: 'We eliminate the threat, restore affected services, and ensure system stability with minimal disruption.'
     },
     {
       step: '5',
       title: 'Communication',
-      description: 'Affected users are notified promptly with clear information about the incident and steps taken.'
+      description: 'We keep affected users informed with clear, timely updates and guidance throughout the process.'
     },
     {
       step: '6',
-      title: 'Review',
-      description: 'Post-incident analysis to improve our security measures and response procedures.'
+      title: 'Continuous Improvement',
+      description: 'Every incident is reviewed to strengthen our defenses and improve future response strategies.'
     }
   ];
 
@@ -148,7 +148,9 @@ const SecurityPage = () => {
           </div>
           <h1 className="text-5xl font-bold text-center mb-6">Security & Data Protection</h1>
           <p className="text-xl text-center text-gray-300 max-w-3xl mx-auto">
-            Your security is our top priority. We implement comprehensive measures to protect your data and maintain your trust.
+            Your security isn’t just a priority —
+            it’s built into everything we do.
+            We protect your data with advanced security measures designed to ensure privacy, reliability, and complete peace of mind.     
           </p>
         </div>
       </div>
@@ -160,10 +162,17 @@ const SecurityPage = () => {
         <div className="bg-white rounded-2xl shadow-lg p-10 mb-12">
           <h2 className="text-3xl font-bold text-gray-800 mb-6">Our Security Commitment</h2>
           <p className="text-gray-600 text-lg leading-relaxed mb-6">
-            We understand that security is fundamental to earning and maintaining your trust. Our comprehensive security program is designed to protect your data at every level—from network infrastructure to application code, and from employee access to third-party integrations.
+            Security is the foundation of trust.
+            That’s why Appoint Roll is designed to protect your data at every level — from infrastructure to application, and from user access to integrations
+
           </p>
           <p className="text-gray-600 text-lg leading-relaxed">
-            We continuously invest in security technologies, conduct regular assessments, and work with industry experts to stay ahead of emerging threats. Our security team operates 24/7 to monitor, detect, and respond to any potential security issues.
+            We continuously enhance our systems with modern security technologies, and industry best practices to stay ahead of evolving threats.
+          </p>
+          <p className="text-gray-600 text-lg leading-relaxed">
+           Our team monitors the platform around the clock —
+           detecting, preventing, and responding to risks in real time.
+
           </p>
         </div>
 
@@ -205,8 +214,9 @@ const SecurityPage = () => {
         {/* Best Practices */}
         <div className="mb-16">
           <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">Security Best Practices</h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">Protect Your Account - Stay in Control.</h2>
           <p className="text-gray-600 text-center mb-10 max-w-2xl mx-auto">
-            Follow these guidelines to keep your account and data secure
+            Follow these best practices to keep your data secure and your account protected at all times.
           </p>
           <div className="grid md:grid-cols-2 gap-8">
             {bestPractices.map((practice, index) => {
@@ -235,9 +245,10 @@ const SecurityPage = () => {
 
         {/* Incident Response */}
         <div className="bg-white rounded-2xl shadow-lg p-10 mb-16">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">Incident Response Protocol</h2>
-          <p className="text-gray-600 mb-10 text-lg">
-            In the unlikely event of a security incident, we follow a rigorous protocol to protect your data and restore normal operations quickly.
+          <h2 className="text-3xl text-center font-bold text-gray-800 mb-4">Incident Response Protocol<br />Prepared. Responsive. Reliable.
+          </h2>
+          <p className="text-gray-600 mb-10 text-lg text-center">
+            In the rare event of a security incident, Appoint Roll follows a structured response protocol to protect your data, minimize impact, and restore operations seamlessly and affectionally .
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {incidentResponse.map((item, index) => (
@@ -262,24 +273,24 @@ const SecurityPage = () => {
               <h3 className="text-2xl font-bold text-gray-800">Data in Transit</h3>
             </div>
             <p className="text-gray-600 mb-4">
-              All data transmitted between your device and our servers is encrypted using TLS 1.3 protocol with perfect forward secrecy.
+             All data exchanged between your device and Appoint Roll is fully encrypted using advanced security protocols to ensure maximum protection while transferring.
             </p>
             <ul className="space-y-2 text-gray-600">
               <li className="flex items-start">
                 <span className="text-gray-400 mr-2">•</span>
-                <span>TLS 1.3 encryption for all connections</span>
+                <span>TLS 1.3 encryption across all connections </span>
               </li>
               <li className="flex items-start">
                 <span className="text-gray-400 mr-2">•</span>
-                <span>256-bit encryption keys</span>
+                <span>Strong 256-bit encryption standards </span>
               </li>
               <li className="flex items-start">
                 <span className="text-gray-400 mr-2">•</span>
-                <span>HTTPS enforced across all services</span>
+                <span>HTTPS enforced platform-wide </span>
               </li>
               <li className="flex items-start">
                 <span className="text-gray-400 mr-2">•</span>
-                <span>Certificate pinning for mobile apps</span>
+                <span>Secure certificate validation for mobile applications </span>
               </li>
             </ul>
           </div>
@@ -290,24 +301,24 @@ const SecurityPage = () => {
               <h3 className="text-2xl font-bold text-gray-800">Data at Rest</h3>
             </div>
             <p className="text-gray-600 mb-4">
-              All stored data is encrypted using AES-256 encryption with secure key management and regular key rotation.
+              All stored data is encrypted and managed with strict security controls to ensure long-term protection and integrity.
             </p>
             <ul className="space-y-2 text-gray-600">
               <li className="flex items-start">
                 <span className="text-gray-400 mr-2">•</span>
-                <span>AES-256 encryption for all stored data</span>
+                <span>AES-256 encryption for all stored data </span>
               </li>
               <li className="flex items-start">
                 <span className="text-gray-400 mr-2">•</span>
-                <span>Encrypted database backups</span>
+                <span>Encrypted backups for added protection </span>
               </li>
               <li className="flex items-start">
                 <span className="text-gray-400 mr-2">•</span>
-                <span>Secure key management system</span>
+                <span>Secure key management system </span>
               </li>
               <li className="flex items-start">
                 <span className="text-gray-400 mr-2">•</span>
-                <span>Regular key rotation policies</span>
+                <span>Regular key rotation for enhanced security </span>
               </li>
             </ul>
           </div>
@@ -316,9 +327,13 @@ const SecurityPage = () => {
         {/* Report Security Issue */}
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 text-white rounded-2xl p-10 text-center">
           <AlertTriangle className="w-16 h-16 mx-auto mb-6 text-gray-300" />
-          <h2 className="text-3xl font-bold mb-4">Report a Security Vulnerability</h2>
-          <p className="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">
-            We take security vulnerabilities seriously. If you discover a security issue, please report it to us immediately through our responsible disclosure program.
+          <h2 className="text-3xl font-bold mb-4">Responsible Disclosure</h2>
+      
+          <p className="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">Help us keep Appoint Roll secure.
+            <br />
+            If you discover a vulnerability, please report it responsibly.
+            <br />
+            Our security team investigates every report with priority and responds quickly to protect our users and systems.
           </p>
           <a
             href="mailto:support@egydesigner.com"

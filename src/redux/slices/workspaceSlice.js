@@ -49,33 +49,27 @@ const workspaceSlice = createSlice({
     },
 
     updateWorkspaceInList(state, action) {
-      const updatedWorkspace = action.payload;
-      
-      if (Array.isArray(state.allWorkspaces)) {
-        const index = state.allWorkspaces.findIndex(
-          ws => ws.id === updatedWorkspace.id
-        );
-        if (index !== -1) {
-          state.allWorkspaces[index] = {
-            ...state.allWorkspaces[index],
-            ...updatedWorkspace
-          };
-        }
-      }
-      
-      // تحديث في workspaces
-      if (Array.isArray(state.workspaces)) {
-        const index = state.workspaces.findIndex(
-          ws => ws.id === updatedWorkspace.id
-        );
-        if (index !== -1) {
-          state.workspaces[index] = {
-            ...state.workspaces[index],
-            ...updatedWorkspace
-          };
-        }
-      }
-    },
+  const updatedWorkspace = action.payload;
+  
+  if (Array.isArray(state.allWorkspaces)) {
+    const index = state.allWorkspaces.findIndex(ws => ws.id === updatedWorkspace.id);
+    if (index !== -1) {
+      state.allWorkspaces[index] = { ...state.allWorkspaces[index], ...updatedWorkspace };
+    }
+  }
+  
+  if (Array.isArray(state.workspaces)) {
+    const index = state.workspaces.findIndex(ws => ws.id === updatedWorkspace.id);
+    if (index !== -1) {
+      state.workspaces[index] = { ...state.workspaces[index], ...updatedWorkspace };
+    }
+  }
+
+  // ✅ زود السطرين دول بس
+  if (state.workspace && state.workspace.id === updatedWorkspace.id) {
+    state.workspace = { ...state.workspace, ...updatedWorkspace };
+  }
+},
     setLoading(state, action) {
       state.loading = action.payload;
       if (action.payload) {

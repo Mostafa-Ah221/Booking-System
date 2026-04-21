@@ -5,7 +5,7 @@ import {
   getPermissions, 
   createRole, 
   updateRole, 
-  getRoleById ,
+  getRoleById,
   getRoles
 } from "../../../../redux/apiCalls/RolesCallApli";
 
@@ -13,39 +13,51 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
   const dispatch = useDispatch();
   const { permissions, role: roleData, loading, error } = useSelector((state) => state.roles);
   
-  // Extract the actual role from the nested structure
   const role = roleData?.role;
   const rolePermissions = roleData?.rolePermissions || [];
-  
 
-  
   const [formData, setFormData] = useState({ name: "", permissions: [] });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isUpdateMode = Boolean(editRole);
 
-  // Load permissions when modal opens
+  const allPermissions = permissions?.permissions || [];
+
+  // ✅ هل كل الـ permissions متحددة؟
+  const isAllSelected = allPermissions.length > 0 && 
+    allPermissions.every(p => formData.permissions.some(sel => sel.id === p.id));
+
+  // ✅ هل في بعض بس متحددة؟
+  const isIndeterminate = !isAllSelected && 
+    allPermissions.some(p => formData.permissions.some(sel => sel.id === p.id));
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setFormData(prev => ({ ...prev, permissions: [] }));
+    } else {
+      setFormData(prev => ({ 
+        ...prev, 
+        permissions: allPermissions.map(p => ({ id: p.id })) 
+      }));
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       dispatch(getPermissions());
     }
   }, [isOpen, dispatch]);
 
-  // Fetch role if update mode
   useEffect(() => {
     if (isOpen && isUpdateMode && editRole?.id) {
       dispatch(getRoleById(editRole.id));
     }
   }, [isOpen, isUpdateMode, editRole?.id, dispatch]);
 
-  // Sync formData with role - FIXED VERSION WITHOUT LOOP
   useEffect(() => {
     if (!isOpen) return;
 
     if (isUpdateMode && role && editRole?.id && role.id === editRole.id) {
-      // console.log("Setting form data with role:", role);
-      // console.log("Using rolePermissions:", rolePermissions);
-      
       setFormData({
         name: role.name || "",
         permissions: Array.isArray(rolePermissions) 
@@ -53,17 +65,9 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
           : []
       });
     } else if (!isUpdateMode) {
-      // console.log("Resetting form for create mode");
       setFormData({ name: "", permissions: [] });
     }
   }, [isOpen, isUpdateMode, role?.id, editRole?.id]);
-
-  // Clear form data when modal closes - REMOVED TO PREVENT LOOP
-  // useEffect(() => {
-  //   if (!isOpen) {
-  //     setFormData({ name: "", permissions: [] });
-  //   }
-  // }, [isOpen]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -102,7 +106,6 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
   };
 
   const handleClose = () => {
-    // Reset form data when closing manually
     setFormData({ name: "", permissions: [] });
     onClose();
   };
@@ -127,13 +130,6 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
           </button>
         </div>
 
-        
-        {/* {error && (
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )} */}
-
         {/* Form */}
         <form className="mt-4 space-y-4" onSubmit={(e) => e.preventDefault()}>
           <div>
@@ -152,20 +148,40 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Permissions <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Permissions <span className="text-red-500">*</span>
+              </label>
+
+              {/* ✅ Select All Checkbox */}
+              {!loading && allPermissions.length > 0 && (
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={el => {
+                      if (el) el.indeterminate = isIndeterminate;
+                    }}
+                    onChange={handleSelectAll}
+                    disabled={isSubmitting}
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-600">Select All</span>
+                </label>
+              )}
+            </div>
+
             {loading ? (
               <p className="text-gray-500 text-sm">Loading permissions...</p>
             ) : (
               <div className="max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2">
-                {permissions?.permissions?.map(p => (
-                  <label key={p.id} className="flex items-center space-x-3">
+                {allPermissions.map(p => (
+                  <label key={p.id} className="flex items-center space-x-3 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formData.permissions.some(sel => sel.id === p.id)}
                       onChange={() => handlePermissionToggle(p.id)}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded"
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded cursor-pointer"
                       disabled={isSubmitting}
                     />
                     <span className="text-sm">{p.tag_description}</span>
@@ -173,10 +189,17 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
                 ))}
               </div>
             )}
+
+            {/* ✅ عداد المحددين */}
+            {allPermissions.length > 0 && (
+              <p className="text-xs text-gray-400 mt-1">
+                {formData.permissions.length} of {allPermissions.length} selected
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-             <button
+            <button
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
@@ -192,10 +215,8 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
             >
               {isSubmitting ? "Saving..." : isUpdateMode ? "Update" : "Create"}
             </button>
-           
           </div>
         </form>
-
       </div>
     </div>
   );

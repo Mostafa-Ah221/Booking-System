@@ -14,16 +14,14 @@ const Customization = () => {
           {/* Left Side - Text Content */}
           <div className="text-white space-y-8">
             <h1 className="text-2xl lg:text-3xl text-left font-bold leading-tight">
-              Customizable booking pages that resonate with your brand
+              Turn Visitors
+              Into Booked Clients
             </h1>
             <p className="text-xl text-purple-200 leading-relaxed text-left">
-              Create a tailored booking page that fits your website branding, and 
-              add it to your website instead of a contact form to receive 
-              appointments directly from your visitors.
+              Design a booking page that fits your brand
+              and replace traditional contact forms with a seamless scheduling experience.
             </p>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-semibold transition-colors duration-200 flex items-center gap-2 text-sm">
-              LEARN MORE →
-            </button>
+           
           </div>
 
           {/* Right Side - Booking Interface */}

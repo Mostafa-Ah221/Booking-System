@@ -8,49 +8,45 @@ const AbusePolicy = () => {
     {
       icon: Ban,
       title: 'Illegal Activities',
-      description: 'Using our services for any illegal purpose or in violation of local, state, national, or international law',
+      description: 'Using the platform for any unlawful purpose is strictly prohibited.',
       examples: [
-        'Fraudulent activities or scams',
-        'Money laundering or financial crimes',
-        'Distribution of illegal content',
-        'Violation of intellectual property rights',
-        'Child exploitation or abuse material'
+        'Fraud, scams, or financial crimes ',
+        'Distribution of illegal content ',
+        'Violation of intellectual property rights ',
+        'Child exploitation or abuse material ',
       ]
     },
     {
       icon: AlertTriangle,
-      title: 'Harmful Content',
-      description: 'Creating, distributing, or storing content that is harmful, offensive, or violates the rights of others',
+      title: 'Harmful or Abusive Content',
+      description: 'Content that harms individuals or violates their rights is not allowed.',
       examples: [
-        'Hate speech or discriminatory content',
-        'Harassment, bullying, or threats',
-        'Graphic violence or disturbing material',
-        'Adult content or explicit material',
-        'Misinformation or malicious content'
+        'Hate speech or discrimination ',
+        'Harassment, threats, or bullying ',
+        'Explicit or violent content ',
+        'Misleading or malicious information ',
       ]
     },
     {
       icon: XCircle,
-      title: 'System Abuse',
-      description: 'Actions that compromise the security, integrity, or performance of our platform',
+      title: 'System Misuse',
+      description: 'Any attempt to compromise the platform’s security or performance is prohibited.',
       examples: [
-        'Attempting to gain unauthorized access',
-        'Distributing malware or viruses',
-        'DDoS attacks or network disruption',
-        'Automated scraping or data mining',
-        'Circumventing security measures'
+        'Unauthorized access attempts ',
+        'Malware or virus distribution ',
+        'Network disruption (e.g., DDoS) ',
+        'Data scraping or bypassing security controls ',
       ]
     },
     {
       icon: Mail,
-      title: 'Spam & Unwanted Communications',
-      description: 'Sending unsolicited or bulk communications through our platform',
+      title: 'Spam & Misleading Communications',
+      description: 'Unsolicited or deceptive communications are not permitted.',
       examples: [
-        'Mass unsolicited emails or messages',
-        'Phishing attempts or scam messages',
-        'Chain letters or pyramid schemes',
-        'Automated bulk booking requests',
-        'Misleading or deceptive marketing'
+        'Bulk spam messages or emails ',
+        'Phishing or scam attempts ',
+        'Automated abuse of booking systems ',
+        'Misleading promotions ',
       ]
     }
   ];
@@ -58,33 +54,33 @@ const AbusePolicy = () => {
   const reportingSteps = [
     {
       step: '1',
-      title: 'Gather Information',
-      description: 'Collect relevant details about the abuse including dates, times, usernames, and any supporting evidence such as screenshots or messages.'
+      title: 'Collect Information',
+      description: 'Gather relevant details such as timestamps, usernames, and supporting evidence.'
     },
     {
       step: '2',
       title: 'Submit Report',
-      description: 'Send your report to our abuse team via email at abuse@appointroll.com with all gathered information and documentation.'
+      description: 'Send your report to our abuse team via email at support@appointroll.com with all gathered information and documentation.'
     },
     {
       step: '3',
       title: 'Acknowledgment',
-      description: 'You will receive an automated confirmation within 24 hours acknowledging receipt of your report.'
+      description: 'You will receive confirmation within 24 hours.'
     },
     {
       step: '4',
       title: 'Investigation',
-      description: 'Our team will thoroughly investigate the reported abuse within 3-5 business days, reviewing all provided evidence.'
+      description: 'Our team reviews report within 3–5 business days.'
     },
     {
       step: '5',
       title: 'Action Taken',
-      description: 'Appropriate action will be taken based on our findings, which may include warnings, account suspension, or termination.'
+      description: 'Appropriate actions may include warnings, restrictions, or account suspension.'
     },
     {
       step: '6',
       title: 'Follow-up',
-      description: 'We will notify you of the outcome when appropriate, though specific details may be limited due to privacy considerations.'
+      description: 'You may be notified of the outcome, subject to privacy considerations.'
     }
   ];
 
@@ -92,29 +88,25 @@ const AbusePolicy = () => {
     {
       severity: 'Minor Violation',
       actions: [
-        'Written warning to the account holder',
-        'Temporary restriction of certain features',
-        'Mandatory review of policies',
-        'Monitoring of account activity'
+        'Warning notification ',
+        'Temporary feature restrictions ',
+        'Account monitoring ',
       ]
     },
     {
       severity: 'Moderate Violation',
       actions: [
-        'Temporary account suspension (7-30 days)',
-        'Removal of violating content',
-        'Loss of certain privileges',
-        'Required compliance training'
+        'Temporary suspension ',
+        'Content removal ',
+        'Limited account access ',
       ]
     },
     {
       severity: 'Severe Violation',
       actions: [
-        'Permanent account termination',
-        'Forfeiture of any paid services',
-        'Reporting to law enforcement if applicable',
-        'Legal action if necessary',
-        'Ban from creating new accounts'
+        'Permanent account termination ',
+        'Ban from future access ',
+        'Legal action or reporting (if required) ',
       ]
     }
   ];
@@ -131,11 +123,14 @@ const AbusePolicy = () => {
           </div>
           <h1 className="text-5xl font-bold text-center mb-6">Acceptable Use & Abuse Policy</h1>
           <p className="text-xl text-center text-gray-300 max-w-3xl mx-auto">
-            Our commitment to maintaining a safe, secure, and respectful platform for all users
+            At Appoint Roll, we are committed to maintaining a safe, secure, and respectful platform for all users.
+            This policy defines prohibited activities and outlines the actions we may take to protect the integrity of our platform.
+            By using Appoint Roll, you agree to comply with this policy and all applicable laws. We reserve the right to investigate violations and take appropriate action, including content removal, account suspension, or termination.
+
           </p>
           <div className="mt-8 text-center">
             <span className="inline-block bg-white/10 backdrop-blur-sm px-6 py-2 rounded-full text-sm font-medium">
-              Last Updated: October 27, 2026
+              Last Updated: April 27, 2026
             </span>
           </div>
         </div>
@@ -214,7 +209,7 @@ const AbusePolicy = () => {
           <div className="text-center mb-12">
             <Flag className="w-12 h-12 text-gray-800 mx-auto mb-4" />
             <h2 className="text-4xl font-bold text-gray-900 mb-4">How to Report Abuse</h2>
-            <p className="text-xl text-gray-600">Follow these steps to report policy violations</p>
+            <p className="text-xl text-gray-600">Follow these steps to report violations:</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -266,7 +261,7 @@ const AbusePolicy = () => {
             <h3 className="text-2xl font-bold text-gray-900 mb-3">Report by Email</h3>
             <p className="text-gray-600 mb-4">Send detailed reports to our abuse team</p>
             <a href="mailto:abuse@appointroll.com" className="text-gray-800 font-semibold hover:text-gray-900">
-              abuse@appointroll.com
+              support@appointroll.com
             </a>
           </div>
 
@@ -296,19 +291,19 @@ const AbusePolicy = () => {
               <ul className="space-y-2 text-gray-700">
                 <li className="flex items-start">
                   <span className="mr-2">•</span>
-                  <span>False reports or abuse of the reporting system may result in action against your account</span>
+                  <span>False or abusive reports may result in action against your account </span>
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2">•</span>
-                  <span>We may share information with law enforcement when legally required or when investigating serious violations</span>
+                  <span>We may share data with authorities when legally required </span>
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2">•</span>
-                  <span>This policy may be updated at any time. Continued use of our services constitutes acceptance of changes</span>
+                  <span>This policy may be updated at any time </span>
                 </li>
                 <li className="flex items-start">
                   <span className="mr-2">•</span>
-                  <span>We reserve the right to take action beyond what is specified in this policy when circumstances warrant</span>
+                  <span>We reserve the right to take additional actions when necessary </span>
                 </li>
               </ul>
             </div>
@@ -319,29 +314,32 @@ const AbusePolicy = () => {
         <div className="bg-white rounded-2xl shadow-lg p-10 mb-12 border-2 border-gray-200">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Appeal Process</h2>
           <p className="text-gray-600 leading-relaxed mb-6">
-            If you believe your account was suspended or terminated in error, you may submit an appeal within 30 days of the action. Your appeal should include:
+            If you believe an action was taken in error, you may submit an appeal within 30 days.
+          </p>
+          <p className="text-gray-700 leading-relaxed ">
+            Your appeal should include:
           </p>
           <div className="bg-gray-50 rounded-xl p-6">
             <ul className="space-y-3">
               <li className="flex items-start text-gray-700">
                 <CheckCircle className="w-5 h-5 text-gray-600 mr-3 flex-shrink-0 mt-0.5" />
-                <span>Your account information and the reason for suspension/termination</span>
+                <span>Account details </span>
               </li>
               <li className="flex items-start text-gray-700">
                 <CheckCircle className="w-5 h-5 text-gray-600 mr-3 flex-shrink-0 mt-0.5" />
-                <span>A detailed explanation of why you believe the action was taken in error</span>
+                <span>Explanation of the issue </span>
               </li>
               <li className="flex items-start text-gray-700">
                 <CheckCircle className="w-5 h-5 text-gray-600 mr-3 flex-shrink-0 mt-0.5" />
-                <span>Any supporting evidence or documentation</span>
+                <span>Supporting evidence </span>
               </li>
               <li className="flex items-start text-gray-700">
                 <CheckCircle className="w-5 h-5 text-gray-600 mr-3 flex-shrink-0 mt-0.5" />
-                <span>Steps you have taken or will take to prevent future violations</span>
+                <span>Preventive steps for future compliance </span>
               </li>
             </ul>
             <p className="text-gray-600 mt-6">
-              Submit appeals to: <a href="mailto:appeals@appointroll.com" className="text-gray-800 font-semibold hover:text-gray-900">appeals@appointroll.com</a>
+              Submit appeals to: <a href="mailto:appeals@appointroll.com" className="text-gray-800 font-semibold hover:text-gray-900">support@appointroll.com</a>
             </p>
           </div>
         </div>

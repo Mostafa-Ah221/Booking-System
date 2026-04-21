@@ -1,51 +1,58 @@
 import { useEffect, useState, useRef } from 'react';
-import { Share2, MoreVertical, Trash2, Copy, ExternalLink, Plus, Wifi, WifiOff, User, Phone, Pencil } from 'lucide-react';
+import { Share2, MoreVertical, Trash2, ExternalLink, Plus, Wifi, User, Phone, Pencil, Pin, PinOff, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchInterviews, deleteInterview,updateShareLinkIntreview } from '../../../../redux/apiCalls/interviewCallApi';
+import { fetchInterviews, deleteInterview, updateShareLinkIntreview, updateInterview, duplicateInterview } from '../../../../redux/apiCalls/interviewCallApi';
 
 import Loader from '../../../Loader';
 import { interviewAction } from '../../../../redux/slices/interviewsSlice';
 import ShareBookingModal from '../../Profile_Page/ShareModalPrpfile';
 import { usePermission } from '../../../hooks/usePermission';
+import { getWorkspace } from '../../../../redux/apiCalls/workspaceCallApi';
 
 const Interviews = () => {
   const dispatch = useDispatch();
-  const { interviews, loading = false, currentWorkspaceId ,currentType} = useSelector(state => state.interview);
+  const { interviews, loading = false, currentWorkspaceId, currentType } = useSelector(state => state.interview);
   const { profile: profileData } = useSelector(state => state.profileData);
   const { workspace } = useSelector(state => state.workspace);
   const workspaceId = workspace ? workspace.id : 0;
   const canEditInterviewf = usePermission("edit interview");
-console.log(interviews);
-
+  console.log(workspace);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [interviewToDelete, setInterviewToDelete] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pinningId, setPinningId] = useState(null);
+  const [copyingId, setCopyingId] = useState(null);
   const interviewsPerPage = 9;
   const org_share_link = profileData?.user.share_link;
   const menuRef = useRef(null);
 
-useEffect(() => {
-  console.log("useEffect triggered → workspaceId:", workspaceId, "currentWorkspaceId:", currentWorkspaceId);
+  const pinnedCount = interviews?.filter(i => i.is_pinned == 1).length || 0;
 
-  if (currentWorkspaceId !== null && currentWorkspaceId !== workspaceId) {
-    console.log("Clearing interviews because workspace changed");
-    dispatch(interviewAction.clearInterviews());
-  }
+  const sortedInterviews = [...(interviews || [])].sort((a, b) => {
+    if (b.is_pinned == 1 && a.is_pinned != 1) return 1;
+    if (a.is_pinned == 1 && b.is_pinned != 1) return -1;
+    return 0;
+  });
 
-  if (currentType !== null) {
-    console.log("Clearing because currentType exists");
-    dispatch(interviewAction.clearInterviews());
-  }
+  useEffect(() => {
+    dispatch(getWorkspace({ force: true }));
+  }, [dispatch]);
 
-  if (workspaceId != null) {   
-    console.log("Fetching interviews for workspace:", workspaceId);
-    dispatch(fetchInterviews({ work_space_id: workspaceId }));
-  }
-}, [workspaceId, currentWorkspaceId, currentType, dispatch]);
+  useEffect(() => {
+    if (currentWorkspaceId !== null && currentWorkspaceId !== workspaceId) {
+      dispatch(interviewAction.clearInterviews());
+    }
+    if (currentType !== null) {
+      dispatch(interviewAction.clearInterviews());
+    }
+    if (workspaceId != null) {
+      dispatch(fetchInterviews({ work_space_id: workspaceId }));
+    }
+  }, [workspaceId, currentWorkspaceId, currentType, dispatch]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -53,15 +60,13 @@ useEffect(() => {
         setActiveMenuId(null);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-const handleUpdateShareLink = async (newShareLink,id) => {
+
+  const handleUpdateShareLink = async (newShareLink, id) => {
     try {
-      await dispatch(updateShareLinkIntreview(newShareLink,id));
+      await dispatch(updateShareLinkIntreview(newShareLink, id));
       setIsShareModalOpen(false);
     } catch (error) {
       console.error('Error updating share link:', error);
@@ -94,10 +99,47 @@ const handleUpdateShareLink = async (newShareLink,id) => {
     setActiveMenuId(null);
   };
 
+  const handlePinClick = async (interview, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveMenuId(null);
+
+    const newPinValue = interview.is_pinned == 1 ? 0 : 1;
+
+    dispatch(interviewAction.updateInterviewPin({ id: interview.id, is_pinned: newPinValue }));
+
+    setPinningId(interview.id);
+    try {
+      await dispatch(updateInterview(interview.id, { is_pinned: newPinValue }));
+      dispatch(interviewAction.clearInterviews());
+      await dispatch(fetchInterviews({ work_space_id: workspaceId }));
+    } catch (error) {
+      dispatch(interviewAction.updateInterviewPin({ id: interview.id, is_pinned: interview.is_pinned }));
+      console.error('Error updating pin:', error);
+    } finally {
+      setPinningId(null);
+    }
+  };
+
+  const handleCopyClick = async (interview, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setActiveMenuId(null);
+    setCopyingId(interview.id);
+
+    try {
+      await dispatch(duplicateInterview(interview.id));
+    } catch (error) {
+      console.error('Error copying interview:', error);
+    } finally {
+      setCopyingId(null);
+    }
+  };
+
   const confirmDelete = () => {
     if (interviewToDelete) {
       dispatch(deleteInterview(interviewToDelete.id));
-      setCurrentPage(1); // Reset to first page after deletion
+      setCurrentPage(1);
       setShowDeleteModal(false);
       setInterviewToDelete(null);
     }
@@ -108,17 +150,11 @@ const handleUpdateShareLink = async (newShareLink,id) => {
     setInterviewToDelete(null);
   };
 
-  const handleCopyClick = (interview, e) => {
-    e.preventDefault();
-    // Add your copy logic here
-    setActiveMenuId(null);
-  };
-
   // Pagination Logic
   const indexOfLastInterview = currentPage * interviewsPerPage;
   const indexOfFirstInterview = indexOfLastInterview - interviewsPerPage;
-  const currentInterviews = interviews?.slice(indexOfFirstInterview, indexOfLastInterview) || [];
-  const totalPages = Math.ceil((interviews?.length || 0) / interviewsPerPage);
+  const currentInterviews = sortedInterviews.slice(indexOfFirstInterview, indexOfLastInterview);
+  const totalPages = Math.ceil(sortedInterviews.length / interviewsPerPage);
 
   const paginate = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages) {
@@ -127,27 +163,20 @@ const handleUpdateShareLink = async (newShareLink,id) => {
   };
 
   const renderPagination = () => {
-    if ((interviews?.length || 0) <= interviewsPerPage) return null;
-
+    if (sortedInterviews.length <= interviewsPerPage) return null;
     const pageNumbers = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pageNumbers.push(i);
-    }
+    for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
 
     return (
       <div className="flex justify-between items-center mt-6 px-4 py-3 bg-white border-t rounded-lg shadow-sm">
         <div className="text-sm text-gray-600">
-          Showing {indexOfFirstInterview + 1} to {Math.min(indexOfLastInterview, interviews?.length || 0)} of {interviews?.length || 0} interviews
+          Showing {indexOfFirstInterview + 1} to {Math.min(indexOfLastInterview, sortedInterviews.length)} of {sortedInterviews.length} interviews
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => paginate(currentPage - 1)}
             disabled={currentPage === 1}
-            className={`px-3 py-1 text-sm rounded-md ${
-              currentPage === 1
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-purple-600 text-white hover:bg-purple-700'
-            }`}
+            className={`px-3 py-1 text-sm rounded-md ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
           >
             Previous
           </button>
@@ -155,11 +184,7 @@ const handleUpdateShareLink = async (newShareLink,id) => {
             <button
               key={number}
               onClick={() => paginate(number)}
-              className={`px-3 py-1 text-sm rounded-md ${
-                currentPage === number
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`px-3 py-1 text-sm rounded-md ${currentPage === number ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
             >
               {number}
             </button>
@@ -167,11 +192,7 @@ const handleUpdateShareLink = async (newShareLink,id) => {
           <button
             onClick={() => paginate(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className={`px-3 py-1 text-sm rounded-md ${
-              currentPage === totalPages
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-purple-600 text-white hover:bg-purple-700'
-            }`}
+            className={`px-3 py-1 text-sm rounded-md ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
           >
             Next
           </button>
@@ -197,22 +218,21 @@ const handleUpdateShareLink = async (newShareLink,id) => {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-semibold">
-          All Interviews 
+          All Interviews
           <span className="bg-gray-200 px-2 py-1 rounded-md text-sm ml-2">
             {interviews?.length || 0}
           </span>
         </h1>
-         <Link to={"/create_interview"} className='text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2'>
+        <Link to={"/create_interview"} className='text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2'>
           <Plus size={18} />
-            <span>Create Interview</span>
-          </Link>
+          <span>Create Interview</span>
+        </Link>
       </div>
 
       {!loading && interviews?.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-gray-500 text-lg mb-4">No interviews found</div>
           <p className="text-gray-400">Create your first interview to get started</p>
-         
         </div>
       ) : (
         <>
@@ -221,47 +241,40 @@ const handleUpdateShareLink = async (newShareLink,id) => {
               <div key={interview.id} className="relative group">
                 <Link
                   to={`/interview-layout/${interview.id}`}
-                  className="bg-white rounded-lg shadow-md p-4 flex flex-col h-full min-h-[200px] border border-transparent hover:border-purple-500"
+                  className={`bg-white rounded-lg shadow-md p-4 flex flex-col h-full min-h-[200px] border ${
+                    interview.is_pinned == 1
+                      ? 'border-purple-400'
+                      : 'border-transparent hover:border-purple-500'
+                  }`}
                 >
+                  {interview.is_pinned == 1 && (
+                    <div className="absolute top-2 left-2 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center z-10">
+                      <Pin size={12} className="text-purple-700" />
+                    </div>
+                  )}
+
                   <div className="flex items-center mb-4">
                     <div className="w-10 h-10 bg-purple-500 text-white rounded-full flex items-center justify-center text-lg font-semibold mr-3">
                       {interview.photo ? (
-                        <img
-                          src={interview.photo}
-                          alt="photo profile"
-                          className="w-full h-full object-cover rounded-full"
-                        />
+                        <img src={interview.photo} alt="photo profile" className="w-full h-full object-cover rounded-full" />
                       ) : (
                         <span>{interview.name?.charAt(0).toUpperCase()}</span>
                       )}
                     </div>
                     <div>
-                      <h2 className="font-semibold max-w-[150px] truncate tooltip whitespace-nowrap" title={interview.name}>{interview.name}</h2>
+                      <h2 className="font-semibold max-w-[150px] truncate tooltip whitespace-nowrap" title={interview.name}>
+                        {interview.name}
+                      </h2>
                       <p className="text-gray-500 text-sm">
                         {interview.type} | {interview.duration_cycle} {interview.duration_period}
                       </p>
                     </div>
                   </div>
                   <div className="flex justify-between items-center text-sm mt-auto">
-                  <div
-                    className={`flex items-center gap-2 ${
-                      interview.mode === 'online'
-                        ? 'text-green-600'
-                        : interview.mode === 'phone'
-                        ? 'text-blue-600'
-                         : 'text-purple-600'
-                    }`}
-                  >
-                    {interview.mode === 'online' ? (
-                      <Wifi size={16} />
-                    ) : interview.mode === 'phone' ? (
-                      <Phone size={16} />
-                    ) : (
-                      <User size={16} />
-                    )}
-                    <span className="capitalize">{interview.mode}</span>
-                  </div>
-
+                    <div className={`flex items-center gap-2 ${interview.mode === 'online' ? 'text-green-600' : interview.mode === 'phone' ? 'text-blue-600' : 'text-purple-600'}`}>
+                      {interview.mode === 'online' ? <Wifi size={16} /> : interview.mode === 'phone' ? <Phone size={16} /> : <User size={16} />}
+                      <span className="capitalize">{interview.mode}</span>
+                    </div>
                     <button
                       onClick={(e) => handleShareClick(interview, e)}
                       className="flex text-sm items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all"
@@ -271,17 +284,16 @@ const handleUpdateShareLink = async (newShareLink,id) => {
                     </button>
                   </div>
                 </Link>
+
                 <button
                   onClick={(e) => toggleMenu(interview.id, e)}
                   className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <MoreVertical size={18} className="text-gray-600" />
                 </button>
+
                 {activeMenuId === interview.id && (
-                  <div
-                    ref={menuRef}
-                    className="absolute top-12 right-2 bg-white shadow-lg rounded-lg z-10 py-2 w-40"
-                  >
+                  <div ref={menuRef} className="absolute top-12 right-2 bg-white shadow-lg rounded-lg z-10 py-2 w-40">
                     <button
                       onClick={(e) => handleBookingPageClick(interview, e)}
                       className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -289,13 +301,44 @@ const handleUpdateShareLink = async (newShareLink,id) => {
                       <ExternalLink size={16} className="mr-2" />
                       Booking Page
                     </button>
+
                     <Link
-                    to={`/interview-layout/${interview.id}`}
+                      to={`/interview-layout/${interview.id}`}
                       className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      <Pencil  size={16} className="mr-2" />
+                      <Pencil size={16} className="mr-2" />
                       Edit
                     </Link>
+
+                    {(pinnedCount < 3 || interview?.is_pinned == 1) && (
+                      <button
+                        onClick={(e) => handlePinClick(interview, e)}
+                        disabled={pinningId === interview.id}
+                        className="w-full flex items-center px-4 py-2 text-sm text-purple-700 hover:bg-purple-50 disabled:opacity-50"
+                      >
+                        {interview?.is_pinned == 1 ? (
+                          <>
+                            <PinOff size={16} className="mr-2" />
+                            {pinningId === interview.id ? 'Unpinning...' : 'Unpin'}
+                          </>
+                        ) : (
+                          <>
+                            <Pin size={16} className="mr-2" />
+                            {pinningId === interview.id ? 'Pinning...' : 'Pin'}
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={(e) => handleCopyClick(interview, e)}
+                      disabled={copyingId === interview.id}
+                      className="w-full flex items-center px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                    >
+                      <Copy size={16} className="mr-2" />
+                      {copyingId === interview.id ? 'Copying...' : 'Copy'}
+                    </button>
+
                     <button
                       onClick={(e) => handleDeleteClick(interview, e)}
                       className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
@@ -311,12 +354,8 @@ const handleUpdateShareLink = async (newShareLink,id) => {
           {renderPagination()}
         </>
       )}
-      {/* <ShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        interview={selectedInterview}
-      /> */}
-       <ShareBookingModal
+
+      <ShareBookingModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         shareLink={`service/${selectedInterview?.share_link}`}
@@ -324,7 +363,7 @@ const handleUpdateShareLink = async (newShareLink,id) => {
         onUpdateLink={handleUpdateShareLink}
         loading={loading}
         canShowEdit={canEditInterviewf}
-       />
+      />
 
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -342,17 +381,13 @@ const handleUpdateShareLink = async (newShareLink,id) => {
               <div className="flex items-center">
                 <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-semibold mr-3">
                   {interviewToDelete?.photo ? (
-                    <img
-                      src={interviewToDelete.photo}
-                      alt="interview"
-                      className="w-full h-full object-cover rounded-full"
-                    />
+                    <img src={interviewToDelete.photo} alt="interview" className="w-full h-full object-cover rounded-full" />
                   ) : (
                     <span>{interviewToDelete?.name?.charAt(0).toUpperCase()}</span>
                   )}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 truncate  max-w-[150px]">{interviewToDelete?.name}</p>
+                  <p className="font-semibold text-gray-900 truncate max-w-[150px]">{interviewToDelete?.name}</p>
                   <p className="text-sm text-gray-500">{interviewToDelete?.type} • {interviewToDelete?.mode}</p>
                 </div>
               </div>
@@ -361,16 +396,10 @@ const handleUpdateShareLink = async (newShareLink,id) => {
               Are you sure you want to delete this interview? This will permanently remove all interview data, responses, and settings.
             </p>
             <div className="flex justify-end space-x-3">
-              <button
-                onClick={cancelDelete}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
-              >
+              <button onClick={cancelDelete} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium">
                 Cancel
               </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2 font-medium"
-              >
+              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2 font-medium">
                 <Trash2 className="w-4 h-4" />
                 <span>Delete Interview</span>
               </button>

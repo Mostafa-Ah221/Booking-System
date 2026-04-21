@@ -7,7 +7,6 @@ const ManageAppoin = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // إضافة الـ CSS animation للحركة المستمرة
     const style = document.createElement('style');
     style.innerHTML = `
       @keyframes floating {
@@ -21,7 +20,6 @@ const ManageAppoin = () => {
     `;
     document.head.appendChild(style);
 
-    // تفعيل الأنيميشن بعد تحميل الكومبوننت
     const timer = setTimeout(() => {
       setIsLoaded(true);
     }, 300);
@@ -72,11 +70,11 @@ const ManageAppoin = () => {
               </h1>
               
               <p className=" text-white leading-relaxed mb-8 max-w-md text-left">
-                Host all your day-to-day meetings—such as sales calls, consultations, interviews, customer support calls, healthcare appointments, online classes, and more—with an array of meeting types. Share your availability with invitees and let them pick their time slot.              </p>
+            From individual sessions to team coordination,
+            Appoint Roll delivers a flexible scheduling experience built around your business.
+              </p>
               
-              <button className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-md text-sm transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl  flex gap-1">
-                Learn more <MoveRight className="text-white"/>
-              </button>
+           
             </div>
           </div>
 
