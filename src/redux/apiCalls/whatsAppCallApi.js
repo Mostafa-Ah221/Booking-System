@@ -7,10 +7,8 @@ let integrationsCache = null;
 let cacheTimestamp = null;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// ✅ Request deduplication
 let ongoingRequests = new Map();
 
-// ✅ Rate limiter - أفضل من delay ثابت
 class RateLimiter {
   constructor(maxRequests = 10, perMs = 1000) {
     this.maxRequests = maxRequests;
@@ -21,10 +19,8 @@ class RateLimiter {
   async wait() {
     const now = Date.now();
     
-    // امسح الطلبات القديمة
     this.requests = this.requests.filter(time => now - time < this.perMs);
     
-    // لو وصلنا للحد، استنى
     if (this.requests.length >= this.maxRequests) {
       const oldestRequest = this.requests[0];
       const waitTime = this.perMs - (now - oldestRequest) + 10;
@@ -38,7 +34,6 @@ class RateLimiter {
 
 const rateLimiter = new RateLimiter(10, 1000); // 10 requests per second
 
-// ✅ Retry logic محسّن
 const MAX_RETRIES = 2;
 const BASE_RETRY_DELAY = 1000; // 1 second (أسرع من 2s)
 
@@ -67,7 +62,6 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-// ✅ Helper function محسّن
 function createDedupedRequest(key, requestFn) {
   if (ongoingRequests.has(key)) {
     return ongoingRequests.get(key);
@@ -119,7 +113,6 @@ export function fetchWhatsAppIntegrations() {
   };
 }
 
-// ✅ Settings cache محسّن
 let settingsCache = new Map();
 const SETTINGS_CACHE_DURATION = 3 * 60 * 1000; // 3 minutes
 
@@ -220,7 +213,6 @@ export function deleteWhatsAppSettings(id) {
 
 export function fetchWhatsAppSettings(integrationId) {
   return async (dispatch) => {
-    // ✅ Cache check أولاً
     const cached = settingsCache.get(integrationId);
     if (cached && Date.now() - cached.timestamp < SETTINGS_CACHE_DURATION) {
       dispatch(whatsAppActions.setSettings(cached.data));

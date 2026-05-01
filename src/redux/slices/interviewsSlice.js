@@ -143,24 +143,32 @@ const interviewsSlice = createSlice({
     state.interview = { ...state.interview, share_link: share_link };
   }
 },
-    addInterviewToList(state, action) {
-      const newInterview = action.payload;
-            if (Array.isArray(state.allInterviews)) {
-        state.allInterviews.push(newInterview);
-      } else {
-        state.allInterviews = [newInterview];
-      }
-      
-      if (Array.isArray(state.interviews)) {
-        const matchesFilter = 
-          (!state.currentWorkspaceId || state.currentWorkspaceId === 0 || newInterview.work_space_id === state.currentWorkspaceId) &&
-          (!state.currentStaffId || newInterview.staff_id === state.currentStaffId);
-        
-        if (matchesFilter) {
-          state.interviews.push(newInterview);
-        }
-      }
+   addInterviewToList(state, action) {
+  const newInterview = action.payload;
+   console.log('newInterview keys:', JSON.stringify(newInterview)); // ← هنا
+  console.log('=== addInterviewToList ===');
+  console.log('newInterview.work_space_id:', newInterview.work_space_id, typeof newInterview.work_space_id);
+  console.log('state.currentWorkspaceId:', state.currentWorkspaceId, typeof state.currentWorkspaceId);
+  console.log('state.interviews is array:', Array.isArray(state.interviews));
+  
+  if (Array.isArray(state.allInterviews)) {
+    state.allInterviews.unshift(newInterview);
+  } else {
+    state.allInterviews = [newInterview];
+  }
+
+  if (Array.isArray(state.interviews)) {
+    const matchesFilter = 
+      (!state.currentWorkspaceId || state.currentWorkspaceId === 0 || 
+        Number(newInterview.work_space_id) === Number(state.currentWorkspaceId)) &&
+      (!state.currentStaffId || 
+        Number(newInterview.staff_id) === Number(state.currentStaffId));
+    
+    if (matchesFilter) {
+      state.interviews.unshift(newInterview);
     }
+  }
+}
     
   }
 });

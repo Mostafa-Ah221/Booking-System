@@ -61,25 +61,31 @@ const textColor = colors.text_color;
   const handlePhoneChange = (value, country) => {
     setPhoneValue(value);
 
-    const dialCode = `+${country.dialCode}`;
-    const phoneWithoutCode = value.replace(country.dialCode, '').trim();
+    const dialCode = country.dialCode;
+    let phoneWithoutCode = value.startsWith(dialCode) 
+        ? value.slice(dialCode.length) 
+        : value;
+    
+    if (phoneWithoutCode.startsWith('0')) {
+        phoneWithoutCode = phoneWithoutCode.slice(1);
+    }
 
-    onFormChange('phone', phoneWithoutCode);  
-    onFormChange('code_phone', dialCode);
+    onFormChange('phone', phoneWithoutCode); 
+    onFormChange('code_phone', `+${dialCode}`); 
 
-    if (!value || value.length <= country.dialCode.length + 1) {
-      setPhoneError("Please enter a valid phone number");
-      return;
+    if (!value || value.length <= dialCode.length + 1) {
+        setPhoneError("Please enter a valid phone number");
+        return;
     }
 
     const phoneNumber = parsePhoneNumberFromString(value, country.countryCode?.toUpperCase());
     
     if (!phoneNumber || !phoneNumber.isValid()) {
-      setPhoneError("The phone number is invalid for this country");
+        setPhoneError("The phone number is invalid for this country");
     } else {
-      setPhoneError("");
+        setPhoneError("");
     }
-  };
+};
 
   const renderPaymentDetails = (text) => {
   if (!text) return null;

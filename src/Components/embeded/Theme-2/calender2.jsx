@@ -67,33 +67,14 @@ const [isFirstLoad, setIsFirstLoad] = useState(true);
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-useEffect(() => {
-  if (!initialDate) return;
-  if (hasAutoNavigated.current) return; 
-  
-  const parts = initialDate.split(' ');
-  const months = {
-    'Jan':0,'Feb':1,'Mar':2,'Apr':3,'May':4,'Jun':5,
-    'Jul':6,'Aug':7,'Sep':8,'Oct':9,'Nov':10,'Dec':11
-  };
-  const date = new Date(
-    parseInt(parts[2]),
-    months[parts[1]],
-    parseInt(parts[0])
-  );
-
-  setCurrentWeekStart(date);
-  hasAutoNavigated.current = true;
-  setIsFirstLoad(false);
-}, [initialDate]);
 
 
+const hasAutoNavigated = useRef(false);
 const hasSetInitialWeek = useRef(false);
 
 useEffect(() => {
   if (!initialDate) return;
   
-  // شغّل بس أول مرة أو لما initialDate يتغير لقيمة مختلفة
   const parts = initialDate.split(' ');
   const months = {
     'Jan':0,'Feb':1,'Mar':2,'Apr':3,'May':4,'Jun':5,
@@ -401,47 +382,49 @@ useEffect(() => {
     return allSlots;
   };
 
-  const convertDateTimeWithTimezone = (dateStr, timeStr, fromTimezone, toTimezone) => {
-    try {
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const [day, month, year] = dateStr.split(' ');
-      const monthIndex = monthNames.indexOf(month);
-      
-      if (monthIndex === -1) return { date: dateStr, time: timeStr };
-      
-      const isoDate = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${day.padStart(2, '0')}`;
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      const dateTimeStr = `${isoDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+const convertDateTimeWithTimezone = (dateStr, timeStr, fromTimezone, toTimezone) => {
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-      const dateInWorkspaceTz = new Date(dateTimeStr);
-      
-      const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: toTimezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      });
+  const [day, month, year] = dateStr.split(' ');
+  const monthIndex = monthNames.indexOf(month);
 
-      const parts = formatter.formatToParts(dateInWorkspaceTz);
-      
-      const yearPart = parts.find(p => p.type === 'year')?.value;
-      const monthPart = parts.find(p => p.type === 'month')?.value;
-      const dayPart = parts.find(p => p.type === 'day')?.value;
-      const hour = parts.find(p => p.type === 'hour')?.value || '00';
-      const minute = parts.find(p => p.type === 'minute')?.value || '00';
+  if (monthIndex === -1) {
+    return { date: dateStr, time: timeStr };
+  }
 
-      const newDate = `${dayPart} ${monthNames[parseInt(monthPart) - 1]} ${yearPart}`;
-      const newTime = `${hour}:${minute}`;
+  const [hours, minutes] = timeStr.split(':').map(Number);
 
-      return { date: newDate, time: newTime };
-    } catch (err) {
-      console.warn('DateTime conversion failed:', err);
-      return { date: dateStr, time: timeStr };
+  // 1️⃣ نعتبر الوقت "في الـ fromTimezone" باستخدام Intl (بدون Date.UTC)
+  const baseDate = new Date(Date.UTC(year, monthIndex, day, hours, minutes));
+
+  // 2️⃣ نحول من fromTimezone إلى toTimezone مباشرة باستخدام Intl
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: toTimezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(baseDate);
+
+  const map = {};
+  parts.forEach(p => {
+    if (p.type !== 'literal') {
+      map[p.type] = p.value;
     }
+  });
+
+  const newDate = `${map.day} ${monthNames[parseInt(map.month, 10) - 1]} ${map.year}`;
+  const newTime = `${map.hour}:${map.minute}`;
+
+  return {
+    date: newDate,
+    time: newTime,
   };
+};
 
 
   const isDateAvailable = (day, month, year) => {
@@ -648,6 +631,53 @@ useEffect(() => {
     restCycle
   ]);
 
+const checkAndNavigateIfNeeded = () => {
+  if (!selectedDate) return;
+
+  const parts = selectedDate.split(' ');
+  const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
+  const d = parseInt(parts[0]);
+  const m = months[parts[1]];
+  const y = parseInt(parts[2]);
+
+  const isStillAvailable = isDateAvailable(d, m, y);
+  if (isStillAvailable) return;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let checkDate = new Date(today);
+
+  for (let i = 0; i < 365; i++) {
+    const cd = checkDate.getDate();
+    const cm = checkDate.getMonth();
+    const cy = checkDate.getFullYear();
+
+    if (isDateAvailable(cd, cm, cy)) {
+      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const newDateStr = `${String(cd).padStart(2, '0')} ${monthNames[cm]} ${cy}`;
+      setCurrentWeekStart(new Date(checkDate));
+      onDateSelect(newDateStr);
+      break;
+    }
+
+    checkDate.setDate(checkDate.getDate() + 1);
+  }
+};
+
+// حالة 2: لما slots تتحجز
+useEffect(() => {
+  checkAndNavigateIfNeeded();
+}, [disabledTimes]);
+
+// حالة 1: لما الوقت يعدي (كل دقيقة)
+useEffect(() => {
+  const interval = setInterval(() => {
+    checkAndNavigateIfNeeded();
+  }, 60000);
+
+  return () => clearInterval(interval);
+}, [selectedDate, disabledTimes]);
+
   // Use the middle day of the week to determine current month/year
   const currentMonth = currentWeekStart.getMonth();
   const currentYear = currentWeekStart.getFullYear();
@@ -688,22 +718,18 @@ useEffect(() => {
       setHasNavigated(true);
     }
   }, [visibleDaysCount, hasNavigated, isFirstLoad, availableDatesCache, visibleDays]);
-// أضف ده بعد كل الـ useEffects الموجودة
-const hasAutoNavigated = useRef(false);
+
 
 useEffect(() => {
-  // لو الداتا لسه ماجتش أو اليوزر عمل navigate → وقف
   if (hasAutoNavigated.current || hasNavigated) return;
   if (!availableDates?.length || !availableTimesFromAPI?.length) return;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // ابحث عن أول يوم متاح ابتداءً من النهارده
   let checkDate = new Date(today);
   let found = null;
 
-  // نفحص لمدة 365 يوم
   for (let i = 0; i < 365; i++) {
     const d = checkDate.getDate();
     const m = checkDate.getMonth();
@@ -718,11 +744,23 @@ useEffect(() => {
   }
 
   if (found) {
-    setCurrentWeekStart(new Date(found)); 
+    setCurrentWeekStart(new Date(found));
     hasAutoNavigated.current = true;
     setIsFirstLoad(false);
+
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const day = String(found.getDate()).padStart(2, '0');
+    const month = monthNames[found.getMonth()];
+    const year = found.getFullYear();
+    const dateStr = `${day} ${month} ${year}`;
+
+    setTimeout(() => {
+      onDateSelect(dateStr);
+    }, 100);
   }
 }, [availableDates, availableTimesFromAPI, disabledTimes]);
+
+
   return (
     <div className="w-full px-2 sm:px-0">
       {/* Month Selector */}

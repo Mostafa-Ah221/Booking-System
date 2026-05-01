@@ -282,7 +282,7 @@ END:VCALENDAR
       <RescheduleSidebar
         isOpen={isRescheduleSidebarOpen}
         onClose={() => setIsRescheduleSidebarOpen(false)}
-        appointmentData={responseData}
+        appointmentData={appointmentData} 
         onRescheduleSuccess={handleRescheduleSuccess}
       />
 

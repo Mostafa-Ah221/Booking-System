@@ -17,37 +17,29 @@ const IntegrationsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeModal, setActiveModal] = useState(null);
   const [currentIntegrationId, setCurrentIntegrationId] = useState(null);
-  const [refreshSmsCategory, setRefreshSmsCategory] = useState(0); 
+  const [refreshSmsCategory, setRefreshSmsCategory] = useState(0);
   const [refreshWhatsAppCategory, setRefreshWhatsAppCategory] = useState(0);
-  // إضافة state لتتبع القسم النشط
-  const [activeSection, setActiveSection] = useState('calendar'); // القيمة الافتراضية
+  const [activeSection, setActiveSection] = useState('calendar');
   const dispatch = useDispatch();
   const location = useLocation();
 
   useLayoutEffect(() => {
-  const sectionId = location.hash.replace("#", "") || location.state?.scrollTo;
-  
-  if (sectionId) {
-    setActiveSection(sectionId);
-    
-    // جرب scroll مباشرة
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      setTimeout(() => {
-        const elem = document.getElementById(sectionId);
-        if (elem) {
-          elem.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 50);
+    const sectionId = location.hash.replace("#", "") || location.state?.scrollTo;
+    if (sectionId) {
+      setActiveSection(sectionId);
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        setTimeout(() => {
+          const elem = document.getElementById(sectionId);
+          if (elem) elem.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 50);
+      }
     }
-  }
-}, [location.hash, location.state?.scrollTo]);
+  }, [location.hash, location.state?.scrollTo]);
 
-  // تعريف دقيق للخدمات مع التمييز الواضح
   const SERVICE_MAPPING = {
-    // WhatsApp Services - أسماء كاملة ومميزة أولاً
     'WhatsApp Business API': { type: 'whatsapp', displayName: 'WhatsApp Business API' },
     'Twilio WhatsApp': { type: 'whatsapp', displayName: 'Twilio WhatsApp' },
     'WhatsApp Business': { type: 'whatsapp', displayName: 'WhatsApp_Business' },
@@ -55,7 +47,10 @@ const IntegrationsPage = () => {
     'ChatAPI': { type: 'whatsapp', displayName: 'ChatAPI' },
     'GreenApi': { type: 'whatsapp', displayName: 'Green API' },
     'Green API': { type: 'whatsapp', displayName: 'Green API' },
-    
+    // ✅ Iwenta
+    'Iwenta': { type: 'whatsapp', displayName: 'Iwenta' },
+    'iwnta': { type: 'whatsapp', displayName: 'Iwenta' },
+
     'Twilio': { type: 'sms', displayName: 'Twilio SMS' },
     'Nexmo': { type: 'sms', displayName: 'Nexmo/Vonage' },
     'MessageBird': { type: 'sms', displayName: 'MessageBird' },
@@ -63,116 +58,71 @@ const IntegrationsPage = () => {
   };
 
   const getServiceType = (serviceName) => {
-    if (SERVICE_MAPPING[serviceName]) {
-      return SERVICE_MAPPING[serviceName].type;
-    }
-    
+    if (SERVICE_MAPPING[serviceName]) return SERVICE_MAPPING[serviceName].type;
+
     const sortedKeys = Object.keys(SERVICE_MAPPING).sort((a, b) => b.length - a.length);
-    
     for (const key of sortedKeys) {
-      if (serviceName.toLowerCase().includes(key.toLowerCase()) || 
+      if (serviceName.toLowerCase().includes(key.toLowerCase()) ||
           key.toLowerCase().includes(serviceName.toLowerCase())) {
         return SERVICE_MAPPING[key].type;
       }
     }
-    
-    // فحص نهائي بالكلمات المفتاحية
-    const lowerServiceName = serviceName.toLowerCase();
-    
-    // WhatsApp services - فحص مفصل
-    if (lowerServiceName.includes('whatsapp')) {
-      return 'whatsapp';
-    }
-    
-    // فحص محدد للخدمات
-    if (lowerServiceName === '360dialog' ||
-        lowerServiceName === 'chatapi' ||
-        (lowerServiceName.includes('green') && lowerServiceName.includes('api'))) {
-      return 'whatsapp';
-    }
-    
-    // SMS services - فحص عام
-    if (lowerServiceName === 'twilio' || 
-        lowerServiceName === 'nexmo' ||
-        lowerServiceName === 'messagebird' ||
-        lowerServiceName === 'mysmslogin') {
-      return 'sms';
-    }
-    
+
+    const lower = serviceName.toLowerCase();
+    if (lower.includes('whatsapp') || lower === 'iwnta' || lower === 'iwenta') return 'whatsapp';
+    if (lower === '360dialog' || lower === 'chatapi' || (lower.includes('green') && lower.includes('api'))) return 'whatsapp';
+    if (lower === 'twilio' || lower === 'nexmo' || lower === 'messagebird' || lower === 'mysmslogin') return 'sms';
+
     return null;
   };
 
- 
-  const handleSmsIntegrationStatusChange = (integrationId, isConnected) => {
-    setRefreshSmsCategory(prev => prev + 1);
-  };
+  const handleSmsIntegrationStatusChange = () => setRefreshSmsCategory(prev => prev + 1);
+  const handleWhatsAppIntegrationStatusChange = () => setRefreshWhatsAppCategory(prev => prev + 1);
 
-  const handleWhatsAppIntegrationStatusChange = (integrationId, isConnected) => {
-    setRefreshWhatsAppCategory(prev => prev + 1);
-  };
-
+  // ─── SMS ────────────────────────────────────────────────
   const handleDeleteSmsSettings = async (integrationId, serviceName) => {
-    const confirmDelete = window.confirm(`هل أنت متأكد من حذف إعدادات ${serviceName}؟`);
-    
-    if (confirmDelete) {
-      try {
-        const smsSettingsResult = await dispatch(getSmsSettingsByIntegrationId(integrationId));
-        
-        if (smsSettingsResult.status && smsSettingsResult.data) {
-          const smsId = smsSettingsResult.data.id;
-          const result = await dispatch(deleteSmsSettings(smsId));
-          
-          if (result.status) {
-            toast.success(`${serviceName} integration deleted successfully!`);
-            handleSmsIntegrationStatusChange(integrationId, false);
-          } else {
-            toast.error(`Failed to delete ${serviceName} integration: ${result.message}`);
-          }
+    if (!window.confirm(`هل أنت متأكد من حذف إعدادات ${serviceName}؟`)) return;
+    try {
+      const result1 = await dispatch(getSmsSettingsByIntegrationId(integrationId));
+      if (result1.status && result1.data) {
+        const result2 = await dispatch(deleteSmsSettings(result1.data.id));
+        if (result2.status) {
+          toast.success(`${serviceName} integration deleted successfully!`);
+          handleSmsIntegrationStatusChange();
         } else {
-          toast.error(`Failed to get ${serviceName} settings: ${smsSettingsResult.message}`);
+          toast.error(`Failed to delete: ${result2.message}`);
         }
-      } catch (error) {
-        toast.error(`Error deleting ${serviceName} integration: ${error.message}`);
+      } else {
+        toast.error(`Failed to get settings: ${result1.message}`);
       }
+    } catch (e) {
+      toast.error(`Error: ${e.message}`);
     }
   };
 
-  // دالة لحذف إعدادات WhatsApp
+  // ─── WhatsApp ────────────────────────────────────────────
   const handleDeleteWhatsAppSettings = async (integrationId, serviceName) => {
-    const confirmDelete = window.confirm(`هل أنت متأكد من حذف إعدادات ${serviceName}؟`);
-    
-    if (confirmDelete) {
-      try {
-        const whatsAppSettingsResult = await dispatch(getWhatsAppSettingsByIntegrationId(integrationId));
-        
-        if (whatsAppSettingsResult.status && whatsAppSettingsResult.data) {
-          const whatsAppId = whatsAppSettingsResult.data.id;
-          const result = await dispatch(deleteWhatsAppSettings(whatsAppId));
-          
-          if (result.status) {
-            toast.success(`${serviceName} integration deleted successfully!`);
-            handleWhatsAppIntegrationStatusChange(integrationId, false);
-          } else {
-            toast.error(`Failed to delete ${serviceName} integration: ${result.message}`);
-          }
+    if (!window.confirm(`هل أنت متأكد من حذف إعدادات ${serviceName}؟`)) return;
+    try {
+      const result1 = await dispatch(getWhatsAppSettingsByIntegrationId(integrationId));
+      if (result1.status && result1.data) {
+        const result2 = await dispatch(deleteWhatsAppSettings(result1.data.id));
+        if (result2.status) {
+          toast.success(`${serviceName} integration deleted successfully!`);
+          handleWhatsAppIntegrationStatusChange();
         } else {
-          toast.error(`Failed to get ${serviceName} settings: ${whatsAppSettingsResult.message}`);
+          toast.error(`Failed to delete: ${result2.message}`);
         }
-      } catch (error) {
-        toast.error(`Error deleting ${serviceName} integration: ${error.message}`);
+      } else {
+        toast.error(`Failed to get settings: ${result1.message}`);
       }
+    } catch (e) {
+      toast.error(`Error: ${e.message}`);
     }
   };
 
-  // الدالة المحدثة للاتصال
   const handleConnectClick = (serviceName, integrationId = null, type = '') => {
-    // تحديد النوع بدقة
-    let actualType = type;
-    
-    if (!actualType) {
-      actualType = getServiceType(serviceName);
-    }
-    
+    let actualType = type || getServiceType(serviceName);
     if (actualType === 'sms' || actualType === 'whatsapp') {
       setActiveModal(`${actualType}:${serviceName}`);
       setCurrentIntegrationId(integrationId);
@@ -186,110 +136,103 @@ const IntegrationsPage = () => {
     setCurrentIntegrationId(null);
   };
 
-  // دالة لجلب بيانات SMS الموجودة
   const handleGetSmsSettings = async (integrationId) => {
     try {
-      const result = await dispatch(getSmsSettingsByIntegrationId(integrationId));
-      return result;
-    } catch (error) {
-      return { status: false, data: null, message: error.message };
+      return await dispatch(getSmsSettingsByIntegrationId(integrationId));
+    } catch (e) {
+      return { status: false, data: null, message: e.message };
     }
   };
 
-  // دالة لجلب بيانات WhatsApp الموجودة
   const handleGetWhatsAppSettings = async (integrationId) => {
     try {
-      const result = await dispatch(getWhatsAppSettingsByIntegrationId(integrationId));
-      return result;
-    } catch (error) {
-      return { status: false, data: null, message: error.message };
+      return await dispatch(getWhatsAppSettingsByIntegrationId(integrationId));
+    } catch (e) {
+      return { status: false, data: null, message: e.message };
     }
   };
 
+  // ─── Save عام (SMS + WhatsApp) ───────────────────────────
   const handleSave = async (payload, providedType) => {
     try {
-      // استخدام النوع المرسل من الـ modal أو تحديده من activeModal
       const serviceType = providedType || (activeModal ? activeModal.split(':')[0] : null);
-      
       if (serviceType === 'sms') {
         const result = await dispatch(createOrUpdateSmsSettings(payload));
-        
         if (result.status) {
-          toast.success(`SMS integration saved successfully!`);
-          handleSmsIntegrationStatusChange(currentIntegrationId, true);
+          toast.success('SMS integration saved successfully!');
+          handleSmsIntegrationStatusChange();
         } else {
-          toast.error(`Failed to save SMS integration: ${result.message}`);
+          toast.error(`Failed: ${result.message}`);
         }
       } else if (serviceType === 'whatsapp') {
         const result = await dispatch(createOrUpdateWhatsAppSettings(payload));
-        
         if (result.status) {
-          toast.success(`WhatsApp integration saved successfully!`);
-          handleWhatsAppIntegrationStatusChange(currentIntegrationId, true);
+          toast.success('WhatsApp integration saved successfully!');
+          handleWhatsAppIntegrationStatusChange();
         } else {
-          toast.error(`Failed to save WhatsApp integration: ${result.message}`);
+          toast.error(`Failed: ${result.message}`);
         }
-      } else {
-        toast.success(`Integration saved successfully!`);
       }
-      
       handleCloseModal();
-    } catch (error) {
-      toast.error(`Error saving integration: ${error.message}`);
+    } catch (e) {
+      toast.error(`Error: ${e.message}`);
     }
   };
 
-  // دالة لعرض المحتوى بناءً على القسم النشط
+  // ─── ✅ Iwenta: Step 1 — حفظ credentials وإرجاع phone_numbers + templates ───
+  const handleSaveIwentaCredentials = async (payload) => {
+    try {
+      const result = await dispatch(createOrUpdateWhatsAppSettings(payload));
+      if (result.status) {
+        // result.data = { whatsapp: {...}, phone_numbers: [...], templates: [...] }
+        return { status: true, data: result.data };
+      } else {
+        toast.error(`Connection failed: ${result.message}`);
+        return { status: false, message: result.message };
+      }
+    } catch (e) {
+      toast.error(`Error: ${e.message}`);
+      return { status: false, message: e.message };
+    }
+  };
+
+  // ─── ✅ Iwenta: Step 2 — حفظ phone_number_id + template_id ──────────────────
+  const handleSaveIwentaSelection = async (payload) => {
+    try {
+      const result = await dispatch(createOrUpdateWhatsAppSettings(payload));
+      if (result.status) {
+        toast.success('IWNTA configuration saved successfully!');
+        handleWhatsAppIntegrationStatusChange();
+        handleCloseModal();
+      } else {
+        toast.error(`Failed to save: ${result.message}`);
+      }
+    } catch (e) {
+      toast.error(`Error: ${e.message}`);
+    }
+  };
+
+  // ─── Render ──────────────────────────────────────────────
   const renderActiveSection = () => {
     switch (activeSection) {
-      // case 'calendar':
-      //   return (
-      //     <CalendarCategory 
-      //       id="calendar"
-      //       searchQuery={searchQuery} 
-      //       onConnectClick={handleConnectClick} 
-      //     />
-      //   );
-      // case 'video':
-      //   return (
-      //     <VideoConferencingCategory 
-      //       id="video"
-      //       searchQuery={searchQuery} 
-      //       onConnectClick={handleConnectClick} 
-      //     />
-      //   );
-      // case 'crm':
-      //   return (
-      //     <CrmSalesCategory 
-      //       id="crm"
-      //       searchQuery={searchQuery} 
-      //       onConnectClick={handleConnectClick} 
-      //     />
-      //   );
       case 'email':
-        return (
-          <MailCategory 
-            id="email"
-            searchQuery={searchQuery} 
-            onConnectClick={handleConnectClick} 
-          />
-        );
+        return <MailCategory id="email" searchQuery={searchQuery} onConnectClick={handleConnectClick} />;
       case 'sms':
         return (
-          <SmsCategory 
+          <SmsCategory
             id="sms"
-            searchQuery={searchQuery} 
-            onConnectClick={(serviceName, integrationId) => handleConnectClick(serviceName, integrationId, 'sms')}
+            searchQuery={searchQuery}
+            onConnectClick={(name, id) => handleConnectClick(name, id, 'sms')}
             onDeleteClick={handleDeleteSmsSettings}
             refreshTrigger={refreshSmsCategory}
           />
         );
       case 'whatsapp':
         return (
-          <WhatsAppCategory 
+          <WhatsAppCategory
             id="whatsapp"
-            searchQuery={searchQuery} 
-            onConnectClick={(serviceName, integrationId) => handleConnectClick(serviceName, integrationId, 'whatsapp')}
+            searchQuery={searchQuery}
+            onConnectClick={(name, id) => handleConnectClick(name, id, 'whatsapp')}
             onDeleteClick={handleDeleteWhatsAppSettings}
             refreshTrigger={refreshWhatsAppCategory}
             active={activeSection === "whatsapp"}
@@ -297,10 +240,10 @@ const IntegrationsPage = () => {
         );
       default:
         return (
-           <SmsCategory 
+          <SmsCategory
             id="sms"
-            searchQuery={searchQuery} 
-            onConnectClick={(serviceName, integrationId) => handleConnectClick(serviceName, integrationId, 'sms')}
+            searchQuery={searchQuery}
+            onConnectClick={(name, id) => handleConnectClick(name, id, 'sms')}
             onDeleteClick={handleDeleteSmsSettings}
             refreshTrigger={refreshSmsCategory}
           />
@@ -321,20 +264,19 @@ const IntegrationsPage = () => {
         />
       </div>
 
-      {/* عرض القسم النشط فقط */}
-      <div>
-        {renderActiveSection()}
-      </div>
+      <div>{renderActiveSection()}</div>
 
-      {/* عرض المكون الموحد الجديد */}
       {activeModal && (
-        <UnifiedIntegrationModal 
-          activeModal={activeModal} 
+        <UnifiedIntegrationModal
+          activeModal={activeModal}
           integrationId={currentIntegrationId}
-          onClose={handleCloseModal} 
+          onClose={handleCloseModal}
           onSave={handleSave}
           getSmsSettings={handleGetSmsSettings}
           getWhatsAppSettings={handleGetWhatsAppSettings}
+          // ✅ Iwenta props
+          onSaveIwentaCredentials={handleSaveIwentaCredentials}
+          onSaveIwentaSelection={handleSaveIwentaSelection}
         />
       )}
     </div>

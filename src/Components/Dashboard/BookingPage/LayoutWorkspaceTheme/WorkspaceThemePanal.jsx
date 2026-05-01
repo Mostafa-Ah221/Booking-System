@@ -444,7 +444,7 @@ const [pageTexts, setPageTexts] = useState({
               <div className="mb-4">
                 <p className="mb-2">Layouts</p>
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  {['newLayout', 'modernWeb'].map((layout) => (
+                  {['newLayout', 'modernWeb','classic'].map((layout) => (
                     <div
                       key={layout}
                       className={`p-2 bg-white rounded-lg cursor-pointer relative ${selectedLayout === layout ? 'border border-indigo-600' : 'border'}`}

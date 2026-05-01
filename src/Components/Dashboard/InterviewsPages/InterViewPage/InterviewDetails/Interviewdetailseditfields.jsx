@@ -296,15 +296,19 @@ const InterviewDetailsEditFields = ({
       )}
 
      {/* Location */}
-   {(formData.inperson_mode === 'inhouse' || 
-  (formData.mode === 'online/inperson' && formData.extra_modes?.includes('inhouse'))) && (
+   {(
+  (formData.mode === 'inperson' && formData.inperson_mode === 'inhouse') || 
+  (formData.mode === 'online/inperson' && formData.extra_modes?.includes('inhouse'))
+) && (
   <div className="space-y-2">
     <label className="block text-sm font-medium text-gray-700">
       Location
-      {(formData.inperson_mode === 'inhouse' ||
-        (formData.mode === 'online/inperson' && formData.extra_modes?.includes('inhouse'))) && (
-        <span className="text-red-500"> *</span>
-      )}
+     {(
+  (formData.mode === 'inperson' && formData.inperson_mode === 'inhouse') ||
+  (formData.mode === 'online/inperson' && formData.extra_modes?.includes('inhouse'))
+) && (
+  <span className="text-red-500"> *</span>
+)}
     </label>
     <textarea
       name="location"

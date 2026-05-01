@@ -21,19 +21,16 @@ export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, 
     }
   }, [dispatch, isOpen, id]);
 
-  // Get IDs of already assigned staff
   const assignedStaffIds = Array.isArray(filteredStaffs) 
     ? filteredStaffs.map(staff => staff.id)
     : [];
 
-  // ✅ تعيين الـ staff المعين في selectedStaffIds عند فتح الـ modal
   useEffect(() => {
     if (isOpen && assignedStaffIds.length > 0) {
       setSelectedStaffIds(assignedStaffIds);
     }
   }, [isOpen, assignedStaffIds.length]);
 
-  // عرض جميع الـ staff
   const allStaff = Array.isArray(availableStForWorkS) ? availableStForWorkS : [];
 
   const filteredStaff = allStaff.filter(staff => {
@@ -52,16 +49,11 @@ export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, 
   };
 
   const handleAssign = async () => {
-    if (selectedStaffIds.length === 0 || !id) {
-      return;
-    }
+    if (selectedStaffIds.length === 0 || !id) return;
 
     setIsLoading(true);
 
-    const formData = {
-      staff_ids: selectedStaffIds
-    };
-
+    const formData = { staff_ids: selectedStaffIds };
     const result = await dispatch(assignInterViewToStaff(id, formData));
     
     setIsLoading(false);
@@ -73,6 +65,27 @@ export default function AssignInterviewModal({ isOpen, onClose, filteredStaffs, 
       onClose();
     }
   };
+
+  // ✅ التعديل: Enter listener — يتجاهل لو المستخدم داخل search input
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key !== 'Enter') return;
+
+      // لو المستخدم بيكتب في الـ search → متعملش assign
+      const tag = document.activeElement?.tagName;
+      const type = document.activeElement?.type;
+      if (tag === 'INPUT' && type === 'text') return;
+
+      if (!isLoading && selectedStaffIds.length > 0) {
+        handleAssign();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isLoading, selectedStaffIds]);
 
   useEffect(() => {
     if (!isOpen) {

@@ -11,6 +11,7 @@ import {
   Shield,
   ShieldUser,
   ReceiptText,
+  House
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useState, useCallback } from 'react';
@@ -189,6 +190,14 @@ const ProfilePanel = ({ isOpen, onClose }) => {
 
   // Navigation items configuration
 const helpItems = [
+   { 
+    icon: House, 
+    label: 'Home', 
+    action: () => {
+      onClose();
+      navigate('/');
+    } 
+  },
   { 
     icon: Video, 
     label: 'Webinars', 
@@ -221,6 +230,7 @@ const helpItems = [
       navigate('/privacy-policy');
     } 
   },
+ 
 ];
 
  

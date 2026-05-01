@@ -17,30 +17,42 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
   
   const mySpaceRef = useRef(null);
   const menuRef = useRef(null);
+  const toggleButtonRef = useRef(null);
 
   const dispatch = useDispatch();
   const { workspace } = useSelector(state => state.workspace);
   const navigate = useNavigate();
   const { staff_workspaces = [] } = useSelector(state => state.staffApis || {});
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    // 🔹 إغلاق قائمة الـ menu (Edit / Delete)
+    if (
+      menuRef.current &&
+      !menuRef.current.contains(event.target)
+    ) {
+      setActiveMenuId(null);
+    }
 
-  useEffect(() => {
-    dispatch(staff_GetWorkspaces());
+    // 🔹 إغلاق dropdown بتاع الـ workspace
+    if (
+      mySpaceRef.current &&
+      !mySpaceRef.current.contains(event.target) &&
+      toggleButtonRef.current &&
+      !toggleButtonRef.current.contains(event.target)
+    ) {
+      setIsWorkspaceOpen(false);
+    }
+  };
 
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setActiveMenuId(null);
-      }
-      if (mySpaceRef.current && !mySpaceRef.current.contains(event.target)) {
-        setIsWorkspaceOpen(false);
-      }
-    };
+  document.addEventListener("click", handleClickOutside);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [dispatch]);
-
+  return () => {
+    document.removeEventListener("click", handleClickOutside);
+  };
+}, []);
+useEffect(() => {
+  dispatch(staff_GetWorkspaces());
+}, [dispatch]);
   useEffect(() => {
     const currentPath = location.pathname.includes("Staff_Interviews")
   ? "Staff_Interviews"
@@ -155,6 +167,7 @@ export default function StaffSideBarDashboard({selectWorkspace}) {
           <div>
             <button
               onClick={toggleWorkspaceDropdown}
+              ref={toggleButtonRef}
               className="bg-purple-100 w-full p-2 text-left rounded hover:bg-gray-100 flex items-center gap-2 justify-between"
             >
               <span className="text-purple-600 text-sm font-semibold truncate  max-w-[150px]">

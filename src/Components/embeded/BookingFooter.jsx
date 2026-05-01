@@ -53,10 +53,10 @@ const BookingFooter = ({ theme, textColor }) => {
       href: `mailto:${theme.footer_email}`,
       key: 'email'
     },
-  ].filter(Boolean); // إزالة الـ false values
+  ].filter(Boolean); 
 
   return (
-    <div className='flex flex-col items-center mt-20 w-full mb-2' style={{ color: textColor }}>
+    <div className='flex flex-col items-center mt-7 md:mt-20 w-full mb-2' style={{ color: textColor }}>
       {socialLinks.length > 0 && (
         <div className="flex gap-3 items-center justify-center flex-wrap">
           {socialLinks.map((link, index) => (
@@ -80,7 +80,7 @@ const BookingFooter = ({ theme, textColor }) => {
       )}
       
       <div>
-        <h2 className='text-sm'>Powered by Appoint Roll</h2>
+        <h2 className='text-sm mb-2'>Powered by Appoint Roll</h2>
       </div>
     </div>
   );

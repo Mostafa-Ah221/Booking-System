@@ -57,19 +57,25 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
       setIsLoading(false);
     }
   };
+
+  // ← اضفنا handler لـ Enter key
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !isLoading) {
+      handleSubmit();
+    }
+  };
   
   if (!isOpen) return null;
 
-  // Modal content
   const modalContent = (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-[9999] p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+    <div data-modal="workspace" className="fixed inset-0 flex items-center justify-center bg-black/50 z-[9999] p-4">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
         {/* Header */}
         <div className="flex items-center justify-between border-b pb-3 mb-4">
           <h2 className="text-lg font-semibold text-gray-900">
             {isEditMode ? "Edit Workspace" : "New Workspace"}
           </h2>
-          <button 
+          <button
             onClick={onClose} 
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
             aria-label="Close modal"
@@ -90,6 +96,7 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
               placeholder="Enter workspace name"
               value={workspace.name}
               onChange={(e) => setWorkspace({...workspace, name: e.target.value})}
+              onKeyDown={handleKeyDown} 
               className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
               autoFocus
               disabled={isLoading}
@@ -129,7 +136,6 @@ const WorkspaceModal = ({ isOpen, onClose, editWorkspace = null }) => {
     </div>
   );
 
-  // Use createPortal to render at document.body level
   return createPortal(modalContent, document.body);
 };
 

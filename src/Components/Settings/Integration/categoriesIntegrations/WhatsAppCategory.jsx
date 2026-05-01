@@ -12,6 +12,7 @@ const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshT
   const lastRefreshTrigger = useRef(0);
   const isInitialized = useRef(false);
   const abortControllerRef = useRef(null);
+console.log(integrationsWhatsApp);
 
   useEffect(() => {
     if (!active || isInitialized.current) return;

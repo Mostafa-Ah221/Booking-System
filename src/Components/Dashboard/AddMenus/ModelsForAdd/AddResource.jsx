@@ -7,19 +7,22 @@ import { getAllWorkspaces } from "../../../../redux/apiCalls/workspaceCallApi";
 const AddResourceModal = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.resources);
-  const { allWorkspaces, loading: loadingWorkspaces } = useSelector(state => state.workspace);
+  const { allWorkspaces, loading: loadingWorkspaces } = useSelector(
+    (state) => state.workspace
+  );
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     status: true,
-    work_space_id: ""
+    work_space_id: "",
   });
 
   const [errors, setErrors] = useState({});
-const truncateText = (text, max = 30) => {
-  return text.length > max ? text.substring(0, max) + "..." : text;
-};
+
+  const truncateText = (text, max = 30) => {
+    return text.length > max ? text.substring(0, max) + "..." : text;
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -29,69 +32,50 @@ const truncateText = (text, max = 30) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // مسح الـ error عند الكتابة
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-    
-    if (!formData.work_space_id) {
-      newErrors.work_space_id = "Workspace is required";
-    }
-
+    if (!formData.name.trim()) newErrors.name = "Name is required";
+    if (!formData.work_space_id) newErrors.work_space_id = "Workspace is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+  // ✅ منطق الـ submit منفصل عن الـ event
+  const submitForm = async () => {
+    if (!validateForm()) return;
 
     const dataToSend = {
       name: formData.name,
       description: formData.description || "",
       status: formData.status,
-      work_space_id: parseInt(formData.work_space_id)
+      work_space_id: parseInt(formData.work_space_id),
     };
 
     console.log("Data to send:", dataToSend);
 
     const result = await dispatch(addResource(dataToSend));
-    
+
     if (result?.success) {
-      // Reset form
-      setFormData({
-        name: "",
-        description: "",
-        status: true,
-        work_space_id: ""
-      });
+      setFormData({ name: "", description: "", status: true, work_space_id: "" });
       setErrors({});
       onClose();
     }
   };
 
+  // ✅ handleSubmit للـ form (يمنع reload)
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitForm();
+  };
+
   const handleClose = () => {
-    setFormData({
-      name: "",
-      description: "",
-      status: true,
-      work_space_id: ""
-    });
+    setFormData({ name: "", description: "", status: true, work_space_id: "" });
     setErrors({});
     onClose();
   };
@@ -103,8 +87,8 @@ const truncateText = (text, max = 30) => {
       <div className="bg-white p-6 rounded-lg shadow-lg w-96">
         <div className="flex justify-between items-center border-b pb-2">
           <h2 className="text-lg font-semibold">Add Resource</h2>
-          <button 
-            onClick={handleClose} 
+          <button
+            onClick={handleClose}
             className="p-1 hover:bg-gray-200 rounded-full"
             disabled={loading}
           >
@@ -117,14 +101,14 @@ const truncateText = (text, max = 30) => {
             <label className="block text-sm font-medium">
               Name <span className="text-red-500">*</span>
             </label>
-            <input 
+            <input
               type="text"
               name="name"
               value={formData.name}
               onChange={handleChange}
-              placeholder="E.g: conference rooms, laptops, equipment, etc" 
+              placeholder="E.g: conference rooms, laptops, equipment, etc"
               className={`w-full p-2 border rounded-lg focus:ring focus:ring-indigo-300 ${
-                errors.name ? 'border-red-500' : ''
+                errors.name ? "border-red-500" : ""
               }`}
               disabled={loading}
             />
@@ -137,24 +121,25 @@ const truncateText = (text, max = 30) => {
             <label className="block text-sm font-medium">
               Workspaces <span className="text-red-500">*</span>
             </label>
-            <select 
+            <select
               name="work_space_id"
               value={formData.work_space_id}
               onChange={handleChange}
               className={`w-full p-2 border rounded-lg ${
-                errors.work_space_id ? 'border-red-500' : ''
+                errors.work_space_id ? "border-red-500" : ""
               }`}
               disabled={loading || loadingWorkspaces}
             >
               <option value="">
                 {loadingWorkspaces ? "Loading..." : "Select"}
               </option>
-              {allWorkspaces && Array.isArray(allWorkspaces) && allWorkspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {truncateText(workspace.name, 25)}
-                </option>
-
-              ))}
+              {allWorkspaces &&
+                Array.isArray(allWorkspaces) &&
+                allWorkspaces.map((workspace) => (
+                  <option key={workspace.id} value={workspace.id}>
+                    {truncateText(workspace.name, 25)}
+                  </option>
+                ))}
             </select>
             {errors.work_space_id && (
               <p className="text-red-500 text-xs mt-1">{errors.work_space_id}</p>
@@ -163,11 +148,11 @@ const truncateText = (text, max = 30) => {
 
           <div>
             <label className="block text-sm font-medium">Description</label>
-            <textarea 
+            <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
-              placeholder="Description" 
+              placeholder="Description"
               className="w-full p-2 border rounded-lg focus:ring focus:ring-indigo-300"
               rows="3"
               disabled={loading}
@@ -179,7 +164,9 @@ const truncateText = (text, max = 30) => {
               type="checkbox"
               name="status"
               checked={formData.status}
-              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.checked }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, status: e.target.checked }))
+              }
               className="mr-2"
               disabled={loading}
             />
@@ -187,15 +174,15 @@ const truncateText = (text, max = 30) => {
           </div>
 
           <div className="flex justify-end mt-6 space-x-2">
-            <button 
+            <button
               type="button"
-              onClick={handleClose} 
+              onClick={handleClose}
               className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
               disabled={loading}
             >
               Cancel
             </button>
-            <button 
+            <button
               type="submit"
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}

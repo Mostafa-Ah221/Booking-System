@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X } from 'lucide-react';
-import {  createAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
+import { createAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
 import DateTimeSelector from './DataTimeSections/DateTimeSelector';
 import Select from 'react-select';
 import TimezoneSelect from 'react-timezone-select';
@@ -25,19 +25,19 @@ const RescheduleSidebar = ({
   const [selectedTime, setSelectedTime] = useState(null);
   const [endTime, setEndTime] = useState(null); 
   const [selectedInterview, setSelectedInterview] = useState(null);
-const [selectedTimeZone, setSelectedTimeZone] = useState(
-  Intl.DateTimeFormat().resolvedOptions().timeZone
-);  const [showInterviewDropdown, setShowInterviewDropdown] = useState(false);
+  const [selectedTimeZone, setSelectedTimeZone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
+  const [showInterviewDropdown, setShowInterviewDropdown] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   const [isInterviewsLoading, setIsInterviewsLoading] = useState(false);
 
   const dispatch = useDispatch();
-console.log(appointment);
+  console.log(appointment);
 
- const WORKSPACE_TIMEZONE = 'UTC' ;
+  const WORKSPACE_TIMEZONE = 'UTC';
   console.log(clientData);
-  
 
   const isRescheduleMode = mode === 'reschedule' && appointment;
   const isScheduleMode = mode === 'schedule' && clientData;
@@ -84,20 +84,31 @@ console.log(appointment);
     }
   }, [isOpen, appointment, interviews, mode, clientData, isRescheduleMode, isInterviewsLoading, dispatch]);
 
+  // ✅ التعديل: Enter listener على مستوى الـ Sidebar كله
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Enter" && !isProcessing) {
+        // تجنب التفعيل لو المستخدم داخل dropdown مفتوح
+        if (showInterviewDropdown) return;
+        handleSubmit();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isProcessing, showInterviewDropdown, selectedDate, selectedTime, selectedInterview, selectedTimeZone]);
+
   const handleInterviewSelect = (interview) => {
-    
     setSelectedInterview(interview);
-   
-    
-    
     setSelectedDate(null);
     setSelectedTime(null);
     setShowInterviewDropdown(false);
     setError(null);
   };
 
-
-console.log(appointment);
+  console.log(appointment);
 
   const handleSubmit = async () => {
     if (!selectedDate || !selectedTime || !selectedInterview || !selectedTimeZone) {
@@ -122,7 +133,6 @@ console.log(appointment);
           time_zone: selectedTimeZone,
         };
         console.log(rescheduleData);
-        
         result = await dispatch(rescheduleAppointment(appointment.id, rescheduleData));
       } else if (isScheduleMode) {
         const scheduleData = {
@@ -137,10 +147,6 @@ console.log(appointment);
       }
 
       if (result && result.success) {
-        const successMessage = isRescheduleMode 
-          ? 'The appointment has been successfully rescheduled'
-          : 'The appointment has been successfully scheduled';
-        
         onClose();
         
         if (isRescheduleMode && onRescheduleSuccess) {
@@ -259,7 +265,7 @@ console.log(appointment);
                           </span>
                         </div>
                         <div className="text-left">
-                          <div className="font-medium truncate  max-w-[150px]">{interview.name}</div>
+                          <div className="font-medium truncate max-w-[150px]">{interview.name}</div>
                           <div className="text-sm text-gray-500">
                             {interview.duration ? `${interview.duration} mins` : ''}
                           </div>
@@ -271,50 +277,44 @@ console.log(appointment);
               </div>
             </div>
 
-    
             {/* Time Zone */}
-<div className="mb-6">
-  <h3 className="text-sm font-medium text-gray-700 mb-3">Select Time Zone</h3>
-  <div className="border border-gray-300 rounded-lg">
-    <TimezoneSelect
-      value={selectedTimeZone}
-      onChange={(timezone) => setSelectedTimeZone(timezone?.value || null)}
-      className="react-timezone-select w-full"
-      classNamePrefix="select"
-      styles={{
-        control: (base) => ({
-          ...base,
-          border: 'none',
-          boxShadow: 'none',
-          width: '100%',
-          '&:hover': {
-            border: 'none',
-          },
-        }),
-        menu: (base) => ({
-          ...base,
-          width: '100%',
-        }),
-      }}
-    />
-  </div>
-</div>
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">Select Time Zone</h3>
+              <div className="border border-gray-300 rounded-lg">
+                <TimezoneSelect
+                  value={selectedTimeZone}
+                  onChange={(timezone) => setSelectedTimeZone(timezone?.value || null)}
+                  className="react-timezone-select w-full"
+                  classNamePrefix="select"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      border: 'none',
+                      boxShadow: 'none',
+                      width: '100%',
+                      '&:hover': { border: 'none' },
+                    }),
+                    menu: (base) => ({ ...base, width: '100%' }),
+                  }}
+                />
+              </div>
+            </div>
 
-           {selectedInterview && (
-            <DateTimeSelector
-              selectedInterview={selectedInterview}
-              selectedDate={selectedDate}
-              selectedTime={selectedTime}
-              selectedEndTime={endTime} 
-              onDateSelect={setSelectedDate}
-              onTimeSelect={setSelectedTime}
-              onEndTimeSelect={setEndTime} 
-              appointment={appointment}
-              mode={mode}
-              selectedTimezone={selectedTimeZone} 
-              WORKSPACE_TIMEZONE={WORKSPACE_TIMEZONE} 
-            />
-          )}
+            {selectedInterview && (
+              <DateTimeSelector
+                selectedInterview={selectedInterview}
+                selectedDate={selectedDate}
+                selectedTime={selectedTime}
+                selectedEndTime={endTime} 
+                onDateSelect={setSelectedDate}
+                onTimeSelect={setSelectedTime}
+                onEndTimeSelect={setEndTime} 
+                appointment={appointment}
+                mode={mode}
+                selectedTimezone={selectedTimeZone} 
+                WORKSPACE_TIMEZONE={WORKSPACE_TIMEZONE} 
+              />
+            )}
 
             {currentClient && (
               <div className="mb-6">
@@ -326,7 +326,7 @@ console.log(appointment);
                     </span>
                   </div>
                   <div>
-                    <div className="font-medium truncate  max-w-[150px]">{currentClient.name}</div>
+                    <div className="font-medium truncate max-w-[150px]">{currentClient.name}</div>
                     <div className="text-sm text-gray-500">{currentClient.email}</div>
                   </div>
                 </div>

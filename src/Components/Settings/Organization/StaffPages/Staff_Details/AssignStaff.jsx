@@ -16,6 +16,7 @@ const AssignStaff = ({ staff }) => {
   const [activeTab, setActiveTab] = useState('workspace');
   const [searchTerm, setSearchTerm] = useState('');
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true); // ← اضفنا ده
 
   const dispatch = useDispatch();
   const { interviews, loading: interviewsLoading } = useSelector(state => state.interview);
@@ -25,8 +26,13 @@ const AssignStaff = ({ staff }) => {
 
   useEffect(() => {
     if (id) {
-      dispatch(getWorkspace({ staff_id: id }));
-      dispatch(fetchInterviews({ staff_id: id }));
+      setIsInitialLoading(true); // ← ابدأ loading قبل ما تجيب الداتا
+      Promise.all([
+        dispatch(getWorkspace({ staff_id: id })),
+        dispatch(fetchInterviews({ staff_id: id }))
+      ]).finally(() => {
+        setIsInitialLoading(false); // ← خلص loading لما الاتنين يرجعوا
+      });
     }
   }, [dispatch, id]);
 
@@ -73,7 +79,9 @@ const AssignStaff = ({ staff }) => {
   };
 
   const filteredData = getFilteredData();
-  const isLoading = activeTab === 'workspace' ? workspacesLoading : interviewsLoading;
+
+  // ← غيرنا isLoading عشان يحسب isInitialLoading كمان
+  const isLoading = isInitialLoading || (activeTab === 'workspace' ? workspacesLoading : interviewsLoading);
 
   const handleShareClick = (item, e) => {
     e.stopPropagation();
@@ -149,7 +157,7 @@ const AssignStaff = ({ staff }) => {
                 {activeTab === 'workspace' ? 'Assigned Workspace' : 'Assigned Interview'}
               </h1>
               <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs sm:text-sm rounded">
-                {filteredData.length}
+                {isInitialLoading ? '-' : filteredData.length}
               </span>
             </div>
 

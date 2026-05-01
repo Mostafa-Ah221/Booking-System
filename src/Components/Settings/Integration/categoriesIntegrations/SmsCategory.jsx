@@ -19,15 +19,13 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
   const [integrationsWithSettings, setIntegrationsWithSettings] = useState([]);
   const [isCheckingSettings, setIsCheckingSettings] = useState(false);
   
-  // Cache للنتائج مع timestamp
   const settingsCache = useRef(new Map());
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+  const CACHE_DURATION = 5 * 60 * 1000; 
 
   useEffect(() => {
     dispatch(fetchSmsIntegrations());
   }, [dispatch]);
 
-  // دالة للتحقق من صحة الـ cache
   const isCacheValid = (integrationId) => {
     const cached = settingsCache.current.get(integrationId);
     if (!cached) return false;
@@ -37,7 +35,6 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
 
   const checkSingleIntegrationSettings = async (integration) => {
     try {
-      // التحقق من الـ cache أولاً
       if (isCacheValid(integration.id)) {
         const cached = settingsCache.current.get(integration.id);
         return {
@@ -53,7 +50,6 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
                          result.data.data && 
                          parseInt(result.data.status) === 1;
       
-      // حفظ في الـ cache مع timestamp
       settingsCache.current.set(integration.id, {
         connected: isConnected,
         timestamp: Date.now()
@@ -84,11 +80,9 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
     
     try {
       if (forceRefresh) {
-        // مسح الـ cache عند الـ force refresh
         settingsCache.current.clear();
       }
       
-      // معالجة الـ integrations في مجموعات صغيرة لتجنب overwhelm الـ API
       const BATCH_SIZE = 3;
       const batches = [];
       
@@ -106,7 +100,6 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
         const batchResults = await Promise.all(batchPromises);
         allResults.push(...batchResults);
         
-        // انتظار قصير بين الـ batches
         if (batches.indexOf(batch) < batches.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
@@ -118,20 +111,17 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
     }
   }, [integrations, dispatch, isCheckingSettings]);
 
-  // Debounced version للـ refresh trigger
   const debouncedCheckSettings = useDebounce(
     () => checkIntegrationsSettings(true),
-    1000 // انتظار ثانية واحدة
+    1000 
   );
 
-  // استدعاء أول مرة عند تحميل البيانات
   useEffect(() => {
     if (integrations.length > 0 && integrationsWithSettings.length === 0) {
       checkIntegrationsSettings();
     }
   }, [integrations.length, integrationsWithSettings.length, checkIntegrationsSettings]);
 
-  // معالجة الـ refresh trigger مع debouncing
   const previousRefreshTrigger = useRef(0);
   useEffect(() => {
     if (refreshTrigger > 0 && refreshTrigger !== previousRefreshTrigger.current) {
@@ -159,7 +149,6 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
     );
   };
 
-  // استخدام useMemo لتحسين الأداء
   const integrationItems = useMemo(() => 
     integrationsWithSettings.map((item) => ({
       id: item.id,

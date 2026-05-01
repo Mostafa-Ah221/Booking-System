@@ -832,7 +832,7 @@ export function deleteGroup(idGroup, idInterview) {
   };
 }
 
-export function duplicateInterview(id) {
+export function duplicateInterview(id, workspaceId) {
   return async (dispatch) => {
     dispatch(interviewAction.setLoading(true));
 
@@ -843,7 +843,10 @@ export function duplicateInterview(id) {
         const duplicatedInterview = response?.data?.data?.interview;
 
         if (duplicatedInterview) {
-          dispatch(interviewAction.addInterviewToList(duplicatedInterview));
+          dispatch(interviewAction.addInterviewToList({
+            ...duplicatedInterview,
+            work_space_id: workspaceId
+          }));
         }
 
         dispatch(interviewAction.setError(null));

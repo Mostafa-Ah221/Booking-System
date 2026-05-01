@@ -26,7 +26,7 @@ const StaffModal = ({ isOpen, onClose }) => {
   const [isOvertimeDropdownOpen, setIsOvertimeDropdownOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [isPhoneDropdownOpen, setIsPhoneDropdownOpen] = useState(false);
-  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false); // جديد
+  const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
 
   /* ======================  REF  ====================== */
   const statusDropdownRef = useRef(null);
@@ -147,25 +147,32 @@ const StaffModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleSubmit = () => (activeTab === "invite" ? handleInviteStaff() : handleAddStaff());
+  const handleSubmit = () =>
+    activeTab === "invite" ? handleInviteStaff() : handleAddStaff();
 
-  /* ======================  OUTSIDE CLICK  ====================== */
-useEffect(() => {
-  const handler = (e) => {
-    // لو الضغطة خارج المودال الأب وخارج مودال الصورة → اقفل
-    const imageModal = document.querySelector('#image-upload-crop-modal');
-    if (
-      modalRef.current && 
-      !modalRef.current.contains(e.target) && 
-      (!imageModal || !imageModal.contains(e.target))
-    ) {
-      handleClose();
+  // ✅ التعديل: handleKeyDown لتفعيل الإرسال عند ضغط Enter
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !loading) {
+      handleSubmit();
     }
   };
 
-  document.addEventListener("mousedown", handler);
-  return () => document.removeEventListener("mousedown", handler);
-}, []);
+  /* ======================  OUTSIDE CLICK  ====================== */
+  useEffect(() => {
+    const handler = (e) => {
+      const imageModal = document.querySelector("#image-upload-crop-modal");
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(e.target) &&
+        (!imageModal || !imageModal.contains(e.target))
+      ) {
+        handleClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -173,7 +180,10 @@ useEffect(() => {
     <>
       {/* ==== MODAL ==== */}
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col" ref={modalRef}>
+        <div
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col"
+          ref={modalRef}
+        >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-6 text-white flex-shrink-0">
             <div className="flex justify-between items-center mb-4">
@@ -210,6 +220,7 @@ useEffect(() => {
                 onInputChange={handleInputChange}
                 onPhoneChange={handlePhoneChange}
                 setIsPhoneDropdownOpen={setIsPhoneDropdownOpen}
+                onKeyDown={handleKeyDown}
               />
             ) : (
               <AddStaffForm
@@ -228,6 +239,7 @@ useEffect(() => {
                 setIsPhoneDropdownOpen={setIsPhoneDropdownOpen}
                 setIsImageUploadOpen={setIsImageUploadOpen}
                 removeImage={removeImage}
+                onKeyDown={handleKeyDown}
               />
             )}
           </div>
@@ -254,7 +266,11 @@ useEffect(() => {
                   </>
                 ) : (
                   <>
-                    {activeTab === "invite" ? <Send className="w-4 h-4 mr-2" /> : <UserCheck className="w-4 h-4 mr-2" />}
+                    {activeTab === "invite" ? (
+                      <Send className="w-4 h-4 mr-2" />
+                    ) : (
+                      <UserCheck className="w-4 h-4 mr-2" />
+                    )}
                     {activeTab === "invite" ? "Send Invitation" : "Add Recruiter"}
                   </>
                 )}

@@ -23,11 +23,9 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
 
   const allPermissions = permissions?.permissions || [];
 
-  // ✅ هل كل الـ permissions متحددة؟
   const isAllSelected = allPermissions.length > 0 && 
     allPermissions.every(p => formData.permissions.some(sel => sel.id === p.id));
 
-  // ✅ هل في بعض بس متحددة؟
   const isIndeterminate = !isAllSelected && 
     allPermissions.some(p => formData.permissions.some(sel => sel.id === p.id));
 
@@ -105,6 +103,13 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
     }
   };
 
+  // ✅ التعديل: handleKeyDown لتفعيل الإرسال عند ضغط Enter
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !isSubmitting) {
+      handleSubmit();
+    }
+  };
+
   const handleClose = () => {
     setFormData({ name: "", permissions: [] });
     onClose();
@@ -141,6 +146,7 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
               name="name"
               value={formData.name}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               className="w-full border rounded-lg p-2 mt-1 focus:ring-2 focus:ring-purple-500"
               placeholder="Enter role name"
               disabled={isSubmitting}
@@ -153,7 +159,6 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
                 Permissions <span className="text-red-500">*</span>
               </label>
 
-              {/* ✅ Select All Checkbox */}
               {!loading && allPermissions.length > 0 && (
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
@@ -190,7 +195,6 @@ const RoleModal = ({ isOpen, onClose, editRole = null }) => {
               </div>
             )}
 
-            {/* ✅ عداد المحددين */}
             {allPermissions.length > 0 && (
               <p className="text-xs text-gray-400 mt-1">
                 {formData.permissions.length} of {allPermissions.length} selected

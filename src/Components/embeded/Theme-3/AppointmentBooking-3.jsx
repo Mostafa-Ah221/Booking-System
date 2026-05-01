@@ -11,6 +11,7 @@ import CalendarSection2 from '../Theme-2/calender2';
 import TimeSelectionSection2 from '../Theme-2/time2';
 import { FaBuilding, FaHome, FaUserTie } from 'react-icons/fa';
 import BookingFooter from '../BookingFooter';
+import NoAppointments from '../NoAppointments';
 
 const AppointmentBooking_3 = () => {
   const { id, idAdmin, idCustomer, idSpace } = useParams();
@@ -115,14 +116,18 @@ useEffect(() => {
     totalPrice,
     numberOfSlots,
     selectedEndTime,
-    setSelectedEndTime
+    setSelectedEndTime,
+    // noAvailability,
+    
   } = useBookingLogic(
     bookingId,
     navigate,
     isInterviewMode,
     selectedInterview?.id,
     idCustomer || idSpace || idAdmin,
-    !!idCustomer
+    !!idCustomer,
+    setTheme,theme,
+    selectedInterview
   );
 
   // ── Build steps dynamically (with unique key) ───────────────────────────────
@@ -224,12 +229,39 @@ useEffect(() => {
     (theme?.show_linkedin === "1" && theme?.footer_linkedin);
 
   // ── Auto-select single items ───────────────────────────────────────────────
-  useEffect(() => {
-    if (availableStaff?.length === 1 && !selectedStaff) setSelectedStaff(availableStaff[0]);
-    if (availableStaffGroups?.length === 1 && !selectedStaffGroup) setSelectedStaffGroup(availableStaffGroups[0]);
-    if (availableResources?.length === 1 && !selectedResource) setSelectedResource(availableResources[0]);
-  }, [availableStaff, availableStaffGroups, availableResources, selectedStaff, selectedStaffGroup, selectedResource]);
+  // Auto-select single items + auto-advance step
+useEffect(() => {
+  // Workspace
+  if (workspaces?.length === 1 && !selectedWorkspace) {
+    handleWorkspaceSelect(workspaces[0]);
+    goToNextStep();
+  }
+}, [workspaces]);
 
+useEffect(() => {
+  // Interviews
+  if (interviews?.length === 1 && !selectedInterview) {
+    handleInterviewSelect(interviews[0]);
+    goToNextStep();
+  }
+}, [interviews]);
+
+useEffect(() => {
+  // Staff
+  if (availableStaff?.length === 1 && !selectedStaff) setSelectedStaff(availableStaff[0]);
+  if (availableStaffGroups?.length === 1 && !selectedStaffGroup) setSelectedStaffGroup(availableStaffGroups[0]);
+  if (availableResources?.length === 1 && !selectedResource) setSelectedResource(availableResources[0]);
+}, [availableStaff, availableStaffGroups, availableResources]);
+
+useEffect(() => {
+  if (
+    bookingData?.mode === 'online/inperson' &&
+    bookingData?.extra_modes?.length === 1 &&
+    !selectedType
+  ) {
+    setSelectedType(bookingData.extra_modes[0]);
+  }
+}, [bookingData?.extra_modes]);
   // ── Load workspaces / interviews ───────────────────────────────────────────
   useEffect(() => {
     if (idAdmin) fetchWorkspaces();
@@ -338,6 +370,7 @@ useEffect(() => {
     }
   };
 
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col md:flex-row" >
@@ -348,7 +381,7 @@ useEffect(() => {
        <div className="absolute inset-0 bg-black/5 pointer-events-none" />
         {/* Logo and Name */}
         <div className="p-6">
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-0 md:mb-6" >
             {theme?.show_photo === '1' && theme?.photo && (
               <img src={theme?.photo} className="h-10 w-10 object-cover rounded" alt="Logo" />
             )}
@@ -597,7 +630,8 @@ useEffect(() => {
                           
                             }}
                         >
-                            {group.group_name.charAt(0).toUpperCase()}
+                           {group.group_name?.charAt(0)?.toUpperCase() || '?'}
+
                         </div>
                         <div className="flex-1 flex flex-col justify-between border-b border-gray-50" style={{
                             borderOpacity: selectedStaffGroup?.group_id === group.group_id ? 0.3 : 0.1
@@ -650,7 +684,8 @@ useEffect(() => {
                                 border: '1px solid ' + textColor,
                             }}
                             >
-                            {staff.name.charAt(0).toUpperCase()}
+                            {staff.name?.charAt(0)?.toUpperCase() || '?'}
+
                             </div>
                         )}
                         <div className="flex-1 flex justify-between border-b">
@@ -805,6 +840,7 @@ useEffect(() => {
                         selectedDate={selectedDate}
                         onDateSelect={(date) => {
                           setSelectedDate(date);
+                          // setSelectedTime('');
                         }}
                          initialDate={firstAvailableDate} 
                         availableDates={bookingData?.available_dates || []}

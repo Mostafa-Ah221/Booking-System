@@ -11,6 +11,7 @@ import useBookingLogic from './useBookingLogic';
 import { PiBaseballCap, PiUsersThreeLight } from 'react-icons/pi';
 import NotFound from '../ProtectedRoute/NotFound';
 import BookingFooter from './BookingFooter';
+import NoAppointments from './NoAppointments';
 
 const AppointmentBooking = () => {
   const { id, idAdmin, idCustomer, idSpace } = useParams();
@@ -131,6 +132,7 @@ const buttonTextColor = getTextColor(secondColor);
   const {
     availableResources,
     selectedResource,
+    
     setSelectedResource,
     requireEndTime,
     selectedEndTime,
@@ -169,8 +171,9 @@ const buttonTextColor = getTextColor(secondColor);
     setSelectedType,
     totalPrice,
     numberOfSlots,
+    // noAvailability
   } = useBookingLogic(bookingId, navigate, isInterviewMode, selectedInterview?.id, idCustomer || idSpace || idAdmin, isStaff, setTheme,theme);
- 
+
   
   useEffect(() => {
     if (availableResources && availableResources.length === 1 && !manualSelections.current.resource) {
@@ -451,6 +454,7 @@ if (isInitialLoading) {
   if (dataNotFound) {
     return <NotFound />;
   }
+  
 
 return (
   <div className="min-h-screen !text-sm" style={{ background: firstColor }}>

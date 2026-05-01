@@ -41,7 +41,7 @@ const RescheduleSidebar = ({
     const WORKSPACE_TIMEZONE = 'Africa/Cairo';
 
   
-console.log(appointmentData?.id);
+console.log(appointmentData?.data?.appointment.id);
 
   const idAppointment = appointmentData?.id;
   const { id: shareId } = useParams();

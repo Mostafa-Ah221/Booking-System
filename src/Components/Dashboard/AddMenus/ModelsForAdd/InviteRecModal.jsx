@@ -26,7 +26,6 @@ const InviteRecModal = ({ isOpen, onClose }) => {
   const [isPermissionDropdownOpen, setIsPermissionDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
-  // Refs for dropdown containers and modal
   const roleDropdownRef = useRef(null);
   const permissionDropdownRef = useRef(null);
   const statusDropdownRef = useRef(null);
@@ -41,34 +40,30 @@ const InviteRecModal = ({ isOpen, onClose }) => {
     dispatch(getPermissions());
   }, [dispatch]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modalRef.current && modalRef.current.contains(event.target)) {
+        return;
+      }
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(event.target)) {
+        setIsRoleDropdownOpen(false);
+      }
+      if (permissionDropdownRef.current && !permissionDropdownRef.current.contains(event.target)) {
+        setIsPermissionDropdownOpen(false);
+      }
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setIsStatusDropdownOpen(false);
+      }
+    };
 
-  // Handle clicks outside dropdowns
- useEffect(() => {
-  const handleClickOutside = (event) => {
-  if (modalRef.current && modalRef.current.contains(event.target)) {
-    return;
-  }
+    if (isRoleDropdownOpen || isPermissionDropdownOpen || isStatusDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
 
-  if (roleDropdownRef.current && !roleDropdownRef.current.contains(event.target)) {
-    setIsRoleDropdownOpen(false);
-  }
-  if (permissionDropdownRef.current && !permissionDropdownRef.current.contains(event.target)) {
-    setIsPermissionDropdownOpen(false);
-  }
-  if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
-    setIsStatusDropdownOpen(false);
-  }
-};
-
-
-  if (isRoleDropdownOpen || isPermissionDropdownOpen || isStatusDropdownOpen) {
-    document.addEventListener("mousedown", handleClickOutside);
-  }
-
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, [isRoleDropdownOpen, isPermissionDropdownOpen, isStatusDropdownOpen]);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isRoleDropdownOpen, isPermissionDropdownOpen, isStatusDropdownOpen]);
 
   if (!isOpen) return null;
 
@@ -110,91 +105,80 @@ const InviteRecModal = ({ isOpen, onClose }) => {
     }
   };
 
-const handlePhoneChange = (value, country) => {
-  // Handle empty or invalid input
-  if (!value) {
-    setPhoneValue('');
+  const handlePhoneChange = (value, country) => {
+    if (!value) {
+      setPhoneValue("");
+      setFormData((prev) => ({
+        ...prev,
+        phone: "",
+        code_phone: "",
+      }));
+      return;
+    }
+
+    setPhoneValue(value);
+
+    const dialCode = country.dialCode || "";
+    const countryCode = country.countryCode?.toUpperCase() || "";
+
+    let phoneWithoutCode = value;
+
+    if (phoneWithoutCode.startsWith(dialCode)) {
+      phoneWithoutCode = phoneWithoutCode.slice(dialCode.length);
+    }
+
+    phoneWithoutCode = phoneWithoutCode.replace(/[\s-]/g, "");
+
     setFormData((prev) => ({
       ...prev,
-      phone: "",
-      code_phone: "",
+      phone: phoneWithoutCode,
+      code_phone: `+${dialCode}`,
     }));
-    return;
-  }
 
-  setPhoneValue(value);
-
-  const dialCode = country.dialCode || '';
-  const countryCode = country.countryCode?.toUpperCase() || '';
-  
-  let phoneWithoutCode = value;
-  
-  if (phoneWithoutCode.startsWith(dialCode)) {
-    phoneWithoutCode = phoneWithoutCode.slice(dialCode.length);
-  }
-  
-  phoneWithoutCode = phoneWithoutCode.replace(/[\s-]/g, '');
-
-  setFormData((prev) => ({
-    ...prev,
-    phone: phoneWithoutCode,
-    code_phone: `+${dialCode}`, 
-  }));
-
-  // Validate minimum length
-  if (phoneWithoutCode.length === 0) {
-    setErrors((prev) => ({
-      ...prev,
-      phone: "Please enter a valid phone number",
-    }));
-    return;
-  }
-
-  // Validate using libphonenumber-js
-  try {
-    const fullNumber = `+${dialCode}${phoneWithoutCode}`;
-    const phoneNumber = parsePhoneNumberFromString(fullNumber, countryCode);
-
-    if (!phoneNumber || !phoneNumber.isValid()) {
+    if (phoneWithoutCode.length === 0) {
       setErrors((prev) => ({
         ...prev,
-        phone: "The phone number is invalid for this country",
+        phone: "Please enter a valid phone number",
       }));
-    } else {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors.phone;
-        return newErrors;
-      });
+      return;
     }
-  } catch (error) {
-    setErrors((prev) => ({
-      ...prev,
-      phone: "Invalid phone number format",
-    }));
-  }
-};
+
+    try {
+      const fullNumber = `+${dialCode}${phoneWithoutCode}`;
+      const phoneNumber = parsePhoneNumberFromString(fullNumber, countryCode);
+
+      if (!phoneNumber || !phoneNumber.isValid()) {
+        setErrors((prev) => ({
+          ...prev,
+          phone: "The phone number is invalid for this country",
+        }));
+      } else {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.phone;
+          return newErrors;
+        });
+      }
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        phone: "Invalid phone number format",
+      }));
+    }
+  };
+
   const handleRoleChange = (roleId) => {
     setFormData((prev) => {
       const currentRoles = prev.role_id || [];
       const isSelected = currentRoles.includes(roleId);
-      let updatedRoles;
-      if (isSelected) {
-        updatedRoles = currentRoles.filter((id) => id !== roleId);
-      } else {
-        updatedRoles = [...currentRoles, roleId];
-      }
-      return {
-        ...prev,
-        role_id: updatedRoles,
-      };
+      const updatedRoles = isSelected
+        ? currentRoles.filter((id) => id !== roleId)
+        : [...currentRoles, roleId];
+      return { ...prev, role_id: updatedRoles };
     });
 
     if (errors.role_id) {
-      setErrors((prev) => ({
-        ...prev,
-        role_id: "",
-      }));
+      setErrors((prev) => ({ ...prev, role_id: "" }));
     }
   };
 
@@ -202,23 +186,14 @@ const handlePhoneChange = (value, country) => {
     setFormData((prev) => {
       const currentPermissions = prev.permissions || [];
       const isSelected = currentPermissions.includes(permissionId);
-      let updatedPermissions;
-      if (isSelected) {
-        updatedPermissions = currentPermissions.filter((id) => id !== permissionId);
-      } else {
-        updatedPermissions = [...currentPermissions, permissionId];
-      }
-      return {
-        ...prev,
-        permissions: updatedPermissions,
-      };
+      const updatedPermissions = isSelected
+        ? currentPermissions.filter((id) => id !== permissionId)
+        : [...currentPermissions, permissionId];
+      return { ...prev, permissions: updatedPermissions };
     });
 
     if (errors.permissions) {
-      setErrors((prev) => ({
-        ...prev,
-        permissions: "",
-      }));
+      setErrors((prev) => ({ ...prev, permissions: "" }));
     }
   };
 
@@ -242,6 +217,13 @@ const handlePhoneChange = (value, country) => {
     }
   };
 
+  // ✅ التعديل: handleKeyDown لتفعيل الإرسال عند ضغط Enter
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !loading) {
+      handleInvite();
+    }
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col" ref={modalRef}>
@@ -257,8 +239,8 @@ const handlePhoneChange = (value, country) => {
                 <p className="text-purple-100 text-sm">Add a new team member to your organization</p>
               </div>
             </div>
-            <button 
-              onClick={handleClose} 
+            <button
+              onClick={handleClose}
               className="p-2 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors duration-200"
             >
               <X className="w-6 h-6" />
@@ -275,25 +257,28 @@ const handlePhoneChange = (value, country) => {
                 <User className="w-5 h-5 mr-2 text-purple-600" />
                 Personal Information
               </h3>
-              
+
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <User className="w-4 h-4 mr-1 text-gray-500" />
-                  Full Name 
+                  Full Name
                 </label>
                 <input
                   type="text"
                   placeholder="Enter User's full name"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
+                  onKeyDown={handleKeyDown}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 ${
                     errors.name ? "border-red-500 bg-red-50" : "border-gray-300"
                   }`}
                 />
-                {errors.name && <p className="text-red-500 text-xs mt-2 flex items-center">
-                  <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                  {errors.name}
-                </p>}
+                {errors.name && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center">
+                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                    {errors.name}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -306,14 +291,17 @@ const handlePhoneChange = (value, country) => {
                   placeholder="Users@company.com"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
+                  onKeyDown={handleKeyDown}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 ${
                     errors.email ? "border-red-500 bg-red-50" : "border-gray-300"
                   }`}
                 />
-                {errors.email && <p className="text-red-500 text-xs mt-2 flex items-center">
-                  <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                  {errors.email}
-                </p>}
+                {errors.email && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center">
+                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                    {errors.email}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -322,7 +310,7 @@ const handlePhoneChange = (value, country) => {
                   Contact Number <span className="text-red-500 ml-1">*</span>
                 </label>
                 <PhoneInput
-                country="eg"
+                  country="eg"
                   value={phoneValue}
                   onChange={handlePhoneChange}
                   enableSearch={true}
@@ -330,21 +318,25 @@ const handlePhoneChange = (value, country) => {
                   inputProps={{
                     name: "phone",
                     required: true,
-                    className: "!pl-16 w-full p-3 border rounded-xl outline-none transition-all duration-200 focus:ring-2 focus:ring-purple-300 focus:border-purple-400",
+                    className:
+                      "!pl-16 w-full p-3 border rounded-xl outline-none transition-all duration-200 focus:ring-2 focus:ring-purple-300 focus:border-purple-400",
                     placeholder: "Enter mobile number",
+                    onKeyDown: handleKeyDown,
                   }}
                   containerClass="w-full"
                   inputClass="w-full p-3 border rounded-xl"
                   buttonClass="!border-r !bg-gray-50 !px-3 !rounded-l-xl"
                   dropdownClass="!bg-white !border !shadow-xl !rounded-xl"
                   searchClass="!p-3 !border-b"
-                   disableCountryCode={false}
-  countryCodeEditable={false} 
+                  disableCountryCode={false}
+                  countryCodeEditable={false}
                 />
-                {errors.phone && <p className="text-red-500 text-xs mt-2 flex items-center">
-                  <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                  {errors.phone}
-                </p>}
+                {errors.phone && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center">
+                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                    {errors.phone}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -354,7 +346,7 @@ const handlePhoneChange = (value, country) => {
                 <Lock className="w-5 h-5 mr-2 text-purple-600" />
                 Security & Access
               </h3>
-              
+
               <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Lock className="w-4 h-4 mr-1 text-gray-500" />
@@ -365,14 +357,17 @@ const handlePhoneChange = (value, country) => {
                   placeholder="Create secure password"
                   value={formData.password}
                   onChange={(e) => handleInputChange("password", e.target.value)}
+                  onKeyDown={handleKeyDown}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 ${
                     errors.password ? "border-red-500 bg-red-50" : "border-gray-300"
                   }`}
                 />
-                {errors.password && <p className="text-red-500 text-xs mt-2 flex items-center">
-                  <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                  {errors.password}
-                </p>}
+                {errors.password && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center">
+                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                    {errors.password}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -385,6 +380,7 @@ const handlePhoneChange = (value, country) => {
                   placeholder="Confirm password"
                   value={formData.password_confirmation}
                   onChange={(e) => handleInputChange("password_confirmation", e.target.value)}
+                  onKeyDown={handleKeyDown}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 ${
                     errors.password_confirmation ? "border-red-500 bg-red-50" : "border-gray-300"
                   }`}
@@ -413,8 +409,12 @@ const handlePhoneChange = (value, country) => {
                   className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition-all duration-200 text-left flex items-center justify-between hover:border-purple-400"
                 >
                   <span className="text-gray-700 flex items-center">
-                    <div className={`w-2 h-2 rounded-full mr-2 ${formData.status === 1 ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    {formData.status === 1 ? 'Active' : 'Inactive'}
+                    <div
+                      className={`w-2 h-2 rounded-full mr-2 ${
+                        formData.status === 1 ? "bg-green-500" : "bg-red-500"
+                      }`}
+                    ></div>
+                    {formData.status === 1 ? "Active" : "Inactive"}
                   </span>
                   {isStatusDropdownOpen ? (
                     <ChevronUp className="w-5 h-5 text-gray-500" />
@@ -485,7 +485,9 @@ const handlePhoneChange = (value, country) => {
                     setIsStatusDropdownOpen(false);
                   }}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-purple-300 text-left flex items-center justify-between transition-all duration-200 ${
-                    errors.role_id ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-purple-400"
+                    errors.role_id
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300 hover:border-purple-400"
                   }`}
                 >
                   <span className="text-gray-700">
@@ -560,10 +562,12 @@ const handlePhoneChange = (value, country) => {
                   </div>
                 )}
 
-                {errors.role_id && <p className="text-red-500 text-xs mt-2 flex items-center">
-                  <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                  {errors.role_id}
-                </p>}
+                {errors.role_id && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center">
+                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                    {errors.role_id}
+                  </p>
+                )}
               </div>
 
               {/* Permissions Dropdown */}
@@ -580,7 +584,9 @@ const handlePhoneChange = (value, country) => {
                     setIsStatusDropdownOpen(false);
                   }}
                   className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-purple-300 text-left flex items-center justify-between transition-all duration-200 ${
-                    errors.permissions ? "border-red-500 bg-red-50" : "border-gray-300 hover:border-purple-400"
+                    errors.permissions
+                      ? "border-red-500 bg-red-50"
+                      : "border-gray-300 hover:border-purple-400"
                   }`}
                 >
                   <span className="text-gray-700">
@@ -598,7 +604,9 @@ const handlePhoneChange = (value, country) => {
                 {formData.permissions && formData.permissions.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {formData.permissions.map((permissionId) => {
-                      const permission = permissions?.permissions?.find((p) => p.id === permissionId);
+                      const permission = permissions?.permissions?.find(
+                        (p) => p.id === permissionId
+                      );
                       return permission ? (
                         <span
                           key={permissionId}
@@ -655,16 +663,18 @@ const handlePhoneChange = (value, country) => {
                   </div>
                 )}
 
-                {errors.permissions && <p className="text-red-500 text-xs mt-2 flex items-center">
-                  <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
-                  {errors.permissions}
-                </p>}
+                {errors.permissions && (
+                  <p className="text-red-500 text-xs mt-2 flex items-center">
+                    <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
+                    {errors.permissions}
+                  </p>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer Actions - Fixed at bottom */}
+        {/* Footer Actions */}
         <div className="bg-gray-50 px-8 py-6 border-t border-gray-200 flex-shrink-0">
           <div className="flex justify-end space-x-4">
             <button

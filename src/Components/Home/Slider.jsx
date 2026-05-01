@@ -1,39 +1,42 @@
 import  { useState, useEffect } from "react";
 import { GoChevronRight  } from "react-icons/go";
 import { GoChevronLeft } from "react-icons/go";
+import img1 from '../../assets/image/New folder/video_1 .gif';
+import img2 from '../../assets/image/New folder/video_2.gif';
+import img3 from '../../assets/image/New folder/video_3.gif';
+import img4 from '../../assets/image/New folder/video_4.gif';
+import img5 from '../../assets/image/New folder/video_5.gif';
 export default function Slider() {
   const sliderData = {
     slides: [
       {
         id: 1,
-        image:
-          "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-indys-recruitment.webp",
+        image:img1
+          ,
         title: "Slide 1",
       },
       {
         id: 2,
-        image:
-          "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-indys-education.webp",
+        image:img2,
         title: "Slide 2",
       },
       {
         id: 3,
-        image:
-          "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-indys-healthcare.webp",
+        image: img3,
         title: "Slide 3",
       },
       {
         id: 4,
-        image:
-          "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-indys-professional-services.webp",
+        image: img4,
         title: "Slide 4",
       },
       {
         id: 5,
-        image:
-          "https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-indys-sales.webp",
+        image: img5,
         title: "Slide 5",
       },
+        
+     
     ],
   };
 

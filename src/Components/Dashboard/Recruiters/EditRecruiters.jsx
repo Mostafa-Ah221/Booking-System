@@ -66,22 +66,32 @@ export default function EditRecruiters({ isOpen, onCancel, recruiterId }) {
         }
     }, [dispatch, isOpen, recruiterId]);
 
- useEffect(() => {
+useEffect(() => {
     if (recruiter && recruiter.customer && isOpen) {
         const c = recruiter.customer;
         
         let fullPhone = "";
-        if (c.code_phone && c.phone) {
-            const cleanCode = c.code_phone.replace('+', '');
-            fullPhone = `${cleanCode}${c.phone}`;
+        let cleanPhoneOnly = "";
+        let codePhone = "";
+
+        if (c.phone) {
+            fullPhone = c.phone.startsWith('+') 
+                ? c.phone.slice(1) 
+                : c.phone;
+            
+            codePhone = c.code_phone || '+20'; 
+            const cleanCode = codePhone.replace('+', '');
+            
+            cleanPhoneOnly = fullPhone.startsWith(cleanCode)
+                ? fullPhone.slice(cleanCode.length) 
+                : fullPhone;
         }
 
-        
         setFormData({
             name: c.name || '',
             email: c.email || '',
-            code_phone: c.code_phone || '',
-            phone: c.phone || '',
+            code_phone: codePhone,
+            phone: cleanPhoneOnly,
             password: '',
             new_password: '',
             new_password_confirmation: '',
@@ -90,9 +100,10 @@ export default function EditRecruiters({ isOpen, onCancel, recruiterId }) {
             permissions: recruiter?.customerPermissions?.map(p => p.id) || [], 
         });
         
-        setPhoneValue(fullPhone);
+        setPhoneValue(fullPhone); 
     }
 }, [recruiter, isOpen]);
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         let processedValue = value;

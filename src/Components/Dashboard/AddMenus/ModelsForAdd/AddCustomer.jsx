@@ -48,38 +48,43 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
     }
   };
 
-const handlePhoneChange = (value, country) => {
-  setPhoneValue(value);
+  const handlePhoneChange = (value, country) => {
+    setPhoneValue(value);
 
-  setFormCustomerData((prev) => ({
-    ...prev,
-    phone: value.replace(`+${country.dialCode}`, ""),
-    code_phone: `+${country.dialCode}`,
-  }));
-
-  // التحقق حتى لو الرقم ناقص
-  if (!value || value.length <= country.dialCode.length + 1) {
-    dispatch(customerAction.setError({
-      ...error,
-      phone: "Please enter a valid phone number"
+      setFormCustomerData((prev) => ({
+      ...prev,
+      phone: value.slice(country.dialCode.length),
+      code_phone: `+${country.dialCode}`,
     }));
-    return;
-  }
 
-  const phoneNumber = parsePhoneNumberFromString(value, country.countryCode?.toUpperCase());
-  
-  if (!phoneNumber || !phoneNumber.isValid()) {
-    dispatch(customerAction.setError({
-      ...error,
-      phone: "The phone number is invalid for this country"
-    }));
-  } else {
-    if (error?.phone) {
-      dispatch(customerAction.setError({ ...error, phone: undefined }));
+    if (!value || value.length <= country.dialCode.length + 1) {
+      dispatch(
+        customerAction.setError({
+          ...error,
+          phone: "Please enter a valid phone number",
+        })
+      );
+      return;
     }
-  }
-};
 
+    const phoneNumber = parsePhoneNumberFromString(
+      value,
+      country.countryCode?.toUpperCase()
+    );
+
+    if (!phoneNumber || !phoneNumber.isValid()) {
+      dispatch(
+        customerAction.setError({
+          ...error,
+          phone: "The phone number is invalid for this country",
+        })
+      );
+    } else {
+      if (error?.phone) {
+        dispatch(customerAction.setError({ ...error, phone: undefined }));
+      }
+    }
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -95,25 +100,27 @@ const handlePhoneChange = (value, country) => {
     return true;
   };
 
- const handleSubmit = async () => {
-  if (!validateForm()) return;
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
 
-  try {
-    dispatch(customerAction.setLoading(true));
+    try {
+      dispatch(customerAction.setLoading(true));
+      await dispatch(addCustomer(formCustomerData));
+      dispatch(customerAction.setError(null));
+      handleClose();
+    } catch (error) {
+      dispatch(customerAction.setError(error));
+      console.error("Failed to add Client:", error);
+    } finally {
+      dispatch(customerAction.setLoading(false));
+    }
+  };
 
-    const result = await dispatch(addCustomer(formCustomerData))
-
-    dispatch(customerAction.setError(null));
-    handleClose();
-
-  } catch (error) {
-    dispatch(customerAction.setError(error));
-    console.error("Failed to add Client:", error);
-  } finally {
-    dispatch(customerAction.setLoading(false));
-  }
-};
-
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !loading) {
+      handleSubmit();
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50">
@@ -138,6 +145,7 @@ const handlePhoneChange = (value, country) => {
               name="name"
               value={formCustomerData.name}
               onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               placeholder="Enter Client name"
               className="w-full p-2 border rounded-lg focus:ring focus:ring-indigo-300"
             />
@@ -151,6 +159,7 @@ const handlePhoneChange = (value, country) => {
               name="email"
               value={formCustomerData.email}
               onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               type="email"
               placeholder="Enter email address"
               className="w-full p-2 border rounded-lg focus:ring focus:ring-indigo-300"
@@ -170,12 +179,13 @@ const handlePhoneChange = (value, country) => {
               enableSearch={true}
               searchPlaceholder="Search country"
               disableCountryCode={false}
-               countryCodeEditable={false}
+              countryCodeEditable={false}
               inputProps={{
                 name: "phone",
                 required: true,
                 className: "!pl-16 w-full p-2 border rounded-lg outline-none",
-                placeholder: "Enter mobile number"
+                placeholder: "Enter mobile number",
+                onKeyDown: handleKeyDown,
               }}
               containerClass="w-full"
               inputClass="w-full p-2 border rounded-lg"
@@ -204,7 +214,6 @@ const handlePhoneChange = (value, country) => {
           </button>
         </div>
       </div>
- 
     </div>
   );
 };

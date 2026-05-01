@@ -26,20 +26,33 @@ const TimeSelectionSection2 = ({
   const [firstColor, secondColor] = primary.split("-");
   const textColor = colors?.text_color || "#ffffff";
 
+ 
+ 
   const timeToMinutes = (t) => (t ? +t.split(':')[0] * 60 + +t.split(':')[1] : 0);
-useEffect(() => {
-  if (!selectedDate || !availableTimes?.length) return;
-  
-  const filtered = availableTimes
-    .map(t => typeof t === 'string' ? t : t?.time)
-    .filter(t => t && !isTimeBooked(selectedDate, t));
-  
-  if (filtered.length > 0 && (!selectedTime || !filtered.includes(selectedTime))) {
-    onTimeSelect(filtered[0]);
-  }
-}, [selectedDate, availableTimes, disabledTimes]);
 
-  // Auto-scroll to first time on mobile
+
+
+useEffect(() => {
+  if (!selectedDate) {
+    onTimeSelect('');
+    return;
+  }
+
+  const timer = setTimeout(() => {
+    const filtered = availableTimes
+      .map(t => typeof t === 'string' ? t : t?.time)
+      .filter(Boolean);
+
+    if (filtered.length > 0) {
+      onTimeSelect(filtered[0]);
+    } else {
+      onTimeSelect('');
+    }
+  }, 50);
+
+  return () => clearTimeout(timer);
+}, [selectedDate, availableTimes]);
+
   useEffect(() => {
     if (firstTimeButtonRef.current && selectedDate) {
       setTimeout(() => {

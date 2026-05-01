@@ -76,7 +76,11 @@ const PROVIDER_CONFIGS = {
       { key: 'token', placeholder: 'Token', type: 'password' },
       { key: 'url', placeholder: 'URL', type: 'url' }
     ]
-  }
+  },
+  'Iwenta': { type: 'whatsapp', title: 'Iwenta WhatsApp Configuration', fields: [
+  { key: 'client_id', placeholder: 'Client ID', type: 'text' },
+  { key: 'client_secret', placeholder: 'Client Secret', type: 'password' },
+]}
 };
 
 // Generic WhatsApp Integration Modal Component

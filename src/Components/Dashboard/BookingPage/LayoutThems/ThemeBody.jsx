@@ -174,13 +174,21 @@ const FooterSection = () => (
             )}
           </div>
           <div className="flex flex-col items-center">
-            <div className="w-20 h-20 md:w-32 md:h-32 bg-white rounded-full mb-4 flex items-center justify-center">      
+          <div className="w-20 h-20 md:w-28 md:h-28 bg-white rounded-xl mb-4 flex items-center justify-center overflow-hidden">
+            {themeData?.customer_photo ? (
+              <img
+                src={themeData.customer_photo}
+                alt="customer"
+                className="w-full h-full object-cover rounded-full"
+              />
+            ) : (
               <FaUserTie className="w-10 h-10 md:w-16 md:h-16 text-gray-400" />
-            </div>
-            <h2 className="text-lg md:text-xl"
-            style={{color:textColor}}
-            >{themeData?.customer_name}</h2>
+            )}
           </div>
+          <h2 className="text-lg " style={{ color: textColor }}>
+            {themeData?.customer_name}
+          </h2>
+        </div>
            {/* Footer */}
             <FooterSection />
         </div>

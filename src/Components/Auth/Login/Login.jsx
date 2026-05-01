@@ -23,6 +23,9 @@ const Login = () => {
 
   const access_token = location.state?.access_token || '';
 
+  // ✅ قراءة redirect param لو جه من deep link
+  const redirectAfterLogin = new URLSearchParams(location.search).get('redirect');
+
   const validationSchema = Yup.object().shape({
     identify: Yup.string()
       .email("Invalid email address")
@@ -36,7 +39,6 @@ const Login = () => {
     setApiError(null);
     
     try {
-      // 1️⃣ إرسال بيانات تسجيل الدخول
       const formData = new FormData();
       formData.append("identify", values.identify);
       formData.append("password", values.password);
@@ -59,7 +61,6 @@ const Login = () => {
         }
       );
 
-      // 2️⃣ حفظ التوكن وتسجيل المستخدم
       const accessToken = response?.data?.data?.user?.original?.access_token;
       if (accessToken) {
         localStorage.setItem("userType", userType);
@@ -71,7 +72,6 @@ const Login = () => {
         }
       }
 
-      // 3️⃣ طلب وإرسال FCM Token بعد نجاح تسجيل الدخول
       try {
         const fcmToken = await requestForToken();
         if (fcmToken) {
@@ -79,12 +79,12 @@ const Login = () => {
           console.log('✅ FCM Token sent successfully after login');
         }
       } catch (fcmError) {
-        // عدم إيقاف عملية تسجيل الدخول في حالة فشل FCM
         console.warn('⚠️ FCM token failed, but login successful:', fcmError);
       }
 
-      // 4️⃣ التوجيه للصفحة المناسبة
-      if (userType === 'customer') {
+      if (redirectAfterLogin) {
+        navigate(decodeURIComponent(redirectAfterLogin), { replace: true });
+      } else if (userType === 'customer') {
         navigate("/layoutDashboard");
       } else {
         navigate("/staff_dashboard_layout");

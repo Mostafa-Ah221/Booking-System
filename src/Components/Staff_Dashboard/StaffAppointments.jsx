@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {satff_FetchAppointments, staff_FetchInterviews, staff_GetAppointmentById,staff_UpdateAppointmentStatus,staff_RescheduleAppointment,staff_GetWorkspaces,staff_DeleteAppointment } from '../../redux/apiCalls/StaffapiCalls/StaffapiCalls';
-import { useOutletContext } from 'react-router-dom';
+import { useLocation, useOutletContext, useSearchParams } from 'react-router-dom';
 
 import { CalendarDays, Clock, ChevronDown } from 'lucide-react';
 import { BsFilterRight } from "react-icons/bs";
@@ -31,7 +31,10 @@ const StaffAppointments = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const appointmentsPerPage = 11;
   const { selectWorkspace, setSelectWorkspace } = useOutletContext();
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
+const location = useLocation();
+const [searchParams, setSearchParams] = useSearchParams();
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('userAppointmentColumns');
     if (saved) {
@@ -86,10 +89,13 @@ const StaffAppointments = () => {
   const dispatch = useDispatch();
   const { showConfirmationToast } = useConfirmationToast();
   const {staff_interviews = [], staff_appointments = [],staff_workspaces = [],staff_pagination, loading = false, error, } = useSelector(state => state.staffApis || {});
+const appointmentHandled = useRef(false);
 
-console.log(staff_appointments);
-
-
+useEffect(() => {
+  if (staff_workspaces.length > 0 && !initialLoadDone) {
+    setInitialLoadDone(true);
+  }
+}, [staff_workspaces]);
 useEffect(() => {
     const fetchData = async () => {
       await dispatch(staff_GetWorkspaces());
@@ -154,6 +160,56 @@ useEffect(() => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [openDropdown]);
+
+
+useEffect(() => {
+  const id = location.state?.appointmentId
+    || searchParams.get('appointmentId')
+    || searchParams.get('appointment_id');
+
+  if (!id) return;
+  if (appointmentHandled.current) return;
+  if (loading) return;
+  if (!initialLoadDone) return; 
+
+  appointmentHandled.current = true;
+
+  const clearParam = () => {
+    if (location.state?.appointmentId) window.history.replaceState({}, document.title);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('appointmentId');
+    newParams.delete('appointment_id');
+    setSearchParams(newParams, { replace: true });
+  };
+
+  const found = (Array.isArray(staff_appointments) ? staff_appointments : [])
+    .find(a => a.id === parseInt(id));
+
+  if (found) {
+    handleAppointmentClick(found);
+    clearParam();
+  } else {
+    (async () => {
+      try {
+        setLoadingAppointmentDetails(true);
+        setDetailsError(null);
+        const response = await dispatch(staff_GetAppointmentById(parseInt(id)));
+        if (response?.success && response?.data?.appointment) {
+          setSelectedAppointment({ ...response.data.appointment, detailsLoaded: true });
+          setIsDetailsOpen(true);
+        } else {
+          setDetailsError('Failed to load appointment');
+        }
+      } catch (e) {
+        setDetailsError(e.message);
+      } finally {
+        setLoadingAppointmentDetails(false);
+        clearParam();
+      }
+    })();
+  }
+}, [location.state, searchParams, loading, initialLoadDone]); 
+
 // const handleDeleteAppointment = async (appointment) => {
 //   const confirmMessage = `Are you sure you want to delete the appointment for ${appointment.name}`;
 //   showConfirmationToast(

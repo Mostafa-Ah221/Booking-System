@@ -17,7 +17,6 @@ const Interviews = () => {
   const { workspace } = useSelector(state => state.workspace);
   const workspaceId = workspace ? workspace.id : 0;
   const canEditInterviewf = usePermission("edit interview");
-  console.log(workspace);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState(null);
@@ -99,42 +98,40 @@ const Interviews = () => {
     setActiveMenuId(null);
   };
 
-  const handlePinClick = async (interview, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setActiveMenuId(null);
+ const handlePinClick = async (interview, e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setActiveMenuId(null);
 
-    const newPinValue = interview.is_pinned == 1 ? 0 : 1;
+  const newPinValue = interview.is_pinned == 1 ? 0 : 1;
 
-    dispatch(interviewAction.updateInterviewPin({ id: interview.id, is_pinned: newPinValue }));
+  dispatch(interviewAction.updateInterviewPin({ id: interview.id, is_pinned: newPinValue }));
 
-    setPinningId(interview.id);
-    try {
-      await dispatch(updateInterview(interview.id, { is_pinned: newPinValue }));
-      dispatch(interviewAction.clearInterviews());
-      await dispatch(fetchInterviews({ work_space_id: workspaceId }));
-    } catch (error) {
-      dispatch(interviewAction.updateInterviewPin({ id: interview.id, is_pinned: interview.is_pinned }));
-      console.error('Error updating pin:', error);
-    } finally {
-      setPinningId(null);
-    }
-  };
+  setPinningId(interview.id);
+  try {
+    await dispatch(updateInterview(interview.id, { is_pinned: newPinValue }));
+  } catch (error) {
+    dispatch(interviewAction.updateInterviewPin({ id: interview.id, is_pinned: interview.is_pinned }));
+    console.error('Error updating pin:', error);
+  } finally {
+    setPinningId(null);
+  }
+};
 
-  const handleCopyClick = async (interview, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setActiveMenuId(null);
-    setCopyingId(interview.id);
+ const handleCopyClick = async (interview, e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setActiveMenuId(null);
+  setCopyingId(interview.id);
 
-    try {
-      await dispatch(duplicateInterview(interview.id));
-    } catch (error) {
-      console.error('Error copying interview:', error);
-    } finally {
-      setCopyingId(null);
-    }
-  };
+  try {
+    await dispatch(duplicateInterview(interview.id, workspaceId));
+  } catch (error) {
+    console.error('Error copying interview:', error);
+  } finally {
+    setCopyingId(null);
+  }
+};
 
   const confirmDelete = () => {
     if (interviewToDelete) {

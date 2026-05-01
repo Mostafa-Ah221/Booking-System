@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import shareLinkpro from '../../assets/image/New folder/pro 2.mp4';
 
 const HeroSection = () => {
   return (
     <div className="relative min-h-[600px] overflow-hidden">
       {/* Main Content Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-0 py-12 md:py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           {/* Left Column - Text Content */}
           <div className="z-10">
             <h1 className="text-[3.2rem] md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
@@ -30,17 +31,12 @@ const HeroSection = () => {
             
               {/* Decorative Elements */}
               <div className=" w-full">
-                <img 
-                  src="https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-bnr-bg.svg" 
-                  alt="Decorative icon"
-                  className="w-full h-full"
-                />
-              </div>
-              <div className="absolute bottom-32 right-0 w-1/2">
-                <img 
-                  src="https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-banner-imgaes.png" 
-                  alt="Decorative icon"
-                  className="w-full h-full"
+                <video
+                  src={shareLinkpro}
+                  autoPlay
+                  loop
+                  muted
+                  className="w-full h-auto object-cover rounded-lg shadow-lg"
                 />
               </div>
             </div>

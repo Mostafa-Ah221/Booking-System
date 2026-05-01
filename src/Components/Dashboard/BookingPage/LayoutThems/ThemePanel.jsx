@@ -18,12 +18,11 @@ const ThemePanel = ({
   onPagePropertiesChange,
   onFooterChange,
   onPageTextsChange, 
-   
-
 }) => {
   const dispatch = useDispatch();
   const theme = useSelector(state => state.themes?.theme?.theme);
   const userType = localStorage.getItem("userType");
+  console.log(theme);
 
   const colorOptions = [
     { color1: '#A6517D', color2: '#F5F5F5', textColor: '#000000', type: 'split' },
@@ -48,93 +47,90 @@ const ThemePanel = ({
 
   const stripHtml = (html) => html.replace(/<[^>]*>/g, '');
 
-  useEffect(() => {
-    if (theme) {
-      const toBool = (val) => val === 1 || val === "1" || val === true;
+ useEffect(() => {
+  if (theme) {
+    const toBool = (val) => val === 1 || val === "1" || val === true;
 
-      const reverseMap = Object.fromEntries(
-        Object.entries(LAYOUT_TO_THEME).map(([ui, api]) => [api, ui])
-      );
-      const uiLayout = reverseMap[theme.theme];
-      if (uiLayout) {
-        setSelectedLayout(uiLayout);
-        onLayoutChange(uiLayout);
-      }
-
-      let parsedColors = {};
-      try { parsedColors = JSON.parse(theme.colors || '{}'); } catch {}
-
-      if (parsedColors.primary) {
-        const matchingColor = colorOptions.find(
-          opt => `${opt.color1}-${opt.color2}` === parsedColors.primary
-        );
-        if (matchingColor) {
-          setSelectedColor(matchingColor);
-          onColorChange(matchingColor);
-        } else {
-          const [c1, c2] = parsedColors.primary.split('-');
-          const tc = parsedColors.text_color || '#000000';
-          const cust = { color1: c1 || '#FFFFFF', color2: c2 || '#000000', textColor: tc, type: 'custom' };
-          setCustomColor(cust);
-          setSelectedColor(cust);
-          onColorChange(cust);
-        }
-      }
-
-      const hasPhoto = theme.photo && theme.photo.trim() !== '';
-      setLogoDeleted(!hasPhoto);
-
-      if (theme.nickname) {
-        onHeaderChange({
-          ...header,
-          title: theme.nickname,
-          visibleTitle: toBool(theme.show_nickname),
-          visibleLogo: toBool(theme.show_photo),
-          logo: hasPhoto ? theme.photo : null
-        });
-      }
-
-      if (theme.page_title || theme.page_description) {
-        onPagePropertiesChange({
-          ...pageProperties,
-          title: theme.page_title || pageProperties.title,
-          description: stripHtml(theme.page_description || '') || pageProperties.description,
-          visibleTitle: toBool(theme.show_page_title),
-          visibleDescription: toBool(theme.show_page_description)
-        });
-      }
-
-      // ✅ تحميل page texts من الـ API
-      onPageTextsChange({
-        work_space_text: theme.work_space_text || '',
-        interview_text: theme.interview_text || '',
-        staff_text: theme.staff_text || '',
-        mode_text: theme.mode_text || '',
-        details_text: theme.details_text || '',
-      });
-
-      onFooterChange({
-        facebook: theme.footer_facebook || "",
-        visibleFacebook: toBool(theme.show_facebook),
-        instagram: theme.footer_instagram || "",
-        visibleInstagram: toBool(theme.show_instagram),
-        x: theme.footer_x || "",
-        visibleX: toBool(theme.show_x),
-        linkedin: theme.footer_linkedin || "",
-        visibleLinkedin: toBool(theme.show_linkedin),
-        tiktok: theme.footer_tiktok || "",
-        visibleTiktok: toBool(theme.show_tiktok),
-        snapchat: theme.footer_snapchat || "",
-        visibleSnapchat: toBool(theme.show_snapchat),
-        whatsapp: theme.footer_whatsapp || "",
-        visibleWhatsapp: toBool(theme.show_whatsapp),
-        phone: theme.footer_phone || "",
-        visiblePhone: toBool(theme.show_phone),
-        email: theme.footer_email || "",
-        visibleEmail: toBool(theme.show_email)
-      });
+    const reverseMap = Object.fromEntries(
+      Object.entries(LAYOUT_TO_THEME).map(([ui, api]) => [api, ui])
+    );
+    const uiLayout = reverseMap[theme.theme];
+    if (uiLayout) {
+      setSelectedLayout(uiLayout);
+      onLayoutChange(uiLayout);
     }
-  }, [theme]);
+
+    let parsedColors = {};
+    try { parsedColors = JSON.parse(theme.colors || '{}'); } catch {}
+
+    if (parsedColors.primary) {
+      const matchingColor = colorOptions.find(
+        opt => `${opt.color1}-${opt.color2}` === parsedColors.primary
+      );
+      if (matchingColor) {
+        setSelectedColor(matchingColor);
+        onColorChange(matchingColor);
+      } else {
+        const [c1, c2] = parsedColors.primary.split('-');
+        const tc = parsedColors.text_color || '#000000';
+        const cust = { color1: c1 || '#FFFFFF', color2: c2 || '#000000', textColor: tc, type: 'custom' };
+        setCustomColor(cust);
+        setSelectedColor(cust);
+        onColorChange(cust);
+      }
+    }
+
+    const hasPhoto = theme.photo && theme.photo.trim() !== '';
+    setLogoDeleted(!hasPhoto);
+
+    // ✅ الإصلاح: كل حقل بيتحمل بشكل مستقل — مش مشروط بـ nickname
+    onHeaderChange({
+      ...header,
+      title: theme.nickname || '',
+      visibleTitle: toBool(theme.show_nickname),
+      visibleLogo: toBool(theme.show_photo),
+      logo: hasPhoto ? theme.photo : null,
+    });
+
+    // ✅ نفس الإصلاح هنا — مش مشروط بـ page_title أو page_description
+    onPagePropertiesChange({
+      ...pageProperties,
+      title: theme.page_title || pageProperties.title,
+      description: stripHtml(theme.page_description || '') || pageProperties.description,
+      visibleTitle: toBool(theme.show_page_title),
+      visibleDescription: toBool(theme.show_page_description),
+    });
+
+    onPageTextsChange({
+      work_space_text: theme.work_space_text || '',
+      interview_text: theme.interview_text || '',
+      staff_text: theme.staff_text || '',
+      mode_text: theme.mode_text || '',
+      details_text: theme.details_text || '',
+    });
+
+    onFooterChange({
+      facebook: theme.footer_facebook || "",
+      visibleFacebook: toBool(theme.show_facebook),
+      instagram: theme.footer_instagram || "",
+      visibleInstagram: toBool(theme.show_instagram),
+      x: theme.footer_x || "",
+      visibleX: toBool(theme.show_x),
+      linkedin: theme.footer_linkedin || "",
+      visibleLinkedin: toBool(theme.show_linkedin),
+      tiktok: theme.footer_tiktok || "",
+      visibleTiktok: toBool(theme.show_tiktok),
+      snapchat: theme.footer_snapchat || "",
+      visibleSnapchat: toBool(theme.show_snapchat),
+      whatsapp: theme.footer_whatsapp || "",
+      visibleWhatsapp: toBool(theme.show_whatsapp),
+      phone: theme.footer_phone || "",
+      visiblePhone: toBool(theme.show_phone),
+      email: theme.footer_email || "",
+      visibleEmail: toBool(theme.show_email),
+    });
+  }
+}, [theme]);
 
   const toggleSection = (section) => {
     setOpenSection(openSection === section ? '' : section);

@@ -148,12 +148,14 @@ console.log(appointment);
   };
 
   const formatTime = (timeString) => {
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
+  if (!timeString || typeof timeString !== 'string') return 'N/A';
+  const [hours, minutes] = timeString.split(':');
+  const hour = parseInt(hours);
+  if (isNaN(hour) || !minutes) return 'N/A';
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+};
 
   const formatCreatedAt = (dateString) => {
     const date = new Date(dateString);
@@ -182,8 +184,7 @@ console.log(appointment);
     return `${endHours}:${endMinutes}:00`;
   };
 
-  const endTime = appointment.end_time || getEndTime(appointment.time);
-
+const endTime = appointment.end_time || (appointment.time ? getEndTime(appointment.time) : null);
   return (
     <>
       {/* Overlay - 🔹 زودنا الـ z-index */}
@@ -502,19 +503,19 @@ console.log(appointment);
               {/* Email */}
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-600">Email</span>
-                <span className="text-sm font-medium text-gray-800">{appointment.email}</span>
+                <span className="text-sm font-medium text-gray-800">{appointment?.email}</span>
               </div>
 
               {/* Phone */}
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-600">Phone Number</span>
-                <span className="text-sm font-medium text-gray-800">{appointment.phone}</span>
+                <span className="text-sm font-medium text-gray-800">{appointment?.phone}</span>
               </div>
 
               {/* Customer ID */}
               <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-600">Customer ID</span>
-                <span className="text-sm font-medium text-gray-800">{appointment.customer_id}</span>
+                <span className="text-sm text-gray-600">Client ID</span>
+                <span className="text-sm font-medium text-gray-800">{appointment?.client_id}</span>
               </div>
 
               <div className="border-t pt-4 mt-6">

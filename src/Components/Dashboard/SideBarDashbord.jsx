@@ -42,17 +42,24 @@ export default function SideBarDashbord() {
    useEffect(() => {
     dispatch(getWorkspace({ force: true }));
 
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setActiveMenuId(null);
-      }
-      if (mySpaceRef.current && 
-          !mySpaceRef.current.contains(event.target) &&
-          toggleButtonRef.current &&
-          !toggleButtonRef.current.contains(event.target)) {
-        setIsWorkspaceOpen(false);
-      }
-    };
+ const handleClickOutside = (event) => {
+  // تجاهل لو الكليك على الـ scrollbar بتاع الـ page
+  if (event.clientX >= document.documentElement.clientWidth) return;
+  if (event.clientY >= document.documentElement.clientHeight) return;
+  
+  // تجاهل لو مفيش target حقيقي
+  if (!event.target || !document.body.contains(event.target)) return;
+
+  if (menuRef.current && !menuRef.current.contains(event.target)) {
+    setActiveMenuId(null);
+  }
+  if (mySpaceRef.current && 
+      !mySpaceRef.current.contains(event.target) &&
+      toggleButtonRef.current &&
+      !toggleButtonRef.current.contains(event.target)) {
+    setIsWorkspaceOpen(false);
+  }
+};
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
@@ -293,6 +300,7 @@ useEffect(() => {
             {isWorkspaceOpen && (
               <div
                 ref={mySpaceRef}
+                onMouseDown={(e) => e.stopPropagation()} 
                 className="flex flex-col justify-between mt-2 bg-white border border-gray-200 rounded-lg shadow-sm fixed left-0 h-80 w-full p-1 z-50"
               >
                 <div className='h-[85%] overflow-auto'>
@@ -381,7 +389,7 @@ useEffect(() => {
       <BsThreeDots className="text-[13px] cursor-pointer text-purple-500"/>
     </div>
     {activeMenuId === workspaceItem.id && (
-      <div ref={menuRef} className={`absolute bottom-6 right-2 bg-white shadow-lg rounded-lg z-10 py-2 w-40`}>
+      <div ref={menuRef} onMouseDown={(e) => e.stopPropagation()} className={`absolute bottom-6 right-2 bg-white shadow-lg rounded-lg z-10 py-2 w-40`}>
         <button 
           onClick={(e) => {
             e.stopPropagation();

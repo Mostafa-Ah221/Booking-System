@@ -11,6 +11,7 @@ const whatsAppSlice = createSlice({
   },
   reducers: {
     setIntegrationsWhatsApp(state, action) {
+      
       state.integrationsWhatsApp = action.payload;
     },
     setSettings(state, action) {

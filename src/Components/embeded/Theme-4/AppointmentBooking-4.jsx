@@ -1,11 +1,12 @@
-import { Calendar, Clock, MapPin, User, ChevronRight, UserRound, Package, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, ChevronRight, UserRound, Package, Check, ChevronDown, ChevronUp, Building2 } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Loader from '../../Loader';
 import { useNavigate, useParams } from 'react-router-dom';
+import moment from 'moment-timezone';
 import useBookingLogic from '../useBookingLogic';
 import { PiBaseballCap, PiUsersThreeLight } from 'react-icons/pi';
 import TimeSelectionSection2 from '../Theme-2/time2';
-import { Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { Mail, Phone, Facebook, Instagram, Linkedin } from 'lucide-react';
 import BookingSummarySidebar2 from '../Theme-2/BookingSummarySidebar2';
 import CalendarSection4 from './CalendarSection4';
 import { FaXTwitter } from 'react-icons/fa6';
@@ -15,7 +16,6 @@ const AppointmentBooking_4 = () => {
   const navigate = useNavigate();
   const isInterviewMode = !!idCustomer || !!idSpace || !!idAdmin;
 
-  // ── States ─────────────────────────────────────────────────────────────────────
   const [workspaces, setWorkspaces] = useState(null);
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
   const [workspacesLoading, setWorkspacesLoading] = useState(false);
@@ -26,21 +26,35 @@ const AppointmentBooking_4 = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [bookingDataLoading, setBookingDataLoading] = useState(false);
   const [theme, setTheme] = useState(null);
-  
-  // ── NEW: Dropdown expansion states ─────────────────────────────────────────
   const [expandedDropdown, setExpandedDropdown] = useState(null);
-  
-  // ── Refs (dropdowns) ───────────────────────────────────────────────────────
+  const [firstAvailableDate, setFirstAvailableDate] = useState(null);
+
   const staffDropdownRef = useRef(null);
   const staffGroupDropdownRef = useRef(null);
   const resourceDropdownRef = useRef(null);
   const typeDropdownRef = useRef(null);
 
-  // colors theme
+  // ── Color parsing ──────────────────────────────────────────────────────────
   const colors = theme?.colors ? JSON.parse(theme.colors) : {};
-  const primary = colors?.primary || "";
-  const [firstColor, secondColor] = primary.split("-");
-  const textColor = colors?.text_color;
+  const primary = colors?.primary || "#3B817B-#F6CB45";
+  const [bgColor, accentColor] = primary.split("-");
+  const textColor = colors?.text_color || "#FFFFFF";
+
+  const accentWithOpacity = (opacity) => {
+    const hex = (accentColor || '#F6CB45').replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
+
+  const bgWithOpacity = (opacity) => {
+    const hex = (bgColor || '#3B817B').replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  };
 
   // ── Click-outside for dropdowns ─────────────────────────────────────────────
   useEffect(() => {
@@ -54,67 +68,72 @@ const AppointmentBooking_4 = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── Dynamic bookingId ───────────────────────────────────────────────────────
   const bookingId = useMemo(() => {
     if (selectedInterview) return selectedInterview.share_link;
     return idCustomer || idSpace || idAdmin || id;
   }, [selectedInterview, idCustomer, idSpace, idAdmin, id]);
 
-  console.log(theme);
-
-  // ── useBookingLogic ────────────────────────────────────────────────────────
   const {
-    availableResources,
-    selectedResource,
-    setSelectedResource,
-    availableStaffGroups,
-    selectedStaffGroup,
-    setSelectedStaffGroup,
-    availableStaff,
-    selectedStaff,
-    setSelectedStaff,
-    bookingData,
-    selectedDate,
-    selectedTime,
-    selectedTimezone,
-    formData,
-    isBooking,
-    setSelectedDate,
-    setSelectedTime,
-    setSelectedTimezone,
-    setFormData,
-    handleScheduleAppointment,
-    isTimeDisabled,
-    selectedType,
-    setSelectedType,
-    totalPrice,
-    numberOfSlots,
-    selectedEndTime,
-    setSelectedEndTime
+    availableResources, selectedResource, setSelectedResource,
+    availableStaffGroups, selectedStaffGroup, setSelectedStaffGroup,
+    availableStaff, selectedStaff, setSelectedStaff,
+    bookingData, selectedDate, selectedTime, selectedTimezone,
+    formData, isBooking,
+    setSelectedDate, setSelectedTime, setSelectedTimezone, setFormData,
+    handleScheduleAppointment, isTimeDisabled,
+    selectedType, setSelectedType,
+    totalPrice, numberOfSlots, selectedEndTime, setSelectedEndTime
   } = useBookingLogic(
-    bookingId,
-    navigate,
-    isInterviewMode,
-    selectedInterview?.id,
-    idCustomer || idSpace || idAdmin,
-    !!idCustomer,
-    setTheme,
-    theme
+    bookingId, navigate, isInterviewMode,
+    selectedInterview?.id, idCustomer || idSpace || idAdmin,
+    !!idCustomer, setTheme, theme,
+    selectedInterview
   );
 
-  // ── Build steps dynamically (with unique key) ───────────────────────────────
+  // ── Timezone auto-detection (زي AppointmentBooking_3) ─────────────────────
+  useEffect(() => {
+    if (selectedTimezone) return;
+    let detected = null;
+    try {
+      detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (detected && detected.includes('/')) {
+        setSelectedTimezone(detected);
+        return;
+      }
+    } catch (e) {}
+    try {
+      detected = moment.tz.guess();
+      if (detected) setSelectedTimezone(detected);
+    } catch (e) {
+      console.log('Timezone auto-detection failed');
+    }
+  }, []);
+
+  // ── Track first available date ─────────────────────────────────────────────
+  useEffect(() => {
+    if (selectedDate && !firstAvailableDate) {
+      setFirstAvailableDate(selectedDate);
+    }
+  }, [selectedDate]);
+
+  // ── Build steps ────────────────────────────────────────────────────────────
   const steps = useMemo(() => {
     const list = [];
     let counter = 1;
 
-    if (isInterviewMode) {
+    // Workspace step لو idAdmin وعنده workspaces
+    if (idAdmin && workspaces?.length > 0) {
       list.push({
         step: counter++,
-        label: 'Interview',
-        icon: PiBaseballCap,
-        value: selectedInterview?.name,
-        key: 'interview',
+        label: 'Workspace',
+        icon: Building2,
+        value: selectedWorkspace?.name,
+        key: 'workspace',
       });
+    }
+
+    if (isInterviewMode) {
+      list.push({ step: counter++, label: 'Interview', icon: PiBaseballCap, value: selectedInterview?.name, key: 'interview' });
     }
 
     const hasStaff = availableStaff?.length > 0 || availableStaffGroups?.length > 0;
@@ -129,65 +148,33 @@ const AppointmentBooking_4 = () => {
     }
 
     if (availableResources?.length > 0) {
-      list.push({
-        step: counter++,
-        label: 'Resource',
-        icon: Package,
-        value: selectedResource?.name,
-        key: 'resource',
-      });
+      list.push({ step: counter++, label: 'Resource', icon: Package, value: selectedResource?.name, key: 'resource' });
     }
 
-    if (bookingData?.mode === 'online/inperson') {
+    // extra_modes check زي AppointmentBooking_3
+    if (bookingData?.mode === 'online/inperson' && bookingData?.extra_modes?.length > 0) {
       list.push({
-        step: counter++,
-        label: 'Type',
-        icon: MapPin,
-        value: selectedType
-          ? selectedType === 'online'
-            ? 'Online'
-            : selectedType === 'inhouse'
-            ? 'In House'
-            : 'At Home'
-          : null,
+        step: counter++, label: 'Type', icon: MapPin,
+        value: selectedType ? (selectedType === 'online' ? 'Online' : selectedType === 'inhouse' ? 'In House' : 'At Home') : null,
         key: 'type',
       });
     }
 
     const dateTimeValue = selectedDate && selectedTime ? `${selectedDate} at ${selectedTime}` : null;
-    list.push({
-      step: counter++,
-      label: 'Date & Time',
-      icon: Calendar,
-      value: dateTimeValue,
-      key: 'datetime',
-    });
-
-    list.push({
-      step: counter++,
-      label: 'Your Info',
-      icon: User,
-      value: null,
-      key: 'info',
-    });
+    list.push({ step: counter++, label: 'Date & Time', icon: Calendar, value: dateTimeValue, key: 'datetime' });
+    list.push({ step: counter++, label: 'Your Info', icon: User, value: null, key: 'info' });
 
     return list;
   }, [
-    isInterviewMode,
-    selectedInterview,
-    availableStaff,
-    availableStaffGroups,
-    selectedStaff,
-    selectedStaffGroup,
-    availableResources,
-    selectedResource,
-    bookingData?.mode,
-    selectedType,
-    selectedDate,
-    selectedTime,
+    idAdmin, workspaces, selectedWorkspace,
+    isInterviewMode, selectedInterview,
+    availableStaff, availableStaffGroups, selectedStaff, selectedStaffGroup,
+    availableResources, selectedResource,
+    bookingData?.mode, bookingData?.extra_modes,
+    selectedType, selectedDate, selectedTime
   ]);
 
-  const hasAnySocial = 
+  const hasAnySocial =
     (theme?.show_email === "1" && theme?.footer_email) ||
     (theme?.show_phone === "1" && theme?.footer_phone) ||
     (theme?.show_facebook === "1" && theme?.footer_facebook) ||
@@ -195,24 +182,30 @@ const AppointmentBooking_4 = () => {
     (theme?.show_instagram === "1" && theme?.footer_instagram) ||
     (theme?.show_linkedin === "1" && theme?.footer_linkedin);
 
-  // ── Auto-select single items ───────────────────────────────────────────────
+  // ── Auto-select single items + auto-advance (زي AppointmentBooking_3) ──────
   useEffect(() => {
-    if (availableStaff?.length === 1 && !selectedStaff) {
-      setSelectedStaff(availableStaff[0]);
-      setSelectedDate(null);
-      setSelectedTime(null);
+    if (workspaces?.length === 1 && !selectedWorkspace) {
+      handleWorkspaceSelect(workspaces[0]);
     }
-    if (availableStaffGroups?.length === 1 && !selectedStaffGroup) {
-      setSelectedStaffGroup(availableStaffGroups[0]);
-      setSelectedDate(null);
-      setSelectedTime(null);
+  }, [workspaces]);
+
+  useEffect(() => {
+    if (interviews?.length === 1 && !selectedInterview) {
+      handleInterviewSelect(interviews[0]);
     }
-    if (availableResources?.length === 1 && !selectedResource) {
-      setSelectedResource(availableResources[0]);
-      setSelectedDate(null);
-      setSelectedTime(null);
-    }
+  }, [interviews]);
+
+  useEffect(() => {
+    if (availableStaff?.length === 1 && !selectedStaff) { setSelectedStaff(availableStaff[0]); setSelectedDate(null); setSelectedTime(null); }
+    if (availableStaffGroups?.length === 1 && !selectedStaffGroup) { setSelectedStaffGroup(availableStaffGroups[0]); setSelectedDate(null); setSelectedTime(null); }
+    if (availableResources?.length === 1 && !selectedResource) { setSelectedResource(availableResources[0]); setSelectedDate(null); setSelectedTime(null); }
   }, [availableStaff, availableStaffGroups, availableResources]);
+
+  useEffect(() => {
+    if (bookingData?.mode === 'online/inperson' && bookingData?.extra_modes?.length === 1 && !selectedType) {
+      setSelectedType(bookingData.extra_modes[0]);
+    }
+  }, [bookingData?.extra_modes]);
 
   // ── Load workspaces / interviews ───────────────────────────────────────────
   useEffect(() => {
@@ -231,9 +224,7 @@ const AppointmentBooking_4 = () => {
       const res = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
       const data = await res.json();
       if (data.data?.workspaces) {
-        if (data.data?.theme && !theme) {  
-          setTheme(data.data.theme);
-        }
+        if (data.data?.theme && !theme) setTheme(data.data.theme);
         setWorkspaces(data.data.workspaces);
         setNameProvider(data.data.workspaces[0]?.customer_name);
       }
@@ -253,16 +244,14 @@ const AppointmentBooking_4 = () => {
         : `https://backend-booking.appointroll.com/api/public/book/resource?workspace_share_link=${resourceId}`;
       const res = await fetch(url);
       const data = await res.json();
-
       let interviewsData = [];
       if (idSpace || (idAdmin && selectedWorkspace)) {
         interviewsData = data?.data?.workspace_interviews || [];
-        if (data.data?.theme && !theme) {  
-          setTheme(data.data.theme);
-        }
+        if (data.data?.theme && !theme) setTheme(data.data.theme);
         setNameProvider(data?.data?.workspace_interviews?.[0]?.customer_name);
       } else if (idCustomer) {
         interviewsData = data?.data?.staff_interviews || [];
+        if (data.data?.theme && !theme) setTheme(data.data.theme);
         setNameProvider(data?.data?.staff_interviews?.[0]?.customer_name);
       }
       setInterviews(interviewsData);
@@ -274,88 +263,106 @@ const AppointmentBooking_4 = () => {
     }
   };
 
-  // ── Interview selection → reload bookingData → move to next step ─────────────
+  const handleWorkspaceSelect = (workspace) => {
+    setSelectedWorkspace(workspace);
+    setSelectedInterview(null);
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setExpandedDropdown(null);
+  };
+
   const handleInterviewSelect = (interview) => {
     setSelectedInterview(interview);
     setSelectedDate(null);
     setSelectedTime(null);
     setBookingDataLoading(true);
     setExpandedDropdown(null);
-
-    setTimeout(() => {
-      setBookingDataLoading(false);
-    }, 250);
+    setTimeout(() => setBookingDataLoading(false), 250);
   };
 
-  // ── Navigation helpers ─────────────────────────────────────────────────────
   const goToNextStep = () => {
     const next = steps.find((s) => s.step > currentStep);
-    if (next && canGoToStep(next.step)) {
-      setCurrentStep(next.step);
-    }
+    if (next && canGoToStep(next.step)) setCurrentStep(next.step);
   };
 
   const canGoToStep = (targetStep) => {
     if (targetStep === currentStep) return true;
-
     const targetIdx = steps.findIndex((s) => s.step === targetStep);
     if (targetIdx === -1) return false;
-
-    const previousSteps = steps.slice(0, targetIdx);
-    return previousSteps.every((s) => s.value !== null && s.value !== undefined);
+    return steps.slice(0, targetIdx).every((s) => s.value !== null && s.value !== undefined);
   };
 
   const handleStepClick = (step) => {
-    if (canGoToStep(step)) {
-      setCurrentStep(step);
-    }
+    if (canGoToStep(step)) setCurrentStep(step);
   };
 
-  // ── Toggle dropdown ────────────────────────────────────────────────────────
   const toggleDropdown = (key) => {
     setExpandedDropdown(expandedDropdown === key ? null : key);
   };
 
-  // ── Render dropdown box ────────────────────────────────────────────────────
+  // ── Avatar placeholder ─────────────────────────────────────────────────────
+  const AvatarPlaceholder = ({ letter }) => (
+    <div
+      className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0"
+      style={{ backgroundColor: accentColor, color: bgColor }}
+    >
+      {letter}
+    </div>
+  );
+
+  // ── Dropdown Box ───────────────────────────────────────────────────────────
   const renderDropdownBox = (step) => {
     const isExpanded = expandedDropdown === step.key;
     const Icon = step.icon;
+    const hasValue = !!step.value;
 
     return (
-      <div 
+      <div
         key={step.key}
-        className="border overflow-hidden transition-all"
-        style={{ 
-          borderColor:textColor
-          // backgroundColor: 'rgba(0,0,0,0.2)'
+        className="overflow-hidden transition-all duration-200"
+        style={{
+          border: `1.5px solid ${hasValue ? accentColor : accentWithOpacity(0.35)}`,
+          borderRadius: '10px',
+          backgroundColor: hasValue ? accentWithOpacity(0.12) : accentWithOpacity(0.04),
         }}
       >
-        {/* Dropdown Header */}
         <div
-          className="flex items-center justify-between p-4 cursor-pointer"
+          className="flex items-center justify-between p-4 cursor-pointer select-none transition-all duration-150"
+          style={{ backgroundColor: isExpanded ? accentWithOpacity(0.08) : 'transparent' }}
           onClick={() => toggleDropdown(step.key)}
         >
-          <div className="flex items-center gap-3">
-            <Icon className="w-5 h-5" style={{ color: textColor }} />
-            <div>
-              <p className="text-xs opacity-70" style={{ color: textColor }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: hasValue ? accentColor : accentWithOpacity(0.2) }}
+            >
+              <Icon className="w-4 h-4" style={{ color: hasValue ? bgColor : textColor }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: textColor, opacity: 0.6 }}>
                 {step.label}
               </p>
-              <p className="font-semibold" style={{ color: textColor }}>
+              <p className="font-semibold truncate" style={{ color: textColor, maxWidth: '260px', opacity: hasValue ? 1 : 0.5 }}>
                 {step.value || `Select ${step.label}`}
               </p>
             </div>
           </div>
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5" style={{ color: textColor }} />
-          ) : (
-            <ChevronDown className="w-5 h-5" style={{ color: textColor }} />
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+            {hasValue && (
+              <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                <Check className="w-3 h-3" style={{ color: bgColor }} />
+              </div>
+            )}
+            {isExpanded
+              ? <ChevronUp className="w-4 h-4" style={{ color: textColor, opacity: 0.7 }} />
+              : <ChevronDown className="w-4 h-4" style={{ color: textColor, opacity: 0.7 }} />
+            }
+          </div>
         </div>
 
-        {/* Dropdown Content */}
         {isExpanded && (
-          <div className="border-t-2 max-h-80 overflow-y-auto" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
+          <div className="max-h-72 overflow-y-auto" style={{ borderTop: `1px solid ${accentWithOpacity(0.2)}` }}>
+            {step.key === 'workspace' && renderWorkspaceOptions()}
             {step.key === 'interview' && renderInterviewOptions()}
             {step.key === 'staff' && renderStaffOptions()}
             {step.key === 'resource' && renderResourceOptions()}
@@ -366,329 +373,214 @@ const AppointmentBooking_4 = () => {
     );
   };
 
-  // ── Render Interview Options ───────────────────────────────────────────────
-  const renderInterviewOptions = () => {
-    if (interviewsLoading) {
-      return (
-        <div className="p-8 text-center">
-          <Loader />
+  // ── Option Row ─────────────────────────────────────────────────────────────
+  const OptionRow = ({ isSelected, onClick, children }) => (
+    <div
+      className="flex items-center justify-between p-3 cursor-pointer transition-all duration-150"
+      style={{
+        backgroundColor: isSelected ? accentWithOpacity(0.18) : 'transparent',
+        borderBottom: `1px solid ${accentWithOpacity(0.12)}`,
+      }}
+      onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = accentWithOpacity(0.08); }}
+      onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
+      onClick={onClick}
+    >
+      {children}
+      {isSelected && (
+        <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: accentColor }}>
+          <Check className="w-3 h-3" style={{ color: bgColor }} />
         </div>
-      );
-    }
+      )}
+    </div>
+  );
 
-    if (!interviews || interviews.length === 0) {
-      return (
-        <div className="p-8 text-center" style={{ color: textColor }}>
-          No interviews available
-        </div>
-      );
-    }
+  // ── Workspace Options ──────────────────────────────────────────────────────
+  const renderWorkspaceOptions = () => {
+    if (workspacesLoading) return <div className="p-8 text-center"><Loader /></div>;
+    if (!workspaces || workspaces.length === 0)
+      return <div className="p-8 text-center text-sm" style={{ color: textColor, opacity: 0.5 }}>No workspaces available</div>;
 
-    return interviews.map((interview) => (
-      <div
-        key={interview.id}
-        className="p-4 cursor-pointer transition-all hover:bg-black hover:bg-opacity-10 border-b"
-        style={{ 
-          borderColor: 'rgba(255,255,255,0.1)',
-          backgroundColor: selectedInterview?.id === interview.id ? 'rgba(0,0,0,0.2)' : 'transparent'
-        }}
-        onClick={() => handleInterviewSelect(interview)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded flex items-center justify-center font-semibold"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                color: textColor
-              }}
-            >
-              {interview.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-medium truncate max-w-[100px] block" style={{ color: textColor }}>
-                {interview.name}
-              </p>
-              <p className="text-xs opacity-70" style={{ color: textColor }}>
-                {interview.duration_cycle} {interview.duration_period}
-              </p>
-            </div>
+    return workspaces.map((workspace) => (
+      <OptionRow key={workspace.id} isSelected={selectedWorkspace?.id === workspace.id} onClick={() => handleWorkspaceSelect(workspace)}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: accentWithOpacity(0.2) }}>
+            <Building2 className="w-4 h-4" style={{ color: accentColor }} />
           </div>
-          {selectedInterview?.id === interview.id && (
-            <Check className="w-5 h-5" style={{ color: firstColor }} />
-          )}
+          <div className="min-w-0">
+            <p className="font-medium truncate" style={{ color: textColor, maxWidth: '220px' }}>{workspace.name}</p>
+            {workspace.description && <p className="text-xs" style={{ color: textColor, opacity: 0.55 }}>{workspace.description}</p>}
+          </div>
         </div>
-      </div>
+      </OptionRow>
     ));
   };
 
-  // ── Render Staff Options ───────────────────────────────────────────────────
+  // ── Interview Options ──────────────────────────────────────────────────────
+  const renderInterviewOptions = () => {
+    if (interviewsLoading) return <div className="p-8 text-center"><Loader /></div>;
+    if (!interviews || interviews.length === 0)
+      return <div className="p-8 text-center text-sm" style={{ color: textColor, opacity: 0.5 }}>No interviews available</div>;
+
+    return interviews.map((interview) => (
+      <OptionRow key={interview.id} isSelected={selectedInterview?.id === interview.id} onClick={() => handleInterviewSelect(interview)}>
+        <div className="flex items-center gap-3 min-w-0">
+          <AvatarPlaceholder letter={interview.name.charAt(0).toUpperCase()} />
+          <div className="min-w-0">
+            <p className="font-medium truncate" style={{ color: textColor, maxWidth: '220px' }}>{interview.name}</p>
+            <p className="text-xs" style={{ color: textColor, opacity: 0.55 }}>{interview.duration_cycle} {interview.duration_period}</p>
+          </div>
+        </div>
+      </OptionRow>
+    ));
+  };
+
+  // ── Staff Options ──────────────────────────────────────────────────────────
   const renderStaffOptions = () => {
-    // Staff Groups
     if (availableStaffGroups?.length > 0) {
       return availableStaffGroups.map((group) => (
-        <div
-          key={group.group_id}
-          className="p-4 cursor-pointer transition-all hover:bg-black hover:bg-opacity-10 border-b"
-          style={{ 
-            borderColor: 'rgba(255,255,255,0.1)',
-            backgroundColor: selectedStaffGroup?.group_id === group.group_id ? 'rgba(0,0,0,0.2)' : 'transparent'
-          }}
-          onClick={() => {
-            setSelectedStaffGroup(group);
-            setExpandedDropdown(null);
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded flex items-center justify-center font-semibold"
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  color: textColor
-                }}
-              >
-                {group.group_name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <p className="font-medium truncate max-w-[100px] block" style={{ color: textColor }}>
-                  {group.group_name}
-                </p>
-                {group.group_description && (
-                  <p className="text-xs opacity-70" style={{ color: textColor }}>
-                    {group.group_description}
-                  </p>
-                )}
-              </div>
+        <OptionRow key={group.group_id} isSelected={selectedStaffGroup?.group_id === group.group_id} onClick={() => { setSelectedStaffGroup(group); setExpandedDropdown(null); }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <AvatarPlaceholder letter={group.group_name.charAt(0).toUpperCase()} />
+            <div className="min-w-0">
+              <p className="font-medium truncate" style={{ color: textColor, maxWidth: '220px' }}>{group.group_name}</p>
+              {group.group_description && <p className="text-xs" style={{ color: textColor, opacity: 0.55 }}>{group.group_description}</p>}
             </div>
-            {selectedStaffGroup?.group_id === group.group_id && (
-              <Check className="w-5 h-5" style={{ color: firstColor }} />
-            )}
           </div>
-        </div>
+        </OptionRow>
       ));
     }
-
-    // Individual Staff
     if (availableStaff?.length > 0) {
       return availableStaff.map((staff) => (
-        <div
-          key={staff.id}
-          className="p-4 cursor-pointer transition-all hover:bg-black hover:bg-opacity-10 border-b"
-          style={{ 
-            borderColor: 'rgba(255,255,255,0.1)',
-            backgroundColor: selectedStaff?.id === staff.id ? 'rgba(0,0,0,0.2)' : 'transparent'
-          }}
-          onClick={() => {
-            setSelectedStaff(staff);
-            setExpandedDropdown(null);
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {staff?.photo ? (
-                <img
-                  src={staff.photo}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
-                <div
-                  className="w-10 h-10 rounded flex items-center justify-center font-semibold"
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                    color: textColor
-                  }}
-                >
-                  {staff.name.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <p className="font-medium truncate max-w-[100px] block" style={{ color: textColor }}>
-                {staff.name}
-              </p>
-            </div>
-            {selectedStaff?.id === staff.id && (
-              <Check className="w-5 h-5" style={{ color: firstColor }} />
-            )}
+        <OptionRow key={staff.id} isSelected={selectedStaff?.id === staff.id} onClick={() => { setSelectedStaff(staff); setExpandedDropdown(null); }}>
+          <div className="flex items-center gap-3 min-w-0">
+            {staff?.photo
+              ? <img src={staff.photo} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" alt={staff.name} />
+              : <AvatarPlaceholder letter={staff.name.charAt(0).toUpperCase()} />
+            }
+            <p className="font-medium truncate" style={{ color: textColor, maxWidth: '220px' }}>{staff.name}</p>
           </div>
-        </div>
+        </OptionRow>
       ));
     }
-
     return null;
   };
 
-  // ── Render Resource Options ────────────────────────────────────────────────
+  // ── Resource Options ───────────────────────────────────────────────────────
   const renderResourceOptions = () => {
     if (!availableResources || availableResources.length === 0) return null;
-
     return availableResources.map((resource) => (
-      <div
-        key={resource.id}
-        className="p-4 cursor-pointer transition-all hover:bg-black hover:bg-opacity-10 border-b"
-        style={{ 
-          borderColor: 'rgba(255,255,255,0.1)',
-          backgroundColor: selectedResource?.id === resource.id ? 'rgba(0,0,0,0.2)' : 'transparent'
-        }}
-        onClick={() => {
-          setSelectedResource(resource);
-          setExpandedDropdown(null);
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded flex items-center justify-center"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                color: textColor
-              }}
-            >
-              <Package className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-medium truncate max-w-[100px] block" style={{ color: textColor }}>
-                {resource.name}
-              </p>
-              {resource.description && (
-                <p className="text-xs opacity-70" style={{ color: textColor }}>
-                  {resource.description}
-                </p>
-              )}
-            </div>
+      <OptionRow key={resource.id} isSelected={selectedResource?.id === resource.id} onClick={() => { setSelectedResource(resource); setExpandedDropdown(null); }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: accentWithOpacity(0.2) }}>
+            <Package className="w-4 h-4" style={{ color: textColor }} />
           </div>
-          {selectedResource?.id === resource.id && (
-            <Check className="w-5 h-5" style={{ color: firstColor }} />
-          )}
+          <div className="min-w-0">
+            <p className="font-medium truncate" style={{ color: textColor, maxWidth: '220px' }}>{resource.name}</p>
+            {resource.description && <p className="text-xs" style={{ color: textColor, opacity: 0.55 }}>{resource.description}</p>}
+          </div>
         </div>
-      </div>
+      </OptionRow>
     ));
   };
 
-  // ── Render Type Options ────────────────────────────────────────────────────
+  // ── Type Options ───────────────────────────────────────────────────────────
   const renderTypeOptions = () => {
-    const types = [
-      { value: 'online', label: 'Online' },
-      { value: 'inhouse', label: 'In House' },
-      { value: 'athome', label: 'At Home' },
-    ];
-
-    return types.map((type) => (
-      <div
-        key={type.value}
-        className="p-4 cursor-pointer transition-all hover:bg-black hover:bg-opacity-10 border-b"
-        style={{ 
-          borderColor: 'rgba(255,255,255,0.1)',
-          backgroundColor: selectedType === type.value ? 'rgba(0,0,0,0.2)' : 'transparent'
-        }}
-        onClick={() => {
-          setSelectedType(type.value);
-          setExpandedDropdown(null);
-        }}
-      >
-        <div className="flex items-center justify-between">
+    const modes = bookingData?.extra_modes || [];
+    const typeMap = {
+      online:  { label: 'Online',   emoji: '🌐' },
+      inhouse: { label: 'In House', emoji: '🏢' },
+      athome:  { label: 'At Home',  emoji: '🏠' },
+    };
+    return modes.map((modeVal) => {
+      const { label, emoji } = typeMap[modeVal] || { label: modeVal, emoji: '📍' };
+      return (
+        <OptionRow key={modeVal} isSelected={selectedType === modeVal} onClick={() => { setSelectedType(modeVal); setExpandedDropdown(null); }}>
           <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded flex items-center justify-center font-semibold"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                color: textColor
-              }}
-            >
-              {type.value === 'online' ? 'O' : type.value === 'inhouse' ? 'IH' : 'AT'}
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{ backgroundColor: accentWithOpacity(0.2) }}>
+              {emoji}
             </div>
-            <p className="font-medium truncate max-w-[150px] block" style={{ color: textColor }}>
-              {type.label}
-            </p>
+            <p className="font-medium" style={{ color: textColor }}>{label}</p>
           </div>
-          {selectedType === type.value && (
-            <Check className="w-5 h-5" style={{ color: firstColor }} />
-          )}
-        </div>
-      </div>
-    ));
+        </OptionRow>
+      );
+    });
   };
 
-  // ── Get Date & Time Step ───────────────────────────────────────────────────
   const dateTimeStep = steps.find((s) => s.key === 'datetime');
   const infoStep = steps.find((s) => s.key === 'info');
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen" style={{ background: secondColor }}>
-      <div className="max-w-7xl mx-auto p-6 py-8">
+    <div className="min-h-screen" style={{ background: bgColor }}>
+      <div className="max-w-6xl mx-auto px-4 py-10">
+
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
+        <div className="text-center mb-10">
+          <div className="flex items-center justify-start gap-3 mb-3">
             {theme?.show_photo === '1' && theme?.photo && (
-              <img src={theme?.photo} className="h-12 w-12 object-cover rounded-lg" alt="Logo" />
+              <img src={theme?.photo} className="h-12 w-12 object-cover rounded-xl shadow-md" alt="Logo" />
             )}
             {theme?.show_nickname === '1' && theme?.nickname && (
-              <h1 className="text-xl font-bold" style={{ color: textColor }}>
-                {theme?.nickname}
-              </h1>
+              <h1 className="text-xl font-bold" style={{ color: textColor }}>{theme?.nickname}</h1>
             )}
           </div>
           {theme?.show_page_title === '1' && theme?.page_title && (
-            <h2 className="text-2xl font-bold mb-3" style={{ color: textColor }}>
-              {theme?.page_title}
-            </h2>
+            <h2 className="text-3xl font-bold mb-2" style={{ color: accentColor }}>{theme?.page_title}</h2>
           )}
           {theme?.show_page_description === '1' && theme?.page_description && (
-            <p className="max-w-2xl mx-auto text-sm" style={{ color: textColor }}>
+            <p className="max-w-xl mx-auto text-sm leading-relaxed" style={{ color: textColor, opacity: 0.75 }}>
               {theme?.page_description}
             </p>
           )}
         </div>
 
-        {/* Dropdown Boxes for steps before datetime */}
-        <div className=" mb-6">
+        {/* Dropdown Steps */}
+        <div className="flex flex-col gap-3 mb-6">
           {steps
             .filter((s) => s.key !== 'datetime' && s.key !== 'info')
             .map((step) => renderDropdownBox(step))}
         </div>
 
-        {/* Date & Time Step - Always visible */}
+        {/* Date & Time */}
         {dateTimeStep && (
-          <div className="mb-6">
-            <div 
-              className=" rounded-lg p-4"
-              style={{ 
-                // borderColor: selectedDate && selectedTime ? firstColor : 'rgba(255,255,255,0.3)',
-              }}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <Clock className="w-5 h-5" style={{ color: textColor }} />
-                <div>
-                  <p className="text-xs opacity-70" style={{ color: textColor }}>
-                    Date & Time
-                  </p>
-                  {selectedDate && selectedTime ? (
-                    <p className="font-semibold" style={{ color: textColor }}>
-                      {selectedDate} | {selectedTime}
-                    </p>
-                  ) : (
-                    <p className="font-semibold" style={{ color: textColor }}>
-                      Select Date & Time
-                    </p>
-                  )}
-                </div>
+          <div
+            className="mb-6 rounded-xl overflow-hidden"
+            style={{
+              border: `1.5px solid ${selectedDate && selectedTime ? accentColor : accentWithOpacity(0.35)}`,
+              backgroundColor: selectedDate && selectedTime ? accentWithOpacity(0.12) : accentWithOpacity(0.04),
+            }}
+          >
+            <div className="flex items-center gap-3 p-4" style={{ borderBottom: `1px solid ${accentWithOpacity(0.2)}` }}>
+              <div
+                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: selectedDate && selectedTime ? accentColor : accentWithOpacity(0.2) }}
+              >
+                <Clock className="w-4 h-4" style={{ color: selectedDate && selectedTime ? bgColor : textColor }} />
               </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: textColor, opacity: 0.6 }}>Date & Time</p>
+                <p className="font-semibold" style={{ color: textColor, opacity: selectedDate && selectedTime ? 1 : 0.5 }}>
+                  {selectedDate && selectedTime ? `${selectedDate} | ${selectedTime}` : 'Select Date & Time'}
+                </p>
+              </div>
+              {selectedDate && selectedTime && (
+                <div className="ml-auto w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                  <Check className="w-3 h-3" style={{ color: bgColor }} />
+                </div>
+              )}
+            </div>
 
+            <div className="p-4">
               {bookingDataLoading ? (
                 <div className="text-center py-16">
                   <Loader />
-                  <p className="text-sm mt-4" style={{ color: textColor, opacity: 0.7 }}>
-                    Loading available times...
-                  </p>
+                  <p className="text-sm mt-4" style={{ color: textColor, opacity: 0.6 }}>Loading available times...</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Calendar */}
                   <CalendarSection4
                     selectedDate={selectedDate}
-                    onDateSelect={(date) => {
-                      setSelectedDate(date);
-                    }}
+                    onDateSelect={(date) => setSelectedDate(date)}
                     availableDates={bookingData?.available_dates || []}
                     availableTimes={bookingData?.available_times || []}
                     availableTimesFromAPI={bookingData?.raw_available_times || []}
@@ -702,14 +594,11 @@ const AppointmentBooking_4 = () => {
                     selectedTimeZone={selectedTimezone}
                     themeColor={theme?.colors}
                     workspaceTimezone={bookingData?.workspace_timezone || 'Africa/Cairo'}
+                    initialDate={firstAvailableDate}
                   />
-
-                  {/* Time Selection */}
                   <TimeSelectionSection2
                     selectedTime={selectedTime}
-                    onTimeSelect={(time) => {
-                      setSelectedTime(time);
-                    }}
+                    onTimeSelect={(time) => setSelectedTime(time)}
                     availableTimes={bookingData?.available_times || []}
                     availableTimesFromAPI={bookingData?.raw_available_times || []}
                     selectedDate={selectedDate}
@@ -730,7 +619,7 @@ const AppointmentBooking_4 = () => {
           </div>
         )}
 
-        {/* Your Info Step - Show when date & time are selected */}
+        {/* Your Info */}
         {selectedDate && selectedTime && infoStep && (
           <div className="mb-6">
             <BookingSummarySidebar2
@@ -750,117 +639,50 @@ const AppointmentBooking_4 = () => {
             />
           </div>
         )}
-      
-         
+      </div>
 
-        </div>
-         {/* footer */}
-
-         <div className='flex flex-col items-center mt-20 w-full' style={{color: textColor}}>
-      {hasAnySocial && (
-        <div className='mb-6'>
-          <div className='flex gap-1 items-center justify-center flex-wrap'>
-             {/* Facebook */}
-            {theme?.show_facebook === "1" && theme?.footer_facebook && (
-              <>
-              <a 
-                href={theme.footer_facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Facebook className='w-4 h-4' />
-              </a>
-              <span>|</span>
-              </>
-            )}
-
-            {/* Email */}
-            {theme?.show_email === "1" && theme?.footer_email && (
-              <>
-              <a 
-                href={`mailto:${theme.footer_email}`}
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Mail className='w-4 h-4' />
-              </a>
-              <span>|</span>
-              </>
-            )}
-
-            {/* Phone */}
-            {theme?.show_phone === "1" && theme?.footer_phone && (
-              <>
-              <a 
-                href={`tel:${theme.footer_phone}`}
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Phone className='w-4 h-4' />
-                <span className='text-sm'>{theme.footer_phone}</span>
-              </a>
-              <span>|</span>
-              </>
-            )}
-
-           
-            {/* X (Twitter) */}
-            {theme?.show_x === "1" && theme?.footer_x && (
-              <>
-              <a 
-                href={theme.footer_x}
-                target="_blank"
-                rel="noopener noreferrer"
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <FaXTwitter className='w-4 h-4' />
-              </a>
-                 <span>|</span>
-              </>
-            )}
-
-            {/* Instagram */}
-            {theme?.show_instagram === "1" && theme?.footer_instagram && (
-              <>
-               <a 
-                href={theme.footer_instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Instagram className='w-4 h-4' />
-              </a>
-              <span>|</span>
-              </>
-             
-            )}
-
-            {/* LinkedIn */}
-            {theme?.show_linkedin === "1" && theme?.footer_linkedin && (
-              <a 
-                href={theme.footer_linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className='flex items-center gap-2 hover:opacity-70 transition-opacity'
-                style={{color: textColor}}
-              >
-                <Linkedin className='w-4 h-4' />
-              </a>
-            )}
-
+      {/* Footer */}
+      <div className="flex flex-col items-center pb-8 w-full" style={{ color: textColor }}>
+        {hasAnySocial && (
+          <div className="mb-4">
+            <div className="flex gap-2 items-center justify-center flex-wrap">
+              {theme?.show_facebook === "1" && theme?.footer_facebook && (
+                <><a href={theme.footer_facebook} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:opacity-70 transition-opacity" style={{ color: textColor }}>
+                  <Facebook className="w-4 h-4" /></a><span style={{ opacity: 0.3 }}>|</span></>
+              )}
+              {theme?.show_email === "1" && theme?.footer_email && (
+                <><a href={`mailto:${theme.footer_email}`}
+                  className="flex items-center gap-2 hover:opacity-70 transition-opacity" style={{ color: textColor }}>
+                  <Mail className="w-4 h-4" /></a><span style={{ opacity: 0.3 }}>|</span></>
+              )}
+              {theme?.show_phone === "1" && theme?.footer_phone && (
+                <><a href={`tel:${theme.footer_phone}`}
+                  className="flex items-center gap-2 hover:opacity-70 transition-opacity" style={{ color: textColor }}>
+                  <Phone className="w-4 h-4" />
+                  <span className="text-sm">{theme.footer_phone}</span></a><span style={{ opacity: 0.3 }}>|</span></>
+              )}
+              {theme?.show_x === "1" && theme?.footer_x && (
+                <><a href={theme.footer_x} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:opacity-70 transition-opacity" style={{ color: textColor }}>
+                  <FaXTwitter className="w-4 h-4" /></a><span style={{ opacity: 0.3 }}>|</span></>
+              )}
+              {theme?.show_instagram === "1" && theme?.footer_instagram && (
+                <><a href={theme.footer_instagram} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:opacity-70 transition-opacity" style={{ color: textColor }}>
+                  <Instagram className="w-4 h-4" /></a><span style={{ opacity: 0.3 }}>|</span></>
+              )}
+              {theme?.show_linkedin === "1" && theme?.footer_linkedin && (
+                <a href={theme.footer_linkedin} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:opacity-70 transition-opacity" style={{ color: textColor }}>
+                  <Linkedin className="w-4 h-4" /></a>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-      <div>
-          <h2 className='text-sm'>Powered by Appoint Roll</h2>
+        )}
+        <p className="text-xs" style={{ opacity: 0.5 }}>Powered by Appoint Roll</p>
       </div>
     </div>
-      </div>
-    
   );
 };
 

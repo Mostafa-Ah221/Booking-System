@@ -28,6 +28,7 @@ const ColumnManagerSidebar = ({ isOpen, onClose, onApply, initialColumns }) => {
       { name: 'Client', selected: true, id: 'client' },
       { name: 'Phone', selected: true, id: 'phone' },
       { name: 'Status', selected: true, id: 'status' },
+      { name: 'Approval', selected: true, id: 'approval' },
       { name: 'Action', selected: true, id: 'action' },
       { name: 'Created at', selected: false, id: 'created' },
       { name: 'Time Zone', selected: false, id: 'timezone' },
@@ -153,6 +154,7 @@ const ColumnManagerSidebar = ({ isOpen, onClose, onApply, initialColumns }) => {
       { name: 'Client', selected: true, id: 'client' },
       { name: 'Phone', selected: true, id: 'phone' },
       { name: 'Status', selected: true, id: 'status' },
+      { name: 'Approval', selected: true, id: 'approval' },
       { name: 'Action', selected: true, id: 'action' },
       { name: 'Created at', selected: false, id: 'created' },
       { name: 'Time Zone', selected: false, id: 'timezone' },
@@ -161,7 +163,6 @@ const ColumnManagerSidebar = ({ isOpen, onClose, onApply, initialColumns }) => {
     
     setSelectedColumns(defaultColumns);
     
-    // حذف من localStorage
     try {
       localStorage.removeItem('appointmentColumns');
     } catch (error) {

@@ -25,9 +25,18 @@ import AddStaff from './ModelsForAdd/add_Staff/AddStaff';
 const AddNewMenu = () => {
   const [openForm, setOpenForm] = useState(null);
 
-  const toggleForm = (formName) => {
-    setOpenForm(openForm === formName ? null : formName); 
+  const permissions = {
+    "add appointment": usePermission("add appointment"),
+    "create interview": usePermission("create interview"),
+    "create staff": usePermission("create staff"),
+    "create clients": usePermission("create clients"),
+    "create roles": usePermission("create roles"),
   };
+
+const toggleForm = (formName) => {
+  setOpenForm(openForm === formName ? null : formName);
+  if (formName) onClose?.();
+};
 
   const handleClose = () => {
     setOpenForm(null);
@@ -41,26 +50,11 @@ const AddNewMenu = () => {
       form: 'appointment',
       requiredPermission: "add appointment"  
     },
-    // { 
-    //   icon: Clock, 
-    //   text: 'Unavailability', 
-    //   color: 'bg-blue-50 text-blue-500', 
-    //   form: 'unavailability',
-    //   // requiredPermission: "create unavailability"
-    // },
-    // { 
-    //   icon: Clock, 
-    //   text: 'Special Working Hours', 
-    //   color: 'bg-purple-50 text-purple-500', 
-    //   form: 'special_working',
-    //   // requiredPermission: "create special working hours"
-    // },
     { 
       icon: Building2, 
       text: 'Workspace', 
       color: 'bg-green-50 text-green-500', 
       form: "workspace_modal",
-      // requiredPermission: "create workspace"
     },
     { 
       icon: UserRound, 
@@ -96,7 +90,6 @@ const AddNewMenu = () => {
       text: 'Resource', 
       color: 'bg-indigo-50 text-indigo-500', 
       form: "add_resourse_model",
-      // requiredPermission: "create resource"
     },
     { 
       icon: ShieldUser, 
@@ -119,8 +112,9 @@ const AddNewMenu = () => {
 
         <div className="space-y-2 mt-4 text-sm">
           {menuItems.map((item, index) => {
-            const hasPermission = item.requiredPermission 
-              ? usePermission(item.requiredPermission) 
+            // ✅ من الـ object مش Hook
+            const hasPermission = item.requiredPermission
+              ? permissions[item.requiredPermission]
               : true;
 
             if (!hasPermission) return null;
@@ -128,13 +122,16 @@ const AddNewMenu = () => {
             return (
               <React.Fragment key={index}>
                 {item.link ? (
-                  <Link to={item.link} className="flex items-center p-1 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200">
+                  <Link 
+                    to={item.link} 
+                    className="flex items-center p-1 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors duration-200"
+                  >
                     <div className={`p-2 rounded-lg ${item.color}`}>
                       <item.icon className="w-5 h-5" />
                     </div>
                     <div className='flex flex-col'>
-                    <span className="ml-3 text-gray-700 ">{item.text}</span>
-                     {item.disc && (
+                      <span className="ml-3 text-gray-700">{item.text}</span>
+                      {item.disc && (
                         <span className="text-gray-500 text-xs ml-1">{item.disc}</span>
                       )}
                     </div>
@@ -147,12 +144,12 @@ const AddNewMenu = () => {
                     <div className={`p-2 rounded-lg ${item.color}`}>
                       <item.icon className="w-5 h-5" />
                     </div>
-                     <div className='flex flex-col'>
-                    <span className="ml-3 text-gray-700 ">{item.text}</span>
-                     {item.disc && (
+                    <div className='flex flex-col'>
+                      <span className="ml-3 text-gray-700">{item.text}</span>
+                      {item.disc && (
                         <span className="text-gray-500 text-xs ml-3">{item.disc}</span>
                       )}
-                     </div>
+                    </div>
                   </div>
                 )}
                 {index === 2 && <hr />}

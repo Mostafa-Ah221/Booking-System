@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import IwentaModal from './IwentaModal'; // ✅ import الـ IwentaModal
 
 // ✅ Wrapper modal
 const ModalWrapper = ({ title, children, onClose }) => (
@@ -15,7 +16,6 @@ const ModalWrapper = ({ title, children, onClose }) => (
 const LoadingComponent = ({ onClose, type = 'integration' }) => {
   const loadingText = type === 'whatsapp' ? 'Loading WhatsApp integration data...' : 'Loading integration data...';
   const borderColor = type === 'whatsapp' ? 'border-green-600' : 'border-blue-600';
-
   return (
     <ModalWrapper title="Loading..." onClose={onClose}>
       <div className="flex justify-center items-center py-8">
@@ -26,12 +26,9 @@ const LoadingComponent = ({ onClose, type = 'integration' }) => {
   );
 };
 
-// ✅ Normalize helper
 const normalize = (str) => str?.toLowerCase().replace(/\s+/g, '');
 
-// ✅ Provider configurations - مرتبة حسب الأولوية (الأسماء الأطول أولاً)
 const PROVIDER_CONFIGS = {
-  // WhatsApp - الأسماء الأكثر تحديداً أولاً
   'WhatsApp Business API': { type: 'whatsapp', title: 'WhatsApp Business API Configuration', fields: [
     { key: 'phone_number_id', placeholder: 'Phone Number ID', type: 'text' },
     { key: 'access_token', placeholder: 'Access Token', type: 'password' },
@@ -64,8 +61,6 @@ const PROVIDER_CONFIGS = {
     { key: 'token', placeholder: 'Token', type: 'password' },
     { key: 'url', placeholder: 'URL', type: 'url' }
   ]},
-
-  // SMS - الأسماء الأقل تحديداً في النهاية
   'Twilio': { type: 'sms', title: 'Twilio SMS Integration', fields: [
     { key: 'account_sid', placeholder: 'Account SID', type: 'text' },
     { key: 'auth_token', placeholder: 'Auth Token', type: 'text' },
@@ -87,100 +82,89 @@ const PROVIDER_CONFIGS = {
   ]}
 };
 
-// ✅ دالة محسنة للبحث عن المزود - تم إصلاحها بالكامل
+// ✅ Helper: هل الـ provider هو Iwenta؟
+const isIwentaProvider = (providerName) => {
+  if (!providerName) return false;
+  const lower = providerName.toLowerCase();
+  return lower === 'iwnta' || lower === 'iwenta';
+};
+
 const findProviderConfig = (providerName, expectedType) => {
-  console.log('=== EXACT PROVIDER SEARCH ===');
-  console.log('Searching for:', providerName);
-  console.log('Expected type:', expectedType);
-  
-  // البحث المباشر الدقيق أولاً
   const exactMatch = PROVIDER_CONFIGS[providerName];
   if (exactMatch) {
-    console.log('✅ EXACT MATCH FOUND:', providerName);
-    // التأكد من أن النوع مطابق
     if (expectedType && exactMatch.type !== expectedType) {
-      console.log('⚠️ Type mismatch! Expected:', expectedType, 'Got:', exactMatch.type);
-      // لا نرجع النتيجة إذا كان النوع غير مطابق
+      // type mismatch
     } else {
       return { key: providerName, config: exactMatch };
     }
   }
-  
-  // البحث بالنوع المتوقع أولاً
+
   if (expectedType) {
-    console.log('🔍 Searching by expected type:', expectedType);
-    
-    // جيب كل المزودين من النوع المتوقع مرتبين بطول الاسم (الأطول أولاً)
     const providersOfType = Object.keys(PROVIDER_CONFIGS)
       .filter(key => PROVIDER_CONFIGS[key].type === expectedType)
-      .sort((a, b) => b.length - a.length); // الأسماء الأطول أولاً
-    
-    console.log('Available providers of type (sorted by length):', providersOfType);
-    
-    // البحث الدقيق في المزودين من نفس النوع
+      .sort((a, b) => b.length - a.length);
+
     for (const providerKey of providersOfType) {
       if (providerKey.toLowerCase() === providerName.toLowerCase()) {
-        console.log('✅ TYPE-BASED EXACT MATCH FOUND:', providerKey);
         return { key: providerKey, config: PROVIDER_CONFIGS[providerKey] };
       }
     }
-    
-    // البحث الجزئي - الأسماء الأطول أولاً لتجنب المطابقة الخاطئة
+
     for (const providerKey of providersOfType) {
       const normalizedProvider = providerKey.toLowerCase().replace(/\s+/g, '');
       const normalizedSearch = providerName.toLowerCase().replace(/\s+/g, '');
-      
-      // البحث بالاحتواء - مع إعطاء أولوية للأسماء الأطول
-      if (normalizedProvider.includes(normalizedSearch)) {
-        console.log('⚠️ PARTIAL MATCH (provider contains search):', providerKey);
-        return { key: providerKey, config: PROVIDER_CONFIGS[providerKey] };
-      }
-      
-      if (normalizedSearch.includes(normalizedProvider)) {
-        console.log('⚠️ PARTIAL MATCH (search contains provider):', providerKey);
+      if (normalizedProvider.includes(normalizedSearch) || normalizedSearch.includes(normalizedProvider)) {
         return { key: providerKey, config: PROVIDER_CONFIGS[providerKey] };
       }
     }
   }
-  
-  // إذا لم نجد شيء، البحث العام (بدون تحديد نوع) مع أولوية للأسماء الأطول
-  console.log('🔍 General search (no type restriction)');
+
   const allProviders = Object.keys(PROVIDER_CONFIGS).sort((a, b) => b.length - a.length);
-  
   for (const providerKey of allProviders) {
     if (providerKey.toLowerCase() === providerName.toLowerCase()) {
-      console.log('✅ GENERAL EXACT MATCH FOUND:', providerKey);
       return { key: providerKey, config: PROVIDER_CONFIGS[providerKey] };
     }
   }
-  
   for (const providerKey of allProviders) {
     const normalizedProvider = providerKey.toLowerCase().replace(/\s+/g, '');
     const normalizedSearch = providerName.toLowerCase().replace(/\s+/g, '');
-    
     if (normalizedProvider.includes(normalizedSearch) || normalizedSearch.includes(normalizedProvider)) {
-      console.log('⚠️ GENERAL PARTIAL MATCH:', providerKey);
       return { key: providerKey, config: PROVIDER_CONFIGS[providerKey] };
     }
   }
-  
-  console.log('❌ NO MATCH FOUND');
+
   return { key: null, config: null };
 };
 
 // ✅ Unified Integration Modal
-const UnifiedIntegrationModal = ({ activeModal, integrationId, onClose, onSave, getSmsSettings, getWhatsAppSettings }) => {
-  console.log('=== UnifiedIntegrationModal Debug ===');
-  console.log('Active Modal:', activeModal);
-  
+const UnifiedIntegrationModal = ({
+  activeModal,
+  integrationId,
+  onClose,
+  onSave,
+  getSmsSettings,
+  getWhatsAppSettings,
+  // ✅ Props جديدة للـ Iwenta
+  onSaveIwentaCredentials,
+  onSaveIwentaSelection,
+}) => {
   const [type, providerName] = activeModal?.split(':') || [];
-  console.log('Parsed - Type:', type, 'Provider:', providerName);
 
+  // ✅ لو Iwenta → عرض IwentaModal مباشرة
+  if (isIwentaProvider(providerName)) {
+    return (
+      <IwentaModal
+        integrationId={integrationId}
+        onClose={onClose}
+        onSaveCredentials={onSaveIwentaCredentials}
+        onSaveSelection={onSaveIwentaSelection}
+        getWhatsAppSettings={getWhatsAppSettings}
+      />
+    );
+  }
+
+  // ✅ باقي الـ providers — الكود القديم
   const { key: providerKey, config } = findProviderConfig(providerName, type);
-  
-  console.log('Found Provider Key:', providerKey);
-  console.log('Found Config:', config);
-  console.log('======================================');
 
   const [formData, setFormData] = useState(() => {
     if (!config) return { status: 1 };
@@ -195,7 +179,6 @@ const UnifiedIntegrationModal = ({ activeModal, integrationId, onClose, onSave, 
   useEffect(() => {
     const fetchData = async () => {
       if (!integrationId || !config) return;
-
       setIsLoading(true);
       try {
         const result = config.type === 'whatsapp'
@@ -218,7 +201,6 @@ const UnifiedIntegrationModal = ({ activeModal, integrationId, onClose, onSave, 
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, [integrationId, config, activeModal, getSmsSettings, getWhatsAppSettings]);
 
@@ -228,7 +210,6 @@ const UnifiedIntegrationModal = ({ activeModal, integrationId, onClose, onSave, 
 
   const handleSaveClick = () => {
     if (!config) return;
-
     const payload = {
       integration_id: integrationId,
       status: formData.status,
@@ -237,13 +218,11 @@ const UnifiedIntegrationModal = ({ activeModal, integrationId, onClose, onSave, 
         return acc;
       }, {})
     };
-    
-    // إرسال النوع الصحيح
     onSave(payload, config.type);
   };
 
   if (isLoading) return <LoadingComponent onClose={onClose} type={config?.type || 'integration'} />;
-  
+
   if (!activeModal || !config) {
     return (
       <ModalWrapper title="Error" onClose={onClose}>
@@ -251,8 +230,6 @@ const UnifiedIntegrationModal = ({ activeModal, integrationId, onClose, onSave, 
           {!activeModal ? 'No provider selected' : `Unknown provider: ${activeModal}`}
           <br />
           <small>Type: {type}, Provider: {providerName}</small>
-          <br />
-          <small>Expected Type: {type}</small>
         </div>
       </ModalWrapper>
     );
@@ -277,7 +254,6 @@ const UnifiedIntegrationModal = ({ activeModal, integrationId, onClose, onSave, 
           />
         ))}
       </div>
-
       <div className="mt-4 flex items-center gap-2">
         <input
           type="checkbox"
@@ -288,7 +264,6 @@ const UnifiedIntegrationModal = ({ activeModal, integrationId, onClose, onSave, 
         />
         <label htmlFor={checkboxId} className="text-sm text-gray-700">Mark Active</label>
       </div>
-
       <div className="mt-6 flex justify-end gap-3">
         <button onClick={onClose} className="px-4 py-2 border rounded">Cancel</button>
         <button onClick={handleSaveClick} className={`${buttonColor} text-white px-4 py-2 rounded`}>

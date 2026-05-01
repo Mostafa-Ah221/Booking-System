@@ -60,6 +60,7 @@ const [pageTexts, setPageTexts] = useState({
   }));
 const userType = localStorage.getItem("userType");
  const theme = useSelector(state => state.themes?.theme?.theme);
+console.log(theme);
 
   useEffect(() => {
     if (userType === "staff") {

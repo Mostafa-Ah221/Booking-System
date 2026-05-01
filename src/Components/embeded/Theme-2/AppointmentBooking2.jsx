@@ -11,6 +11,7 @@ import CalendarSection2 from './calender2';
 import TimeSelectionSection2 from './time2';
 
 import BookingFooter from '../BookingFooter';
+import NoAppointments from '../NoAppointments';
 
 const AppointmentBooking2 = () => {
   const { id, idAdmin, idCustomer, idSpace } = useParams();
@@ -86,7 +87,8 @@ console.log(theme);
     totalPrice,
     numberOfSlots,
     selectedEndTime,
-    setSelectedEndTime
+    setSelectedEndTime,
+    // noAvailability,
   } = useBookingLogic(
     bookingId,
     navigate,
@@ -297,6 +299,7 @@ console.log(theme);
     }
   };
 
+  
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen "style={{ background: firstColor }}>
@@ -470,7 +473,8 @@ console.log(theme);
                     color: textColor,
                   }}
                 >
-                  {group.group_name.charAt(0).toUpperCase()}
+                  {group.group_name?.charAt(0)?.toUpperCase() || '?'}
+
                 </div>
 
                 <div>
@@ -552,7 +556,8 @@ console.log(theme);
                       color: textColor,
                     }}
                   >
-                    {staff.name.charAt(0).toUpperCase()}
+                    {staff.name?.charAt(0)?.toUpperCase() || '?'}
+
                   </div>
                 )}
 

@@ -27,6 +27,8 @@ const UnifiedNotifications = () => {
   
   const { integrations: smsIntegrations, settings: smsSettings, loading: smsLoading } = useSelector((state) => state.sms);
   const { integrationsWhatsApp, settings: whatsAppSettings, loading: whatsAppLoading } = useSelector((state) => state.whatsApp);
+  console.log(integrationsWhatsApp);
+  console.log(whatsAppSettings);
   
   const loading = smsLoading || whatsAppLoading;
   const isSmsIntegrated = !loading && !isCheckingIntegrations && hasValidSmsIntegration;

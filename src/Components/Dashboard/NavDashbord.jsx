@@ -46,32 +46,41 @@ export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
     setIsProfileOpen((prev) => !prev);
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target)
-      ) {
-        setIsMenuOpen(false);
-      }
-      if (
-        notificationsRef.current &&
-        !notificationsRef.current.contains(event.target) &&
-        bellButtonRef.current &&
-        !bellButtonRef.current.contains(event.target)
-      ) {
-        setIsNotificationsOpen(false);
-      }
-    };
+useEffect(() => {
+  const handleClickOutside = (event) => {
+    const target = event.target;
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+    const isInsideMenu = menuRef.current?.contains(target);
+    const isMenuButton = buttonRef.current?.contains(target);
 
+    const isInsideNotifications =
+      notificationsRef.current?.contains(target);
+
+    const isBellButton = bellButtonRef.current?.contains(target);
+
+    const isModal = target.closest('[data-modal]');
+
+    if (
+      isInsideMenu ||
+      isMenuButton ||
+      isInsideNotifications ||
+      isBellButton ||
+      isModal
+    ) {
+      return;
+    }
+
+    // ❌ اقفل فقط لو click في مكان فاضي فعلاً
+    setIsMenuOpen(false);
+    setIsNotificationsOpen(false);
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
   return (
     <div className="w-full flex items-center relative ">
       {/* Mobile Menu Button */}
@@ -106,8 +115,10 @@ export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
           >
             <Bell size={20} />
             {unreadCount?.unread_count > 0 && (
-              <span className="absolute top-0 right-0 w-4 h-4 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs">{unreadCount?.unread_count}</span>
-            )}
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] leading-none">
+              {unreadCount?.unread_count}
+            </span>
+          )}
             
           </button>
 
@@ -154,10 +165,13 @@ export default function NavDashbord({ isSidebarOpen, setIsSidebarOpen }) {
 
       {/* AddNewMenu */}
       {isMenuOpen && (
-        <div ref={menuRef} className="absolute top-14 right-3 z-20">
-          <AddNewMenu />
-        </div>
-      )}
+  <div ref={menuRef} className="absolute top-14 right-3 z-20">
+    <AddNewMenu onClose={() => {
+      console.log('onClose called from NavDashbord');
+      setIsMenuOpen(false);
+    }} />
+  </div>
+)}
 
       {/* Notifications Panel */}
       {isNotificationsOpen && (

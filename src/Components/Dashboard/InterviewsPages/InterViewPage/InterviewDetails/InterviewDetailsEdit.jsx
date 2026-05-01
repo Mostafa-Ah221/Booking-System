@@ -166,8 +166,8 @@ const InterviewDetailsEdit = ({ interview, workspaces, loading, id, onCancel }) 
   newErrors.inperson_mode = 'In-person mode is required';
 
 if (
-  (formData.inperson_mode === 'inhouse' ||
-    (formData.mode === 'online/inperson' && formData.extra_modes?.includes('inhouse'))) &&
+  (formData.mode === 'inperson' && formData.inperson_mode === 'inhouse' ||
+    formData.mode === 'online/inperson' && formData.extra_modes?.includes('inhouse')) &&
   !formData.location
 )
   newErrors.location = 'Location is required';

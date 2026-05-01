@@ -74,7 +74,8 @@ console.log(profile);
       
       // Set phone value for PhoneInput component
       if (userData.code_phone && userData.phone) {
-        setPhoneValue(`${userData.phone}`);
+        setPhoneValue(`${userData.code_phone?.replace('+', '')}${userData.phone}`);
+
       }
       
       // Set display image if exists
@@ -93,11 +94,11 @@ console.log(profile);
   const handlePhoneChange = (value, country) => {
     setPhoneValue(value);
 
-    setProfileData(prev => ({
-      ...prev,
-      phone: value.replace(`+${country.dialCode}`, ""),
-      code_phone: `+${country.dialCode}`,
-    }));
+setProfileData(prev => ({
+  ...prev,
+  phone: value.slice(country.dialCode.length),  // "1033540104" ✅
+  code_phone: `+${country.dialCode}`,            // "+20" ✅
+}));
 
     // Validate phone number
     if (!value || value.length <= country.dialCode.length + 1) {
@@ -433,7 +434,7 @@ console.log(profile);
                       <div className="py-1 rounded-lg">
                         <p className="text-gray-900">
                           {currentProfile?.user?.code_phone && currentProfile?.user?.phone 
-                            ? `+ ${currentProfile?.user.phone}`
+                            ? `${currentProfile?.user.code_phone} ${currentProfile?.user.phone}`
                             : 'Not provided'
                           }
                         </p>
