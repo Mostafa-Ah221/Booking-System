@@ -20,10 +20,10 @@ const CalendarModal = ({
   workspaceTimezone,
   themeColor
 }) => {
-  const [currentMonth, setCurrentMonth] = useState(() => {
+const [currentMonth, setCurrentMonth] = useState(() => {
   if (selectedDate) {
-    const [day, monthAbbr, year] = selectedDate.split(' ');
-    const monthIndex = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(monthAbbr);
+    const parts = selectedDate.split(' ');
+    const monthIndex = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(parts[1]);
     return monthIndex !== -1 ? monthIndex : new Date().getMonth();
   }
   return new Date().getMonth();
@@ -31,8 +31,8 @@ const CalendarModal = ({
 
 const [currentYear, setCurrentYear] = useState(() => {
   if (selectedDate) {
-    const year = selectedDate.split(' ').pop();
-    return parseInt(year);
+    const parts = selectedDate.split(' ');
+    return parseInt(parts[2]) || new Date().getFullYear();
   }
   return new Date().getFullYear();
 });
@@ -416,15 +416,39 @@ const getFirstDayOfMonth = (m, y) => {
   };
 
 useEffect(() => {
-  if (selectedDate && show) {
-    const [day, monthAbbr, year] = selectedDate.split(' ');
+  if (!show) return;
+
+  // ✅ لو عندنا selectedDate، روح لشهره وخلاص
+  if (selectedDate) {
+    const [, monthAbbr, year] = selectedDate.split(' ');
     const monthIndex = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(monthAbbr);
     if (monthIndex !== -1) {
       setCurrentMonth(monthIndex);
       setCurrentYear(parseInt(year));
     }
+    return;
   }
-}, [selectedDate, show]);
+
+  // ✅ لو مفيش selectedDate، دور على أول يوم متاح
+  if (!availableDates?.length || !availableTimesFromAPI?.length) return;
+
+  const today = new Date();
+  let checkDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+
+  for (let i = 0; i < 365; i++) {
+    const d = checkDate.getUTCDate();
+    const m = checkDate.getUTCMonth();
+    const y = checkDate.getUTCFullYear();
+
+    if (isDateAvailable(d, m, y)) {
+      setCurrentMonth(m);
+      setCurrentYear(y);
+      break;
+    }
+
+    checkDate.setUTCDate(checkDate.getUTCDate() + 1);
+  }
+}, [show, selectedDate, availableDates, availableTimesFromAPI]);
 
   const navigateMonth = (dir) => {
     if (dir === 'prev') {
@@ -485,15 +509,27 @@ useEffect(() => {
             Cancel
           </button>
           <button 
-            onClick={() => { 
-              setCurrentMonth(new Date().getMonth()); 
-              setCurrentYear(new Date().getFullYear()); 
-            }}
-            className="flex-1 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90"
-            style={{ background: secondColor }}
-          >
-            Today
-          </button>
+  onClick={() => { 
+    const today = new Date();
+    const todayMonth = today.getMonth();
+    const todayYear = today.getFullYear();
+    const todayDay = today.getDate();
+    
+    setCurrentMonth(todayMonth);
+    setCurrentYear(todayYear);
+    
+    const isAvailable = isDateAvailable(todayDay, todayMonth, todayYear);
+    if (isAvailable) {
+      const dateStr = formatDateString(todayDay, todayMonth, todayYear);
+      onDateSelect(dateStr);
+      onClose();
+    }
+  }}
+  className="flex-1 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90"
+  style={{ background: secondColor }}
+>
+  Today
+</button>
         </div>
       </div>
     </div>

@@ -77,6 +77,7 @@ const EditCustomer = () => {
   const { customer, loading, error } = useSelector(state => state.customers);
   const { appointments } = useSelector((state) => state.appointments);
   const { allInterviews } = useSelector(state => state.interview);
+console.log(customer);
 
 
   useEffect(() => {

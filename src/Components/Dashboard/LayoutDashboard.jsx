@@ -3,19 +3,25 @@ import { Outlet, useLocation } from "react-router-dom";
 import SideBarDashbord from "./SideBarDashbord";
 import NavDashbord from "./NavDashbord";
 import NotificationPrompt from "../../firebase/NotificationPrompt";
+import { fetchProfileData } from "../../redux/apiCalls/ProfileCallApi";
+import { useDispatch, useSelector } from "react-redux";
 
 export default function LayoutDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
-  
+  const dispatch = useDispatch();
   const isSettingsPage = location.pathname.includes("/layoutDashboard/setting");
+ const { profile, loading, error } = useSelector((state) => state.profileData);
+console.log(profile);
 
-  // Close sidebar when route changes on mobile
+  useEffect(() => {
+    dispatch(fetchProfileData());
+  }, [dispatch]);
+
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [location.pathname]);
 
-  // Prevent body scroll when sidebar is open on mobile
   useEffect(() => {
     if (isSidebarOpen) {
       document.body.style.overflow = 'hidden';
@@ -60,7 +66,7 @@ export default function LayoutDashboard() {
           />
         </div>
 
- <NotificationPrompt />
+          <NotificationPrompt />
         {/* Page Content - Scrollable */}
         <div className="flex-1 overflow-y-auto ">
           <Outlet />

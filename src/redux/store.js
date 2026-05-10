@@ -18,6 +18,8 @@ import { staffApisReducer } from './slices/StaffApisSlice/StaffApisSlice';
 import { notificationsReducer } from './slices/notificationsSlice';
 import { resourceReducer } from './slices/resourcesSlice';
 import { themeReducer } from "./slices/themeSlice";
+import { whatsappReducer } from './slices/whatsAiwntaSlice';
+
 
 
 const store = configureStore({
@@ -41,6 +43,7 @@ const store = configureStore({
     notifications: notificationsReducer,
     resources: resourceReducer,
     themes: themeReducer,
+    whatsappIwenta: whatsappReducer,
   },
 });
 

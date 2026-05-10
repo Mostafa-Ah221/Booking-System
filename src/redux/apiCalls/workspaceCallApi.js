@@ -465,3 +465,50 @@ export function getAvailableInterviewsForWorkspace(workspaceIds) {
     }
   };
 }
+
+//reorderWorkspaces api call
+
+export function reorderWorkspaces(workspacesOrder) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.post('/workspace/reorder', {
+        workspaces: workspacesOrder,
+      });
+ 
+      if (response?.data?.status) {
+        dispatch(workspaceAction.reorderWorkspacesInList(workspacesOrder));
+ 
+        toast.success(response?.data?.message || "Workspaces reordered successfully", {
+          position: 'top-center',
+          duration: 5000,
+          icon: '✅',
+          style: {
+            borderRadius: '8px',
+            background: '#333',
+            color: '#fff',
+            padding: '12px 16px',
+            fontWeight: '500',
+          },
+        });
+ 
+        return { success: true };
+      }
+    } catch (error) {
+      console.error("Error reordering workspaces:", error);
+ 
+      const apiErrors = error.response?.data?.errors;
+ 
+      if (apiErrors) {
+        Object.values(apiErrors).forEach((errArray) => {
+          errArray.forEach((errMsg) => {
+            toast.error(errMsg);
+          });
+        });
+      } else {
+        toast.error(error.response?.data?.message || "Failed to reorder workspaces");
+      }
+ 
+      return { success: false };
+    }
+  };
+}

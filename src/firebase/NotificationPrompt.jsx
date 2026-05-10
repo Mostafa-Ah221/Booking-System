@@ -44,7 +44,7 @@ const NotificationPrompt = () => {
           },
           {
             headers: {
-              'Authorization': `Bearer ${accessToken}`,
+              'Authorization': ` ${accessToken}`,
               'Content-Type': 'application/json'
             }
           }

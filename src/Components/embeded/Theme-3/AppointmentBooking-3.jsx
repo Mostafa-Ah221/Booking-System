@@ -166,7 +166,16 @@ useEffect(() => {
         key: 'staff',
       });
     }
-
+    if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availableStaffGroups?.length) {
+    list.push({
+      step: counter++,
+      label: 'Staff',
+      icon: UserRound,
+      value: '__unavailable__', 
+      key: 'staff_unavailable',
+      disabled: true,
+    });
+  }
     if (availableResources?.length > 0) {
       list.push({
         step: counter++,
@@ -355,14 +364,13 @@ useEffect(() => {
   };
 
   const canGoToStep = (targetStep) => {
-    if (targetStep === currentStep) return true;
-
-    const targetIdx = steps.findIndex((s) => s.step === targetStep);
-    if (targetIdx === -1) return false;
-
-    const previousSteps = steps.slice(0, targetIdx);
-    return previousSteps.every((s) => s.value !== null && s.value !== undefined);
-  };
+  if (targetStep === currentStep) return true;
+  const targetIdx = steps.findIndex((s) => s.step === targetStep);
+  if (targetIdx === -1) return false;
+  const hasDisabledBefore = steps.slice(0, targetIdx).some((s) => s.disabled);
+  if (hasDisabledBefore) return false;
+  return steps.slice(0, targetIdx).every((s) => s.value !== null && s.value !== undefined);
+};
 
   const handleStepClick = (step) => {
     if (canGoToStep(step)) {
@@ -704,7 +712,31 @@ useEffect(() => {
             </div>
         )}
 
-
+{/* ────────── Staff Unavailable ────────── */}
+{currentStep === steps.find((s) => s.key === 'staff_unavailable')?.step && (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold mb-6" style={{ color: firstColor }}>
+      Staff Required
+    </h2>
+    <div
+      className="mx-2 p-6 rounded-lg flex items-center gap-4"
+      style={{ background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.3)' }}
+    >
+      <div
+        className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: 'rgba(239,68,68,0.15)' }}
+      >
+        <UserRound className="w-6 h-6 text-red-400" />
+      </div>
+      <div>
+        <p className="font-semibold text-red-400">No staff available</p>
+        <p className="text-sm mt-1" style={{ color: textColor, opacity: 0.7 }}>
+          This service requires a staff member to be assigned. Please contact the provider.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
           {/* ────────────────────────────────────────────────────────────────── */}
           {/* Step 3: Resource Selection */}
           {/* ────────────────────────────────────────────────────────────────── */}

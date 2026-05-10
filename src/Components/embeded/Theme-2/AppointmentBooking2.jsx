@@ -124,7 +124,16 @@ console.log(theme);
         key: 'staff',
       });
     }
-
+if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availableStaffGroups?.length) {
+  list.push({
+    step: counter++,
+    label: 'Staff',
+    icon: UserRound,
+    value: '__unavailable__',
+    key: 'staff_unavailable',
+    disabled: true,
+  });
+}
     if (availableResources?.length > 0) {
       list.push({
         step: counter++,
@@ -283,15 +292,14 @@ console.log(theme);
     }
   };
 
-  const canGoToStep = (targetStep) => {
-    if (targetStep === currentStep) return true;
-
-    const targetIdx = steps.findIndex((s) => s.step === targetStep);
-    if (targetIdx === -1) return false;
-
-    const previousSteps = steps.slice(0, targetIdx);
-    return previousSteps.every((s) => s.value !== null && s.value !== undefined);
-  };
+ const canGoToStep = (targetStep) => {
+  if (targetStep === currentStep) return true;
+  const targetIdx = steps.findIndex((s) => s.step === targetStep);
+  if (targetIdx === -1) return false;
+  const hasDisabledBefore = steps.slice(0, targetIdx).some((s) => s.disabled);
+  if (hasDisabledBefore) return false;
+  return steps.slice(0, targetIdx).every((s) => s.value !== null && s.value !== undefined);
+};
 
   const handleStepClick = (step) => {
     if (canGoToStep(step)) {
@@ -337,164 +345,158 @@ console.log(theme);
           <div className="lg:col-span-1">
             <div className="space-y-3">
               {steps.map((s) => {
-                const isCompleted = s.value !== null && s.value !== undefined;
-                const isActive = currentStep === s.step;
-                const isClickable = canGoToStep(s.step);
+  const isCompleted = s.value !== null && s.value !== undefined;
+  const isActive = currentStep === s.step;
+  const isClickable = canGoToStep(s.step);
+  const isDisabled = s.disabled; // ✅
 
-                return (
-                  <div
-                      key={s.key}
-                      className={`p-5 transition-all shadow-sm ${
-                        isActive ? '' : 'border-transparent'
-                      } ${!isClickable ? 'cursor-not-allowed' : 'cursor-pointer hover:shadow-sm'}`}
-                      style={isActive ? { background: secondColor } : {}}
-                      onClick={() => isClickable && handleStepClick(s.step)}
-                    >
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <s.icon className={`w-5 h-5 ${s.label === 'Staff Group' ? 'w-6 h-6' : ''}`} style={{color:textColor}} />
-                        <div>
-                          <h3 className="font-medium text-sm truncate block max-w-[150px]" style={{color:textColor}}>
-                            {s.label}
-                          </h3>
-                          {s.value && (
-                            <p className="text-xs  mt-1" style={{color:textColor}}>{s.value}</p>
-                          )}
-                        </div>
-                      </div>
-                      {s.key !== 'datetime' && <ChevronDown className="w-5 h-5" style={{color:textColor}}/>}
-                    </div>
-                  </div>
-                );
-              })}
+  return (
+    <div
+      key={s.key}
+      className={`p-5 transition-all shadow-sm ${
+        isDisabled ? 'cursor-not-allowed' :
+        !isClickable ? 'cursor-not-allowed' : 'cursor-pointer hover:shadow-sm'
+      }`}
+      style={
+        isDisabled
+          ? { border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.06)' }
+          : isActive
+          ? { background: secondColor, border: `1px solid ${secondColor}` }
+          : { border: `1px solid ${textColor}` }
+      }
+      onClick={() => !isDisabled && isClickable && handleStepClick(s.step)}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <s.icon
+            className={`w-5 h-5`}
+            style={{ color: isDisabled ? '#ef4444' : isActive ? firstColor : textColor }}
+          />
+          <div>
+            <h3
+              className="font-medium text-sm truncate block max-w-[150px]"
+              style={{ color: isDisabled ? '#ef4444' : isActive ? firstColor : textColor }}
+            >
+              {s.label}
+            </h3>
+            <p
+              className="text-xs mt-1"
+              style={{ color: isDisabled ? '#ef4444' : isActive ? firstColor : textColor }}
+            >
+              {isDisabled ? 'No staff available' : s.value}
+            </p>
+          </div>
+        </div>
+        {s.key !== 'datetime' && !isDisabled && (
+          <ChevronDown className="w-5 h-5" style={{ color: isActive ? firstColor : textColor }} />
+        )}
+      </div>
+    </div>
+  );
+})}
             </div>
           </div>
 
           {/* ── Main Content ── */}
           <div className="lg:col-span-2">
             {/* Step 1 – Interview */}
-            {currentStep === steps.find((s) => s.key === 'interview')?.step && isInterviewMode && (
-              <div className="space-y-4">
-                {interviewsLoading ? (
-                  <div className="text-center py-12"><Loader /></div>
-                ) : interviews?.length > 0 ? (
-                  interviews.map((interview) => (
-                    <div
-                      key={interview.id}
-                      className={`group   p-5 cursor-pointer transition-all hover:shadow-sm ${
-                        selectedInterview?.id === interview.id
-                          ? `'hover:shadow-sm `
-                          : 'border-gray-400 border-opacity-40 border'
-                      }`}
-                      style={{
-                          // borderColor: selectedInterview?.id === interview.id ? textColor : undefined,
-                          hoverBorderColor: selectedInterview?.id === interview.id ? textColor : undefined,
-                          background: selectedInterview?.id === interview.id ? secondColor : undefined,
-                        }}
-                      onClick={() => handleInterviewSelect(interview)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`w-12 h-12 rounded-sm flex border items-center justify-center font-semibold  `}
-                             style={{
-                          background: selectedInterview?.id === interview.id ? secondColor : 'rgba(0, 0, 0, 0.15)',
-                          borderColor: selectedInterview?.id === interview.id ? textColor : 'transparent',
-                          color: selectedInterview?.id === interview.id ? textColor : textColor,
-                        }}
-                          >
-                            {interview.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold truncate  max-w-[150px]" style={{color:textColor}}>{interview.name}</h3>
-                            <p className="text-sm text-gray-500" style={{color:textColor}}>
-                              {interview.duration_cycle} {interview.duration_period}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {selectedInterview?.id === interview.id && <Check className="w-5 h-5 " style={{color:textColor}}/>}
-                          <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12 text-gray-500">No interviews available</div>
-                )}
-              </div>
-            )}
-
-            {/* Step 2 – Staff / StaffGroup */}
-           {currentStep === steps.find((s) => s.key === 'staff')?.step && (
+           {/* Step 1 – Interview */}
+{currentStep === steps.find((s) => s.key === 'interview')?.step && isInterviewMode && (
   <div className="space-y-4">
+    {interviewsLoading ? (
+      <div className="text-center py-12"><Loader /></div>
+    ) : interviews?.length > 0 ? (
+      interviews.map((interview) => (
+        <div
+          key={interview.id}
+          className={`group p-5 cursor-pointer transition-all hover:shadow-sm ${
+            selectedInterview?.id === interview.id ? '' : 'border border-gray-400 border-opacity-40'
+          }`}
+          style={{
+            background: selectedInterview?.id === interview.id ? secondColor : undefined,
+            borderColor: selectedInterview?.id === interview.id ? textColor : undefined,
+          }}
+          onClick={() => handleInterviewSelect(interview)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-sm flex border items-center justify-center font-semibold"
+                style={{
+                  background: selectedInterview?.id === interview.id ? secondColor : 'rgba(0, 0, 0, 0.15)',
+                  borderColor: selectedInterview?.id === interview.id ? textColor : 'transparent',
+                  color: selectedInterview?.id === interview.id ? firstColor : textColor,
+                }}
+              >
+                {interview.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="font-semibold truncate max-w-[150px]" style={{ color: selectedInterview?.id === interview.id ? firstColor : textColor }}>{interview.name}</h3>
+                <p className="text-sm mt-1" style={{ color: selectedInterview?.id === interview.id ? firstColor : textColor }}>
+                  {interview.duration_cycle} {interview.duration_period}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedInterview?.id === interview.id && <Check className="w-5 h-5" style={{ color: firstColor }} />}
+              <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+        </div>
+      ))
+    ) : (
+      <div className="text-center py-12 text-gray-500">No interviews available</div>
+    )}
+  </div>
+)}
 
+{/* Step 2 – Staff / StaffGroup */}
+{currentStep === steps.find((s) => s.key === 'staff')?.step && (
+  <div className="space-y-4">
     {availableStaffGroups?.length > 0 && (
       <div className="space-y-4">
-        <h3 className="font-semibold " style={{ color: textColor }}>Staff Groups</h3>
-
+        <h3 className="font-semibold" style={{ color: textColor }}>Staff Groups</h3>
         {availableStaffGroups.map((group) => (
           <div
             key={group.group_id}
             className={`group p-5 cursor-pointer transition-all hover:shadow-sm ${
-              selectedStaffGroup?.group_id === group.group_id
-                ? ""
-                : "border border-gray-400 border-opacity-40"
+              selectedStaffGroup?.group_id === group.group_id ? '' : 'border border-gray-400 border-opacity-40'
             }`}
             style={{
-              background:
-                selectedStaffGroup?.group_id === group.group_id
-                  ? secondColor
-                  : undefined,
-              borderColor:
-                selectedStaffGroup?.group_id === group.group_id
-                  ? textColor
-                  : undefined,
+              background: selectedStaffGroup?.group_id === group.group_id ? secondColor : undefined,
+              borderColor: selectedStaffGroup?.group_id === group.group_id ? textColor : undefined,
             }}
-            onClick={() => {
-              setSelectedStaffGroup(group);
-              // goToNextStep();
-            }}
+            onClick={() => setSelectedStaffGroup(group)}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div
                   className="w-12 h-12 rounded-sm flex items-center justify-center font-semibold border"
                   style={{
-                    background:
-                      selectedStaffGroup?.group_id === group.group_id
-                        ? secondColor
-                        : "rgba(0,0,0,0.15)",
-                    borderColor:
-                      selectedStaffGroup?.group_id === group.group_id
-                        ? textColor
-                        : "transparent",
-                    color: textColor,
+                    background: selectedStaffGroup?.group_id === group.group_id ? secondColor : 'rgba(0,0,0,0.15)',
+                    borderColor: selectedStaffGroup?.group_id === group.group_id ? textColor : 'transparent',
+                    color: selectedStaffGroup?.group_id === group.group_id ? firstColor : textColor,
                   }}
                 >
                   {group.group_name?.charAt(0)?.toUpperCase() || '?'}
-
                 </div>
-
                 <div>
-                  <h3 className="font-semibold" style={{ color: textColor }}>
+                  <h3 className="font-semibold" style={{ color: selectedStaffGroup?.group_id === group.group_id ? firstColor : textColor }}>
                     {group.group_name}
                   </h3>
                   {group.group_description && (
-                    <p className="text-sm opacity-80" style={{ color: textColor }}>
+                    <p className="text-sm opacity-80" style={{ color: selectedStaffGroup?.group_id === group.group_id ? firstColor : textColor }}>
                       {group.group_description}
                     </p>
                   )}
-                  <p className="text-xs opacity-70" style={{ color: textColor }}>
+                  <p className="text-xs opacity-70" style={{ color: selectedStaffGroup?.group_id === group.group_id ? firstColor : textColor }}>
                     {group.staff.length} staff member
                   </p>
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
                 {selectedStaffGroup?.group_id === group.group_id && (
-                  <Check className="w-5 h-5" style={{ color: textColor }} />
+                  <Check className="w-5 h-5" style={{ color: firstColor }} />
                 )}
                 <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
@@ -504,33 +506,20 @@ console.log(theme);
       </div>
     )}
 
-    {/* Staff Members */}
     {!availableStaffGroups?.length && availableStaff?.length > 0 && (
       <div className="space-y-4">
         <h3 className="font-semibold" style={{ color: textColor }}>Staff Members</h3>
-
         {availableStaff.map((staff) => (
           <div
             key={staff.id}
             className={`group p-5 cursor-pointer transition-all hover:shadow-sm ${
-              selectedStaff?.id === staff.id
-                ? ""
-                : "border border-gray-400 border-opacity-40"
+              selectedStaff?.id === staff.id ? '' : 'border border-gray-400 border-opacity-40'
             }`}
             style={{
-              background:
-                selectedStaff?.id === staff.id
-                  ? secondColor
-                  : undefined,
-              borderColor:
-                selectedStaff?.id === staff.id
-                  ? textColor
-                  : undefined,
+              background: selectedStaff?.id === staff.id ? secondColor : undefined,
+              borderColor: selectedStaff?.id === staff.id ? textColor : undefined,
             }}
-            onClick={() => {
-              setSelectedStaff(staff);
-              // goToNextStep();
-            }}
+            onClick={() => setSelectedStaff(staff)}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -538,37 +527,27 @@ console.log(theme);
                   <img
                     src={staff.photo}
                     className="w-12 h-12 rounded-full object-cover border"
-                    style={{
-                      borderColor:
-                        selectedStaff?.id === staff.id ? textColor : "transparent",
-                    }}
+                    style={{ borderColor: selectedStaff?.id === staff.id ? textColor : 'transparent' }}
                   />
                 ) : (
                   <div
                     className="w-12 h-12 rounded-sm flex items-center justify-center font-semibold border"
                     style={{
-                      background:
-                        selectedStaff?.id === staff.id
-                          ? secondColor
-                          : "rgba(0,0,0,0.15)",
-                      borderColor:
-                        selectedStaff?.id === staff.id ? textColor : "transparent",
-                      color: textColor,
+                      background: selectedStaff?.id === staff.id ? secondColor : 'rgba(0,0,0,0.15)',
+                      borderColor: selectedStaff?.id === staff.id ? textColor : 'transparent',
+                      color: selectedStaff?.id === staff.id ? firstColor : textColor,
                     }}
                   >
                     {staff.name?.charAt(0)?.toUpperCase() || '?'}
-
                   </div>
                 )}
-
-                <h3 className="font-semibold truncate  max-w-[150px]" style={{ color: textColor }}>
+                <h3 className="font-semibold truncate max-w-[150px]" style={{ color: selectedStaff?.id === staff.id ? firstColor : textColor }}>
                   {staff.name}
                 </h3>
               </div>
-
               <div className="flex items-center gap-2">
                 {selectedStaff?.id === staff.id && (
-                  <Check className="w-5 h-5" style={{ color: textColor }} />
+                  <Check className="w-5 h-5" style={{ color: firstColor }} />
                 )}
                 <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
@@ -577,134 +556,124 @@ console.log(theme);
         ))}
       </div>
     )}
-      </div>
-    )}
-
-
-            {/* Step 3 – Resource */}
-           {currentStep === steps.find((s) => s.key === "resource")?.step &&
-              availableResources?.length > 0 && (
-                <div className="space-y-4">
-                  {availableResources.map((resource) => (
-                    <div
-                      key={resource.id}
-                      className={`group p-5 cursor-pointer transition-all hover:shadow-sm ${
-                        selectedResource?.id === resource.id
-                          ? ""
-                          : "border border-gray-400 border-opacity-40"
-                      }`}
-                      style={{
-                        background:
-                          selectedResource?.id === resource.id
-                            ? secondColor
-                            : undefined,
-                        borderColor:
-                          selectedResource?.id === resource.id ? textColor : undefined,
-                      }}
-                      onClick={() => {
-                        setSelectedResource(resource);
-                        // goToNextStep();
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className="w-12 h-12 rounded-sm flex items-center justify-center font-semibold border"
-                            style={{
-                              background:
-                                selectedResource?.id === resource.id
-                                  ? secondColor
-                                  : "rgba(0,0,0,0.15)",
-                              borderColor:
-                                selectedResource?.id === resource.id
-                                  ? textColor
-                                  : "transparent",
-                              color: textColor,
-                            }}
-                          >
-                            <Package className="w-6 h-6" />
-                          </div>
-
-                          <div>
-                            <h3 className="font-semibold truncate  max-w-[150px]" style={{ color: textColor }}>
-                              {resource.name}
-                            </h3>
-
-                            {resource.description && (
-                              <p
-                                className="text-sm opacity-80"
-                                style={{ color: textColor }}
-                              >
-                                {resource.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {selectedResource?.id === resource.id && (
-                            <Check className="w-5 h-5" style={{ color: textColor }} />
-                          )}
-                          <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+  </div>
+)}
+{/* Staff Unavailable */}
+{currentStep === steps.find((s) => s.key === 'staff_unavailable')?.step && (
+  <div
+    className="p-6 rounded-lg flex items-center gap-4"
+    style={{ background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.3)' }}
+  >
+    <div
+      className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+      style={{ background: 'rgba(239,68,68,0.15)' }}
+    >
+      <UserRound className="w-6 h-6 text-red-400" />
+    </div>
+    <div>
+      <p className="font-semibold text-red-400">No staff available</p>
+      <p className="text-sm mt-1" style={{ color: textColor, opacity: 0.7 }}>
+        This service requires a staff member to be assigned. Please contact the provider.
+      </p>
+    </div>
+  </div>
+)}
+{/* Step 3 – Resource */}
+{currentStep === steps.find((s) => s.key === 'resource')?.step && availableResources?.length > 0 && (
+  <div className="space-y-4">
+    {availableResources.map((resource) => (
+      <div
+        key={resource.id}
+        className={`group p-5 cursor-pointer transition-all hover:shadow-sm ${
+          selectedResource?.id === resource.id ? '' : 'border border-gray-400 border-opacity-40'
+        }`}
+        style={{
+          background: selectedResource?.id === resource.id ? secondColor : undefined,
+          borderColor: selectedResource?.id === resource.id ? textColor : undefined,
+        }}
+        onClick={() => setSelectedResource(resource)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-12 h-12 rounded-sm flex items-center justify-center font-semibold border"
+              style={{
+                background: selectedResource?.id === resource.id ? secondColor : 'rgba(0,0,0,0.15)',
+                borderColor: selectedResource?.id === resource.id ? textColor : 'transparent',
+                color: selectedResource?.id === resource.id ? firstColor : textColor,
+              }}
+            >
+              <Package className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-semibold truncate max-w-[150px]" style={{ color: selectedResource?.id === resource.id ? firstColor : textColor }}>
+                {resource.name}
+              </h3>
+              {resource.description && (
+                <p className="text-sm opacity-80" style={{ color: selectedResource?.id === resource.id ? firstColor : textColor }}>
+                  {resource.description}
+                </p>
               )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedResource?.id === resource.id && (
+              <Check className="w-5 h-5" style={{ color: firstColor }} />
+            )}
+            <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+)}
 
-              {/* Step 4 – Type */}
-              {currentStep === steps.find((s) => s.key === "type")?.step &&
-                bookingData?.mode === "online/inperson" &&
-                bookingData?.extra_modes?.length > 0 && (
-                  <div className="space-y-4">
-                    {bookingData.extra_modes.map((modeVal) => {
-                      const label =
-                        modeVal === 'online'  ? 'Online'   :
-                        modeVal === 'inhouse' ? 'In House' : 'At Home';
-                      const abbr =
-                        modeVal === 'online'  ? 'O'  :
-                        modeVal === 'inhouse' ? 'IH' : 'AT';
-
-                      return (
-                        <div
-                          key={modeVal}
-                          className={`group p-5 cursor-pointer transition-all hover:shadow-sm ${
-                            selectedType === modeVal ? '' : 'border border-gray-400 border-opacity-40'
-                          }`}
-                          style={{
-                            background:   selectedType === modeVal ? secondColor : undefined,
-                            borderColor:  selectedType === modeVal ? textColor   : undefined,
-                          }}
-                          onClick={() => setSelectedType(modeVal)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div
-                                className="w-12 h-12 rounded-sm flex items-center justify-center font-semibold text-lg border"
-                                style={{
-                                  background:  selectedType === modeVal ? secondColor : 'rgba(0,0,0,0.15)',
-                                  borderColor: selectedType === modeVal ? textColor   : 'transparent',
-                                  color: textColor,
-                                }}
-                              >
-                                {abbr}
-                              </div>
-                              <h3 className="font-semibold" style={{ color: textColor }}>{label}</h3>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {selectedType === modeVal && (
-                                <Check className="w-5 h-5" style={{ color: textColor }} />
-                              )}
-                              <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+{/* Step 4 – Type */}
+{currentStep === steps.find((s) => s.key === 'type')?.step &&
+  bookingData?.mode === 'online/inperson' &&
+  bookingData?.extra_modes?.length > 0 && (
+    <div className="space-y-4">
+      {bookingData.extra_modes.map((modeVal) => {
+        const label = modeVal === 'online' ? 'Online' : modeVal === 'inhouse' ? 'In House' : 'At Home';
+        const abbr  = modeVal === 'online' ? 'O'      : modeVal === 'inhouse' ? 'IH'       : 'AT';
+        return (
+          <div
+            key={modeVal}
+            className={`group p-5 cursor-pointer transition-all hover:shadow-sm ${
+              selectedType === modeVal ? '' : 'border border-gray-400 border-opacity-40'
+            }`}
+            style={{
+              background:  selectedType === modeVal ? secondColor : undefined,
+              borderColor: selectedType === modeVal ? textColor   : undefined,
+            }}
+            onClick={() => setSelectedType(modeVal)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-12 h-12 rounded-sm flex items-center justify-center font-semibold text-lg border"
+                  style={{
+                    background:  selectedType === modeVal ? secondColor : 'rgba(0,0,0,0.15)',
+                    borderColor: selectedType === modeVal ? textColor   : 'transparent',
+                    color: selectedType === modeVal ? firstColor : textColor,
+                  }}
+                >
+                  {abbr}
+                </div>
+                <h3 className="font-semibold" style={{ color: selectedType === modeVal ? firstColor : textColor }}>{label}</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedType === modeVal && (
+                  <Check className="w-5 h-5" style={{ color: firstColor }} />
                 )}
-
+                <ChevronRight className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
 
             {/* Step 5 – Date & Time */}
             {currentStep === steps.find((s) => s.key === 'datetime')?.step && (

@@ -1,25 +1,20 @@
-
 import { createSlice } from "@reduxjs/toolkit";
 
 const staffSlice = createSlice({
     name: "staff",
     initialState: {
-       
-        staffs: [],             
-        filteredStaffs: [],      
+        staffs: [],
+        filteredStaffs: [],
         staff: null,
         loading: false,
         error: null,
-        
-       
         staffsLoading: false,
         filteredStaffsLoading: false,
     },
+    
     reducers: {
-       
         setStaffs(state, action) {
             let staffData = action.payload;
-            
             if (staffData?.all_staff && Array.isArray(staffData.all_staff)) {
                 state.staffs = staffData.all_staff;
             } else if (Array.isArray(staffData)) {
@@ -28,10 +23,9 @@ const staffSlice = createSlice({
                 state.staffs = [];
             }
         },
-        
+
         setFilteredStaffs(state, action) {
             let staffData = action.payload;
-            
             if (staffData?.all_staff && Array.isArray(staffData.all_staff)) {
                 state.filteredStaffs = staffData.all_staff;
             } else if (Array.isArray(staffData)) {
@@ -40,92 +34,77 @@ const staffSlice = createSlice({
                 state.filteredStaffs = [];
             }
         },
-        
+
         setStaff(state, action) {
             state.staff = action.payload;
         },
-        
+
         addStaffToList(state, action) {
             if (action.payload) {
                 state.staffs.push(action.payload);
                 state.filteredStaffs.push(action.payload);
             }
         },
-        
+
         updateStaffInList(state, action) {
             const updatedStaff = action.payload;
-            
-            const staffIndex = state.staffs.findIndex(
-                staff => staff.id === updatedStaff.id
-            );
+            const staffIndex = state.staffs.findIndex(staff => staff.id === updatedStaff.id);
             if (staffIndex !== -1) {
-                state.staffs[staffIndex] = {
-                    ...state.staffs[staffIndex],
-                    ...updatedStaff
-                };
+                state.staffs[staffIndex] = { ...state.staffs[staffIndex], ...updatedStaff };
             }
-            
-            const filteredIndex = state.filteredStaffs.findIndex(
-                staff => staff.id === updatedStaff.id
-            );
+            const filteredIndex = state.filteredStaffs.findIndex(staff => staff.id === updatedStaff.id);
             if (filteredIndex !== -1) {
-                state.filteredStaffs[filteredIndex] = {
-                    ...state.filteredStaffs[filteredIndex],
-                    ...updatedStaff
-                };
+                state.filteredStaffs[filteredIndex] = { ...state.filteredStaffs[filteredIndex], ...updatedStaff };
             }
         },
-        
+
         removeStaffFromList(state, action) {
             const staffId = action.payload;
             state.staffs = state.staffs.filter(staff => staff.id !== staffId);
             state.filteredStaffs = state.filteredStaffs.filter(staff => staff.id !== staffId);
         },
+
         updateStaffShareLink(state, action) {
-  const { id, share_link } = action.payload;
-  
-  // حدث في staffs array
-  if (state.staffs) {
-    state.staffs = state.staffs.map(staff => 
-      staff.id === id 
-        ? { ...staff, share_link: share_link }
-        : staff
-    );
-  }
-  
-  // حدث في filteredStaffs
-  if (state.filteredStaffs) {
-    state.filteredStaffs = state.filteredStaffs.map(staff => 
-      staff.id === id 
-        ? { ...staff, share_link: share_link }
-        : staff
-    );
-  }
-  
-  // حدث staff المفرد
-  if (state.staff?.id === id) {
-    state.staff = { ...state.staff, share_link: share_link };
-  }
-},
-        
+            const { id, share_link } = action.payload;
+            if (state.staffs) {
+                state.staffs = state.staffs.map(staff =>
+                    staff.id === id ? { ...staff, share_link } : staff
+                );
+            }
+            if (state.filteredStaffs) {
+                state.filteredStaffs = state.filteredStaffs.map(staff =>
+                    staff.id === id ? { ...staff, share_link } : staff
+                );
+            }
+            if (state.staff?.id === id) {
+                state.staff = { ...state.staff, share_link };
+            }
+        },
+
+        clearFilteredStaffs(state) {
+            state.filteredStaffs = [];
+            state.filteredStaffsLoading = true;
+            state.error = null;
+        },
+
         setStaffsLoading(state, action) {
             state.staffsLoading = action.payload;
         },
-        
+
         setFilteredStaffsLoading(state, action) {
             state.filteredStaffsLoading = action.payload;
         },
-        
+
         setLoading(state, action) {
             state.loading = action.payload;
         },
-        
+
         setError(state, action) {
-            state.error = typeof action.payload === 'string' 
-                ? action.payload 
+            state.error = typeof action.payload === 'string'
+                ? action.payload
                 : action.payload?.message || 'An error occurred';
         },
-        
+
         clearError(state) {
             state.error = null;
         },
@@ -134,5 +113,7 @@ const staffSlice = createSlice({
 
 const staffAction = staffSlice.actions;
 const staffReducer = staffSlice.reducer;
+
+export const { clearFilteredStaffs } = staffSlice.actions;
 
 export { staffAction, staffReducer };

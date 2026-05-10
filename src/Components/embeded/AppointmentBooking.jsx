@@ -214,8 +214,12 @@ const buttonTextColor = getTextColor(secondColor);
       setSelectedInterview(interviews[0]);
     }
   }, [interviews]);
+        useEffect(() => {
+          if (bookingData?.extra_modes && bookingData.extra_modes.length === 1 && !selectedType) {
+            setSelectedType(bookingData.extra_modes[0]);
+          }
+        }, [bookingData?.extra_modes]);
 
-  // ✅ Fetch data based on mode مع إضافة تتبع حالة Not Found
   useEffect(() => {
     const fetchData = async () => {
       setIsInitialLoading(true);
@@ -422,6 +426,7 @@ const buttonTextColor = getTextColor(secondColor);
     if (!selectedDate || !selectedTime) return true;
     if (isTimeDisabled(selectedDate, selectedTime, bookingData?.disabled_times)) return true;
     if (bookingData?.mode === 'online/inperson' && !selectedType) return true;
+  if (bookingData?.require_staff_select && availableStaff.length === 0 && !selectedStaff) return true;
 
     return false;
   };
@@ -430,7 +435,8 @@ const buttonTextColor = getTextColor(secondColor);
   if (idAdmin && !selectedWorkspace) return 'Select Workspace';
   if (idAdmin && !selectedInterview) return 'Select Interview';
   if ((idSpace || idCustomer) && !selectedInterview) return 'Select Interview';
-  
+  if (bookingData?.require_staff_select && availableStaff.length === 0 && !selectedStaff) return 'No Staff Available';
+
   if (availableStaffGroups && availableStaffGroups.length > 0 && !selectedStaffGroup) return 'Select Staff Group';
   if (!availableStaffGroups?.length && availableStaff && availableStaff.length > 0 && !selectedStaff) return 'Select Staff';
   
@@ -768,13 +774,13 @@ return (
           </div>
         )}
 
-       {/* Type Dropdown */}
+      {/* Type Dropdown */}
         {bookingData?.mode === 'online/inperson' && bookingData?.extra_modes?.length > 0 && (
           <div ref={typeDropdownRef} className="relative">
             <div
-              className="flex overflow-hidden cursor-pointer hover:shadow-md transition-shadow h-full"
+              className={`flex overflow-hidden h-full ${bookingData.extra_modes.length > 1 ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
               style={{ background: `${textColor}30` }}
-              onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+              onClick={() => bookingData.extra_modes.length > 1 && setShowTypeDropdown(!showTypeDropdown)}
             >
               <div className="w-16 p-4 flex items-center justify-center" style={{ background: `${textColor}50` }}>
                 <MapPin style={{ color: secondColor }} className="w-6 h-6" />
@@ -787,11 +793,13 @@ return (
                                                 'At Home'
                   ) : 'Select Type...'}
                 </h3>
-                <ChevronsUpDown className="w-5 h-5 flex-shrink-0 ml-2" style={{ color: secondColor }} />
+                {bookingData.extra_modes.length > 1 && (
+                  <ChevronsUpDown className="w-5 h-5 flex-shrink-0 ml-2" style={{ color: secondColor }} />
+                )}
               </div>
             </div>
 
-            {showTypeDropdown && (
+            {showTypeDropdown && bookingData.extra_modes.length > 1 && (
               <div className="absolute top-full left-0 right-0 mt-1 z-50">
                 <div className="shadow-lg border" style={{ background: firstColor, borderColor: `${firstColor}40` }}>
                   {bookingData.extra_modes.map((modeVal, index) => (
@@ -933,7 +941,11 @@ return (
             <ChevronsUpDown className="w-5 h-5" style={{ color: secondColor }} />
           </div>
         </div>
-
+{bookingData?.require_staff_select && availableStaff.length === 0 && (
+  <div className="p-3 rounded-lg text-center text-sm" style={{ background: `${textColor}15`, color: textColor }}>
+    ⚠️ This service requires a staff member to be assigned before booking.
+  </div>
+)}
         {/* Book Button */}
        <button
   className={`flex overflow-hidden font-medium shadow-lg transition-opacity ${

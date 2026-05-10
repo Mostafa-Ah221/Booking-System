@@ -1,4 +1,5 @@
 import React from "react";
+import img1 from '../../assets/image/New folder/Appoint Roll.gif';
 
 const Trusted = () => {
   const trustedCompanies = [
@@ -11,63 +12,40 @@ const Trusted = () => {
   ];
 
   return (
-      <div className=" flex justify-center items-center flex-col my-20">
+    <div className="flex justify-center items-center flex-col my-20">
       {/* Trusted Companies Section */}
-        <div className=" mb-12 flex flex-wrap justify-center items-center gap-6 md:gap-12 opacity-70">
-          {trustedCompanies.map(({ bg }, index) => (
-              <img
-              key={index}
-              src={bg}
-              alt="Trusted Company"
-              className="w-20 object-contain "
-            />
-          ))}
-        </div>
+      <div className="mb-12 flex flex-wrap justify-center items-center gap-6 md:gap-12 opacity-70">
+        {trustedCompanies.map(({ bg }, index) => (
+          <img
+            key={index}
+            src={bg}
+            alt="Trusted Company"
+            className="w-16 md:w-20 object-contain"
+          />
+        ))}
+      </div>
 
-        {/* Hero Content */}
-          <div className=" flex rounded-md justify-center items-center px-4 py-9 bg-[#5734d3] w-[80%]">
-        <div className="max-w-4xl w-1/2 mx-auto relative">
-          {/* Dotted World Map Background */}
-          <div className="absolute inset-0 opacity-20 pointer-events-none">
-            {/* <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 800 400"
-              className="w-full h-full"
-            >
-              {[
-                { cx: 200, cy: 100 },
-                { cx: 500, cy: 250 },
-                { cx: 300, cy: 350 },
-                { cx: 700, cy: 150 },
-                { cx: 100, cy: 300 },
-              ].map((point, index) => (
-                <circle key={index} cx={point.cx} cy={point.cy} r="5" fill="white" />
-              ))}
-            </svg> */}
-          </div>
+      {/* Hero Content */}
+      <div className="flex flex-col md:flex-row rounded-xl overflow-hidden justify-center items-stretch bg-[#203f8b] w-[90%] md:w-[80%]">
 
-          {/* Main Headline */}
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-6 relative z-10">
+        {/* Left: Text */}
+        <div className="w-full md:w-1/2 px-6 py-8 md:px-6 md:py-6 lg:px-10 lg:py-10 text-center md:text-left flex flex-col justify-center">
+          <h1 className="text-2xl md:text-lg lg:text-4xl xl:text-5xl font-bold text-white mb-3 md:mb-2 lg:mb-4">
             Growing with Every Booking
           </h1>
-
-          {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-purple-100 mb-8 relative z-10">
-           Appointroll is helping businesses simplify scheduling
-           and manage appointments more efficiently — every day.
-
+          <p className="text-base md:text-xs lg:text-lg xl:text-xl text-purple-100 leading-relaxed">
+            Appointroll is helping businesses simplify scheduling
+            and manage appointments more efficiently — every day.
           </p>
-
-
         </div>
-     <div className="w-1/2"
-        style={{
-            backgroundImage: "url('https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-businesses-bg.svg')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-        }}
-        >
-            <img src="https://www.zohowebstatic.com/sites/zweb/images/bookings/home/zbs-businesses-img.png" alt="" />
+
+        {/* Right: Image */}
+        <div className="w-full md:w-1/2 h-48 md:h-auto relative">
+          <img
+            src={img1}
+            alt="Appoint Roll"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
         </div>
 
       </div>

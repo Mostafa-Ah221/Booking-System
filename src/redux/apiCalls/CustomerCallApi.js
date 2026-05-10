@@ -77,8 +77,7 @@ export function addCustomer(customerData) {
             dispatch(customerAction.setError(error.response?.data?.message));
 
             const errorMessage = error?.response?.data?.errors?.email?.[0] || 
-                               error?.response?.data?.message || 
-                               "حدث خطأ أثناء إضافة العميل";
+                               error?.response?.data?.message 
 
             toast.error(errorMessage, {
                 position: "top-center",
@@ -114,14 +113,15 @@ export function updateCustomer(customerId, customerData) {
             
             const phoneToSend = `${customerData.code_phone}${customerData.phone}`;
             
-            const response = await axiosInstance.patch(
-                `/client/update/${customerId}`,
-                { 
-                    name: customerData.name,
-                    email: customerData.email,
-                    phone: phoneToSend, 
-                }
-            );
+                const response = await axiosInstance.patch(
+                    `/client/update/${customerId}`,
+                    { 
+                        name: customerData.name,
+                        email: customerData.email,
+                        phone: customerData.phone,
+                        code_phone: customerData.code_phone,
+                    }
+                );
             console.log(response.data);
             
             if (response.data.status) {

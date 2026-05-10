@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Calendar, Layout, FileText, User, ChevronUp, ChevronDown, Trash2, ChartBar, Clock5, Users } from "lucide-react";
+import { Calendar, Layout, FileText, User, ChevronUp, ChevronDown, ChartBar, Clock5, Users } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaCheck } from "react-icons/fa6";
-import { useDispatch, useSelector } from 'react-redux'
-import { getWorkspace, deleteWorkspace } from '../../redux/apiCalls/workspaceCallApi'
-import { workspaceAction } from '../../redux/slices/workspaceSlice'
-import { BsThreeDots } from "react-icons/bs";
-import { FiEdit2 } from "react-icons/fi";
+import { useDispatch, useSelector } from 'react-redux';
+import { getWorkspace, deleteWorkspace } from '../../redux/apiCalls/workspaceCallApi';
+import { workspaceAction } from '../../redux/slices/workspaceSlice';
 import WorkspaceModal from "./AddMenus/ModelsForAdd/NewWorkspace";
 import DeleteWorkspaceModal from "./DeleteWorkspaceModal";
+import WorkspaceList from "./WorkspaceList";
 import { usePermission } from "../hooks/usePermission";
 import toast from "react-hot-toast";
 import logo from '../../assets/image/Appoint Roll logo-svg.svg';
@@ -25,91 +24,82 @@ export default function SideBarDashbord() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [workspaceToDelete, setWorkspaceToDelete] = useState(null);
   const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
-  
+
   const mySpaceRef = useRef(null);
   const menuRef = useRef(null);
   const toggleButtonRef = useRef(null);
   const manualWorkspaceSelection = useRef(false);
   const dispatch = useDispatch();
-  
+
   const { workspaces, workspace } = useSelector(state => state.workspace);
-  const previousWorkspace = useRef(workspace); 
-  
   const navigate = useNavigate();
 
-  
-
-   useEffect(() => {
+  useEffect(() => {
     dispatch(getWorkspace({ force: true }));
 
- const handleClickOutside = (event) => {
-  // تجاهل لو الكليك على الـ scrollbar بتاع الـ page
-  if (event.clientX >= document.documentElement.clientWidth) return;
-  if (event.clientY >= document.documentElement.clientHeight) return;
-  
-  // تجاهل لو مفيش target حقيقي
-  if (!event.target || !document.body.contains(event.target)) return;
+    const handleClickOutside = (event) => {
+      if (event.clientX >= document.documentElement.clientWidth) return;
+      if (event.clientY >= document.documentElement.clientHeight) return;
+      if (!event.target || !document.body.contains(event.target)) return;
 
-  if (menuRef.current && !menuRef.current.contains(event.target)) {
-    setActiveMenuId(null);
-  }
-  if (mySpaceRef.current && 
-      !mySpaceRef.current.contains(event.target) &&
-      toggleButtonRef.current &&
-      !toggleButtonRef.current.contains(event.target)) {
-    setIsWorkspaceOpen(false);
-  }
-};
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActiveMenuId(null);
+      }
+      if (
+        mySpaceRef.current &&
+        !mySpaceRef.current.contains(event.target) &&
+        toggleButtonRef.current &&
+        !toggleButtonRef.current.contains(event.target)
+      ) {
+        setIsWorkspaceOpen(false);
+      }
+    };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dispatch]);
 
-useEffect(() => {
-  if (!isEditModalOpen && !isNewWorkspaceModalOpen && !isDeleteModalOpen) {
-    dispatch(getWorkspace({ force: true })).then((result) => {
-      if (workspace && workspace.id !== 0) {
-        const updatedList = result?.payload?.data || result?.payload || [];
-        const updatedWorkspace = updatedList.find(w => w.id === workspace.id);
-        if (updatedWorkspace) {
-          dispatch(workspaceAction.setWorkspace(updatedWorkspace));
+  useEffect(() => {
+    if (!isEditModalOpen && !isNewWorkspaceModalOpen && !isDeleteModalOpen) {
+      dispatch(getWorkspace({ force: true })).then((result) => {
+        if (workspace && workspace.id !== 0) {
+          const updatedList = result?.payload?.data || result?.payload || [];
+          const updatedWorkspace = updatedList.find(w => w.id === workspace.id);
+          if (updatedWorkspace) {
+            dispatch(workspaceAction.setWorkspace(updatedWorkspace));
+          }
         }
-      }
-    });
-  }
-}, [isEditModalOpen, isNewWorkspaceModalOpen, isDeleteModalOpen, dispatch]);
+      });
+    }
+  }, [isEditModalOpen, isNewWorkspaceModalOpen, isDeleteModalOpen, dispatch]);
 
   useEffect(() => {
-  const currentPath = location.pathname.includes("interviews")
-    ? "interviews"
-    : location.pathname.includes("booking-pages") || location.pathname.includes("bookPage")
-    ? "bookPage"
-    : location.pathname.includes("analytics")
-    ? "analytics"
-    : location.pathname.includes("my-profile") || location.pathname.includes("profilepage")
-    ? "profilepage"
-    : location.pathname.includes("userDashboard")
-    ? "userDashboard"
-    : location.pathname.includes("WorkspaceAvailability")
-    ? "WorkspaceAvailability"
-    : location.pathname.includes("recruiter")
-    ? "recruiterPage"
-    : location.pathname === "/layoutDashboard"
-    ? "analytics"
-    : "";
-  
-  setActive(currentPath);
-}, [location.pathname]);
-  
+    const currentPath = location.pathname.includes("interviews")
+      ? "interviews"
+      : location.pathname.includes("booking-pages") || location.pathname.includes("bookPage")
+      ? "bookPage"
+      : location.pathname.includes("analytics")
+      ? "analytics"
+      : location.pathname.includes("my-profile") || location.pathname.includes("profilepage")
+      ? "profilepage"
+      : location.pathname.includes("userDashboard")
+      ? "userDashboard"
+      : location.pathname.includes("WorkspaceAvailability")
+      ? "WorkspaceAvailability"
+      : location.pathname.includes("recruiter")
+      ? "recruiterPage"
+      : location.pathname === "/layoutDashboard"
+      ? "analytics"
+      : "";
+
+    setActive(currentPath);
+  }, [location.pathname]);
+
   const canViewAppointments = usePermission("view appointment");
   const canViewInterview = usePermission("view interview");
   const canViewClients = usePermission("view clients");
   const canViewStaff = usePermission("view staff");
-
-  const canViewAnalytics = 
-    canViewAppointments || canViewInterview || canViewClients || canViewStaff;
+  const canViewAnalytics = canViewAppointments || canViewInterview || canViewClients || canViewStaff;
 
   const menuItems = [
     { name: "My Profile", icon: <User size={18} />, path: "profilepage", canShow: true },
@@ -118,109 +108,61 @@ useEffect(() => {
     { name: "Interviews", icon: <FileText size={18} />, path: "interviews", canShow: canViewInterview },
     { name: "Users", icon: <Users size={18} />, path: "users", canShow: canViewStaff },
     { name: "Booking Pages", icon: <Layout size={18} />, path: "bookPage", canShow: true },
-    { 
-      name: "Availability Workspace", 
-      icon: <Clock5 size={18} />, 
-      path: "WorkspaceAvailability", 
-      canShow: workspace && workspace.id !== 0 
+    {
+      name: "Availability Workspace",
+      icon: <Clock5 size={18} />,
+      path: "WorkspaceAvailability",
+      canShow: workspace && workspace.id !== 0,
     },
   ];
 
   useEffect(() => {
     const visibleItems = menuItems.filter(item => item.canShow);
-
-    if (visibleItems.length > 0 && !active) { 
+    if (visibleItems.length > 0 && !active) {
       setActive(prev => {
         if (prev) return prev;
         const stillVisible = visibleItems.some(item => item.path === prev);
-        const newPath = stillVisible ? prev : visibleItems[0].path;
-        return newPath;
+        return stillVisible ? prev : visibleItems[0].path;
       });
     }
   }, [canViewAnalytics, canViewAppointments, canViewInterview, canViewClients, canViewStaff]);
 
-  // ✅ إزالة auto-navigation المتكرر
-  // useEffect(() => {
-  //   if (active) {
-  //     navigate(active, { replace: true });
-  //   }
-  // }, [active, navigate]);
-
   const filteredWorkspaces = useMemo(() => {
-    if (!workspaces || !Array.isArray(workspaces)) {
-      return [];
-    }
-    
+    if (!workspaces || !Array.isArray(workspaces)) return [];
     if (!searchQuery.trim()) return workspaces;
-    
     const query = searchQuery.toLowerCase();
-    return workspaces.filter(workspaceItem => 
-      workspaceItem?.name?.toLowerCase().includes(query)
-    );
+    return workspaces.filter(ws => ws?.name?.toLowerCase().includes(query));
   }, [workspaces, searchQuery]);
 
   const toggleWorkspaceDropdown = () => {
     setIsWorkspaceOpen(prev => !prev);
-    if (isWorkspaceOpen) {
-      setSearchQuery('');
-    }
+    if (isWorkspaceOpen) setSearchQuery('');
   };
 
   const handleSelectWorkspace = (selectedWorkspace) => {
-    // manualWorkspaceSelection.current = true; 
     dispatch(workspaceAction.setWorkspace(selectedWorkspace));
-    
     if (selectedWorkspace.id !== 0) {
       setActive("WorkspaceAvailability");
       navigate("WorkspaceAvailability");
     }
-    
     setIsWorkspaceOpen(false);
     setSearchQuery('');
   };
 
   const handleSelectMySpace = () => {
-    manualWorkspaceSelection.current = true; 
-    const mySpace = {
-      id: 0,
-      name: "My Space"
-    }; 
-    dispatch(workspaceAction.setWorkspace(mySpace));
-    
+    manualWorkspaceSelection.current = true;
+    dispatch(workspaceAction.setWorkspace({ id: 0, name: "My Space" }));
     if (location.pathname.includes("WorkspaceAvailability")) {
       navigate("profilepage");
       setActive("profilepage");
     }
-    
     setIsWorkspaceOpen(false);
     setSearchQuery('');
-  };
-
-  const toggleMenu = (workspaceId, e) => {
-    e.stopPropagation(); 
-    setActiveMenuId(activeMenuId === workspaceId ? null : workspaceId);
   };
 
   const handleNewWorkspaceClick = () => {
     setIsNewWorkspaceModalOpen(true);
     setIsWorkspaceOpen(false);
-    setSearchQuery('');
-  };
-
-  const handleCloseNewWorkspaceModal = () => {
-    setIsNewWorkspaceModalOpen(false);
-  };
-
-  const handleCloseEditModal = () => {
-    setIsEditModalOpen(false);
-    setWorkspaceToEdit(null);
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const clearSearch = () => {
     setSearchQuery('');
   };
 
@@ -231,33 +173,19 @@ useEffect(() => {
     setActiveMenuId(null);
   };
 
-  const handleCloseDeleteModal = () => {
-    setIsDeleteModalOpen(false);
-    setWorkspaceToDelete(null);
-  };
-
   const handleConfirmDelete = async () => {
     if (!workspaceToDelete) return;
-    
     setIsDeletingWorkspace(true);
-    
     try {
       const response = await dispatch(deleteWorkspace(workspaceToDelete.id));
-      
       if (response?.success) {
         if (workspace && workspace.id === workspaceToDelete.id) {
-          const mySpace = {
-            id: 0,
-            name: "My Space"
-          };
-          dispatch(workspaceAction.setWorkspace(mySpace));
-          
+          dispatch(workspaceAction.setWorkspace({ id: 0, name: "My Space" }));
           if (location.pathname.includes("WorkspaceAvailability")) {
             navigate("profilepage");
             setActive("profilepage");
           }
         }
-        
       } else {
         toast.error(response?.message || "Failed to delete workspace");
       }
@@ -270,16 +198,16 @@ useEffect(() => {
       setWorkspaceToDelete(null);
     }
   };
-  
+
   return (
     <>
       <aside className="w-full h-[100vh] bg-white border-r border-gray-200 flex flex-col">
         <div className="p-4 pb-[0.5rem] pt-1 border-b border-gray-200">
           <Link to="Profilepage" className="flex align-center justify-left text-blue-600">
-            <img 
-              src={logo} 
-              alt="Logo" 
-              className="flex-1 h-[2.9rem] w-[45%] object-cover relative right-4" 
+            <img
+              src={logo}
+              alt="Logo"
+              className="flex-1 h-[2.9rem] w-[45%] object-cover relative right-4"
             />
           </Link>
         </div>
@@ -287,24 +215,27 @@ useEffect(() => {
         <nav className="flex-1 p-2">
           <div>
             <button
-            ref={toggleButtonRef}
+              ref={toggleButtonRef}
               onClick={toggleWorkspaceDropdown}
               className="bg-purple-100 w-full p-2 text-left rounded hover:bg-gray-100 flex items-center gap-2 justify-between"
             >
               <span className="text-purple-600 text-sm font-semibold truncate max-w-[150px]">
                 {workspace ? workspace.name : "My Space"}
               </span>
-              {isWorkspaceOpen ? <ChevronUp className="text-purple-600" /> : <ChevronDown className="text-purple-600" />}
+              {isWorkspaceOpen
+                ? <ChevronUp className="text-purple-600" />
+                : <ChevronDown className="text-purple-600" />}
             </button>
 
             {isWorkspaceOpen && (
               <div
                 ref={mySpaceRef}
-                onMouseDown={(e) => e.stopPropagation()} 
+                onMouseDown={(e) => e.stopPropagation()}
                 className="flex flex-col justify-between mt-2 bg-white border border-gray-200 rounded-lg shadow-sm fixed left-0 h-80 w-full p-1 z-50"
               >
-                <div className='h-[85%] overflow-auto'>
-                  <div 
+                <div className="h-[85%] overflow-auto">
+                  {/* My Space */}
+                  <div
                     className="p-2 border-b border-gray-100 flex items-center justify-between mb-2 cursor-pointer hover:bg-purple-50 rounded-md"
                     onClick={handleSelectMySpace}
                   >
@@ -321,17 +252,18 @@ useEffect(() => {
                     </div>
                   </div>
 
+                  {/* Search */}
                   <div className="relative mb-2">
                     <input
                       className="w-full px-2 py-1 rounded-md focus:outline-none border border-purple-800"
                       type="text"
                       placeholder="Search workspaces..."
                       value={searchQuery}
-                      onChange={handleSearchChange}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                     {searchQuery && (
                       <button
-                        onClick={clearSearch}
+                        onClick={() => setSearchQuery('')}
                         className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
                         ×
@@ -347,94 +279,24 @@ useEffect(() => {
                     </div>
                   )}
 
-                  <div className="">
-                    {filteredWorkspaces.length > 0 ? (
-                      filteredWorkspaces.map((workspaceItem) => (
-                        <div 
-  key={workspaceItem.id} 
-  className={`cursor-pointer p-2 my-1 rounded-md border-b border-gray-100 flex items-center justify-between ${workspace && workspace.id === workspaceItem.id ? "bg-purple-100":"bg-transparent"} hover:bg-purple-50`}
-  onClick={() => handleSelectWorkspace(workspaceItem)}
-  dir="ltr"
->
-  <div className="flex items-center flex-col gap-2">
-    <div className="flex gap-2 items-center">
-      <div className="w-6 h-6 bg-pink-200 rounded-full flex items-center justify-center text-pink-600 font-bold">
-        {workspaceItem.name?.slice(0, 1).toUpperCase()}
-      </div>
-      <div
-  className="max-w-[120px] overflow-hidden whitespace-nowrap text-ellipsis text-right"
-  dir="auto"
->
-  {searchQuery ? (
-    <span
-      dangerouslySetInnerHTML={{
-        __html: workspaceItem.name.replace(
-          new RegExp(`(${searchQuery})`, "gi"),
-          '<mark class="bg-yellow-200">$1</mark>'
-        ),
-      }}
-    />
-  ) : (
-    workspaceItem.name
-  )}
-</div>
-    </div>
-  </div>
-
-  <div className="flex gap-2 items-center relative" dir="ltr">
-    <div 
-      onClick={(e) => toggleMenu(workspaceItem.id, e)}
-      className={`w-5 h-5 rounded-full flex justify-center items-center border border-transparent hover:border-purple-500 duration-300`}
-    >
-      <BsThreeDots className="text-[13px] cursor-pointer text-purple-500"/>
-    </div>
-    {activeMenuId === workspaceItem.id && (
-      <div ref={menuRef} onMouseDown={(e) => e.stopPropagation()} className={`absolute bottom-6 right-2 bg-white shadow-lg rounded-lg z-10 py-2 w-40`}>
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            setWorkspaceToEdit(workspaceItem);
-            setIsEditModalOpen(true);
-            setActiveMenuId(null);
-          }}
-          className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-        >
-          <FiEdit2 size={16} className="mr-2" />
-          Edit
-        </button>
-        
-        <button
-          onClick={(e) => handleDeleteClick(workspaceItem, e)}
-          className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-        >
-          <Trash2 size={16} className="mr-2" />
-          Delete
-        </button>
-      </div>
-    )}
-    <div className={`flex justify-center items-center w-5 h-5 rounded-full ${workspace && workspace.id === workspaceItem.id ? "bg-purple-500":"bg-transparent"}`}>
-      {workspace && workspace.id === workspaceItem.id && (
-        <FaCheck className="text-white text-sm" />
-      )}
-    </div>
-  </div>
-</div>
-                      ))
-                    ) : (
-                      <div className="text-center py-4">
-                        {searchQuery ? (
-                          <p className="text-gray-500 text-sm">
-                            No workspaces found for "{searchQuery}"
-                          </p>
-                        ) : (
-                          <p className="text-gray-500 text-sm">No workspaces found.</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  {/* Workspace List with drag-and-drop */}
+                  <WorkspaceList
+                    filteredWorkspaces={filteredWorkspaces}
+                    searchQuery={searchQuery}
+                    activeMenuId={activeMenuId}
+                    setActiveMenuId={setActiveMenuId}
+                    menuRef={menuRef}
+                    onEditClick={(ws) => {
+                      setWorkspaceToEdit(ws);
+                      setIsEditModalOpen(true);
+                    }}
+                    onDeleteClick={handleDeleteClick}
+                    onSelectWorkspace={handleSelectWorkspace}
+                  />
                 </div>
 
-                <div 
+                {/* New Workspace */}
+                <div
                   className="p-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between border-t border-gray-100"
                   onClick={handleNewWorkspaceClick}
                 >
@@ -444,19 +306,22 @@ useEffect(() => {
             )}
           </div>
 
+          {/* Nav Items */}
           <div className="space-y-1 mt-2">
             {menuItems
-              .filter((item) => item.canShow) 
-              .map((item) => (
+              .filter(item => item.canShow)
+              .map(item => (
                 <Link
                   key={item.name}
                   to={item.path}
                   onClick={() => setActive(item.path)}
                   className={`w-full p-2 text-left rounded flex items-center gap-2 transition-all ${
-                    active === item.path ? "bg-purple-600 text-white" : "hover:bg-gray-100 text-gray-700"
+                    active === item.path
+                      ? "bg-purple-600 text-white"
+                      : "hover:bg-gray-100 text-gray-700"
                   }`}
                 >
-                  <span className={`${active === item.path ? "text-white" : "text-gray-500"}`}>
+                  <span className={active === item.path ? "text-white" : "text-gray-500"}>
                     {item.icon}
                   </span>
                   <span className="text-sm truncate max-w-[150px]">{item.name}</span>
@@ -465,21 +330,19 @@ useEffect(() => {
           </div>
         </nav>
       </aside>
-      
-      <WorkspaceModal 
-        isOpen={isNewWorkspaceModalOpen} 
-        onClose={handleCloseNewWorkspaceModal}
-      />
 
-      <WorkspaceModal 
-        isOpen={isEditModalOpen} 
-        onClose={handleCloseEditModal}
+      <WorkspaceModal
+        isOpen={isNewWorkspaceModalOpen}
+        onClose={() => setIsNewWorkspaceModalOpen(false)}
+      />
+      <WorkspaceModal
+        isOpen={isEditModalOpen}
+        onClose={() => { setIsEditModalOpen(false); setWorkspaceToEdit(null); }}
         editWorkspace={workspaceToEdit}
       />
-
       <DeleteWorkspaceModal
         isOpen={isDeleteModalOpen}
-        onClose={handleCloseDeleteModal}
+        onClose={() => { setIsDeleteModalOpen(false); setWorkspaceToDelete(null); }}
         onConfirm={handleConfirmDelete}
         workspaceName={workspaceToDelete?.name}
         isDeleting={isDeletingWorkspace}

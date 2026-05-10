@@ -915,7 +915,7 @@ useEffect(() => {
                     ? "1px solid transparent"
                     : `1px solid ${firstColor}77`,
                   color: isSelected
-                    ? textColor
+                    ? firstColor
                     : !isAvailable
                     ? textColor
                     : textColor,

@@ -742,6 +742,7 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
     require_end_time: interview.require_end_time,
     staff_groups: availableStaffGroups,
     has_resources: availableResources.length > 0,
+    require_staff_select: interview.require_staff_select, 
     resources: availableResources
   };
 };
@@ -971,7 +972,6 @@ useEffect(() => {
       const interviewId = id || share_link;
       if (!interviewId) return;
 
-      // ✅ لو interview mode ومفيش interview اتاختار لسه → متعملش حاجة
       if (isInterviewMode && !selectedInterview) {
         setLoading(false);
         return;
@@ -1007,18 +1007,25 @@ useEffect(() => {
         let firstAvailableDate = null;
         let firstAvailableTimes = [];
         
-        for (const range of transformedData.available_dates) {
-          try {
-            let fromISO = convertDateToISO(
-              range.from.includes(' ') ? range.from.split(' ')[0] : range.from
-            );
-            let toISO = range.to 
-              ? convertDateToISO(
-                  range.to.includes(' ') ? range.to.split(' ')[0] : range.to
-                )
-              : fromISO;
+       for (const range of transformedData.available_dates) {
+  try {
+   
 
-            if (!fromISO || !toISO) continue;
+    let fromISO = convertDateToISO(
+  range.from.includes(' ') ? range.from.split(' ')[0] : range.from
+);
+
+let toISO = range.to 
+  ? convertDateToISO(
+      range.to.includes(' ') ? range.to.split(' ')[0] : range.to
+    )
+  : (() => {
+      const farFuture = new Date();
+      farFuture.setFullYear(farFuture.getFullYear() + 1);
+      return farFuture.toISOString().split('T')[0];
+    })();
+
+    if (!fromISO || !toISO) continue;
 
             const fromDate = new Date(fromISO + 'T00:00:00.000Z');
             const toDate = new Date(toISO + 'T00:00:00.000Z');
@@ -1028,33 +1035,39 @@ useEffect(() => {
             );
             let current = new Date(Math.max(fromDate.getTime(), todayStart.getTime()));
             
-            while (current <= toDate && !firstAvailableDate) {
-              const formattedStr = current.toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              }).replace(/\//g, ' ');
+           while (current <= toDate && !firstAvailableDate) {
+  const formattedStr = current.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }).replace(/\//g, ' ');
 
-              const times = generateTimeSlots(
-                transformedData.raw_available_times || transformedData.available_times,
-                parseInt(transformedData.duration_cycle),
-                transformedData.duration_period || 'minutes',
-                formattedStr,
-                transformedData.disabled_times || [],
-                transformedData.unavailable_times || [],
-                transformedData.unavailable_dates || [],
-                parseInt(transformedData.rest_cycle || '0'),
-                selectedTimezone
-              );
-              
-              if (times && times.length > 0) {
-                firstAvailableDate = formattedStr;
-                firstAvailableTimes = times;
-                break;
-              }
-              
-              current.setUTCDate(current.getUTCDate() + 1);
-            }
+  // ✅ أضف هنا
+  console.log('🔍 Checking date:', formattedStr);
+
+  const times = generateTimeSlots(
+    transformedData.raw_available_times || transformedData.available_times,
+    parseInt(transformedData.duration_cycle),
+    transformedData.duration_period || 'minutes',
+    formattedStr,
+    transformedData.disabled_times || [],
+    transformedData.unavailable_times || [],
+    transformedData.unavailable_dates || [],
+    parseInt(transformedData.rest_cycle || '0'),
+    selectedTimezone
+  );
+
+  // ✅ أضف هنا
+  console.log('⏰ Times for', formattedStr, ':', times);
+  
+  if (times && times.length > 0) {
+    firstAvailableDate = formattedStr;
+    firstAvailableTimes = times;
+    break;
+  }
+  
+  current.setUTCDate(current.getUTCDate() + 1);
+}
             
             if (firstAvailableDate) break;
             
@@ -1075,7 +1088,11 @@ useEffect(() => {
         } else {
           setNoAvailability(true);
         }
-
+console.log('🗓 firstAvailableDate:', firstAvailableDate);
+console.log('⏰ firstAvailableTimes:', firstAvailableTimes);
+console.log('🌍 selectedTimezone:', selectedTimezone);
+console.log('📅 available_dates:', transformedData.available_dates);
+console.log('🕐 raw_available_times:', transformedData.raw_available_times);
       } else {
         setNoAvailability(true);
       }

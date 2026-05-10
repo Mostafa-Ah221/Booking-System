@@ -7,7 +7,8 @@ const CalendarSection = ({
   handleDateClick,
   handleSave,
   availabilityMode = 'available',
-  getWorkspaceData
+  getWorkspaceData,
+  getInterviewData,
 }) => {
   const [rangeStart, setRangeStart] = useState(null);
   const [rangeEnd, setRangeEnd] = useState(null);
@@ -17,11 +18,13 @@ const CalendarSection = ({
   const [isMobile, setIsMobile] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(initialMonth);
 
-  // Month/Year Picker
   const [selectorView, setSelectorView] = useState('calendar');
   const [selectedYear, setSelectedYear] = useState(currentMonth.getFullYear());
   const [yearPageIndex, setYearPageIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const MIN_YEAR = new Date().getFullYear() - 5;
   const minDate = new Date(MIN_YEAR, 0, 1);
@@ -37,24 +40,35 @@ const CalendarSection = ({
 
   useEffect(() => {
     const source = availabilityMode === 'available' 
-      ? getWorkspaceData?.available_dates 
-      : getWorkspaceData?.un_available_dates;
+      ? getInterviewData?.available_dates 
+      : getInterviewData?.un_available_dates;
 
     if (source?.length > 0) {
       const last = source[source.length - 1];
-      if (last?.from && last?.to) {
-        setRangeStart(last.from);
-        setRangeEnd(last.to);
-        const dates = generateDatesInRange(last.from, last.to);
-        setDisplayDates(dates);
-        handleDateClick?.(dates);
+      if (last?.from) {
+        const from = last.from.includes(' ') ? last.from.split(' ')[0] : last.from;
+        const to = last.to 
+          ? (last.to.includes(' ') ? last.to.split(' ')[0] : last.to)
+          : null;
+
+        setRangeStart(from);
+        setRangeEnd(to);
+
+        if (from && to) {
+          const dates = generateDatesInRange(from, to);
+          setDisplayDates(dates);
+          handleDateClick?.(dates);
+        } else if (from && !to) {
+          setDisplayDates([{ date: from }]);
+          handleDateClick?.([{ date: from }]);
+        }
       }
     } else {
       setDisplayDates([]);
       setRangeStart(null);
       setRangeEnd(null);
     }
-  }, [getWorkspaceData, availabilityMode, handleDateClick]);
+  }, [getInterviewData, availabilityMode]);
 
   const generateDatesInRange = (start, end) => {
     const dates = [];
@@ -76,7 +90,12 @@ const CalendarSection = ({
 
   const createDate = (y, m, d) => new Date(y, m, d);
 
-  const isDateDisabled = (dateStr) => new Date(dateStr) < minDate;
+  // ✅ الأيام الماضية + قبل minDate كلها disabled
+  const isDateDisabled = (dateStr) => {
+    const date = new Date(dateStr);
+    date.setHours(0, 0, 0, 0);
+    return date < today;
+  };
 
   const isInRange = (day, month, year) => {
     if (!isEditMode && displayDates.length > 0) {
@@ -104,6 +123,7 @@ const CalendarSection = ({
     const m = offset === 1 ? (currentMonth.getMonth() === 11 ? 0 : currentMonth.getMonth() + 1) : currentMonth.getMonth();
     const dateStr = formatDate(createDate(y, m, day));
 
+    if (isDateDisabled(dateStr)) return;
 
     if (!selecting) {
       setRangeStart(dateStr);
@@ -114,12 +134,20 @@ const CalendarSection = ({
       const start = new Date(rangeStart);
       const clicked = createDate(y, m, day);
       const newStart = clicked < start ? dateStr : rangeStart;
-      const newEnd = clicked < start ? rangeStart : dateStr;
+      const newEnd   = clicked < start ? rangeStart : dateStr;
 
-      setRangeStart(newStart);
-      setRangeEnd(newEnd);
-      setSelecting(false);
-      handleDateClick?.(generateDatesInRange(newStart, newEnd));
+      // ✅ لو نفس اليوم → rangeEnd = null
+      if (newStart === newEnd) {
+        setRangeStart(newStart);
+        setRangeEnd(null);
+        setSelecting(false);
+        handleDateClick?.([{ date: newStart }]);
+      } else {
+        setRangeStart(newStart);
+        setRangeEnd(newEnd);
+        setSelecting(false);
+        handleDateClick?.(generateDatesInRange(newStart, newEnd));
+      }
     }
   };
 
@@ -136,20 +164,20 @@ const CalendarSection = ({
     return Array.from({ length: current + 50 - MIN_YEAR + 1 }, (_, i) => MIN_YEAR + i);
   };
 
-  // Picker Handlers
   const openMonths = () => { setIsAnimating(true); setTimeout(() => { setSelectorView('months'); setIsAnimating(false); }, 150); };
-  const openYears = () => { setIsAnimating(true); setTimeout(() => { const years = generateYears(); setYearPageIndex(Math.floor(years.indexOf(selectedYear) / 12)); setSelectorView('years'); setIsAnimating(false); }, 150); };
+  const openYears  = () => { setIsAnimating(true); setTimeout(() => { const years = generateYears(); setYearPageIndex(Math.floor(years.indexOf(selectedYear) / 12)); setSelectorView('years'); setIsAnimating(false); }, 150); };
   const closePicker = () => { setIsAnimating(true); setTimeout(() => { setSelectorView('calendar'); setIsAnimating(false); }, 150); };
 
   const selectMonth = (i) => { setIsAnimating(true); setTimeout(() => { setCurrentMonth(new Date(selectedYear, i, 1)); setSelectorView('calendar'); setIsAnimating(false); }, 150); };
-  const selectYear = (y) => { setIsAnimating(true); setTimeout(() => { setSelectedYear(y); setSelectorView('months'); setIsAnimating(false); }, 150); };
+  const selectYear  = (y) => { setIsAnimating(true); setTimeout(() => { setSelectedYear(y); setSelectorView('months'); setIsAnimating(false); }, 150); };
 
   const prevYear = () => selectedYear > MIN_YEAR && setSelectedYear(y => y - 1);
   const nextYear = () => setSelectedYear(y => y + 1);
 
+  // ✅ لو مفيش rangeEnd يبعت null
   const handleSaveClick = async () => {
-    if (!rangeStart || !rangeEnd) return;
-    await handleSave?.({ available_dates: [{ from: rangeStart, to: rangeEnd }] });
+    if (!rangeStart) return;
+    await handleSave?.({ available_dates: [{ from: rangeStart, to: rangeEnd || null }] });
     setIsEditMode(false);
     resetSelection();
   };
@@ -158,8 +186,10 @@ const CalendarSection = ({
     setIsEditMode(true);
     setSelectorView('calendar');
     if (displayDates.length > 0) {
-      setRangeStart(displayDates[0].date);
-      setRangeEnd(displayDates[displayDates.length - 1].date);
+      const firstDate = displayDates[0].date;
+      const lastDate  = displayDates[displayDates.length - 1].date;
+      setRangeStart(firstDate);
+      setRangeEnd(lastDate !== firstDate ? lastDate : null);
     }
   };
 
@@ -177,7 +207,7 @@ const CalendarSection = ({
   };
 
   const SingleCalendar = ({ year, month, offset = 0, overlay = false }) => {
-    const days = generateDays(year, month);
+    const days  = generateDays(year, month);
     const weeks = [];
     for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
 
@@ -185,14 +215,13 @@ const CalendarSection = ({
       if (!day) return 'invisible';
       const str = formatDate(createDate(year, month, day));
       const disabled = isDateDisabled(str);
-      if (disabled) return 'bg-gray-100 text-gray-400 line-through cursor-not-allowed';
+      if (disabled) return 'bg-gray-100 text-gray-300 line-through cursor-not-allowed';
       if (isStart(day, month, year)) return availabilityMode === 'available' ? 'bg-blue-600 text-white rounded-l-full' : 'bg-red-600 text-white rounded-l-full';
-      if (isEnd(day, month, year)) return availabilityMode === 'available' ? 'bg-blue-600 text-white rounded-r-full' : 'bg-red-600 text-white rounded-r-full';
+      if (isEnd(day, month, year))   return availabilityMode === 'available' ? 'bg-blue-600 text-white rounded-r-full' : 'bg-red-600 text-white rounded-r-full';
       if (isInRange(day, month, year)) return availabilityMode === 'available' ? 'bg-blue-100 text-blue-900' : 'bg-red-100 text-red-900';
       return isEditMode ? 'hover:bg-gray-100' : '';
     };
 
-    // Months Picker
     if (selectorView === 'months' && offset === 0) {
       return (
         <div className={`flex-1 transition-all duration-200 ${isAnimating ? 'scale-95 opacity-0' : ''}`}>
@@ -216,9 +245,8 @@ const CalendarSection = ({
       );
     }
 
-    // Years Picker
     if (selectorView === 'years' && offset === 0) {
-      const years = generateYears();
+      const years   = generateYears();
       const visible = years.slice(yearPageIndex * 12, yearPageIndex * 12 + 12);
       return (
         <div className={`flex-1 transition-all duration-200 ${isAnimating ? 'scale-95 opacity-0' : ''}`}>
@@ -241,7 +269,6 @@ const CalendarSection = ({
       );
     }
 
-    // Normal Calendar
     return (
       <div className={`flex-1 ${overlay ? 'relative' : ''}`}>
         {overlay && selectorView !== 'calendar' && <div className="absolute inset-0 bg-white/10 z-10 rounded-lg"/>}
@@ -253,17 +280,19 @@ const CalendarSection = ({
             </button>
           </div>
           <div className="grid grid-cols-7 gap-1 mb-2">
-            {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-center text-gray-500 text-xs">{d}</div>)}
+            {['S','M','T','W','T','F','S'].map((d, i) => <div key={i} className="text-center text-gray-500 text-xs">{d}</div>)}
           </div>
           <div className={`grid grid-cols-7 gap-0 ${!isEditMode || selectorView !== 'calendar' ? 'pointer-events-none' : ''}`}>
             {weeks.map((week, i) => week.map((day, j) => {
-              const str = day ? formatDate(createDate(year, month, day)) : null;
+              const str      = day ? formatDate(createDate(year, month, day)) : null;
               const disabled = str && isDateDisabled(str);
               return (
                 <div key={`${i}-${j}`} className={`h-9 flex items-center justify-center ${day === null ? 'invisible' : ''}`}>
-                  <button onClick={() => day && !disabled && handleDateSelect(day, offset)}
+                  <button
+                    onClick={() => day && !disabled && handleDateSelect(day, offset)}
                     className={`w-9 h-9 rounded flex items-center justify-center text-xs ${cellStyle(day)}`}
-                    disabled={disabled || !isEditMode}>
+                    disabled={disabled || !isEditMode}
+                  >
                     {day}
                   </button>
                 </div>
@@ -313,7 +342,7 @@ const CalendarSection = ({
             <h2 className="text-xl font-semibold">{availabilityMode === 'available' ? 'Available Dates' : 'Unavailable Dates'}</h2>
             <p className="text-sm text-gray-500 mt-1">Select a range of dates</p>
           </div>
-          <button onClick={handleEdit} className={`px-4  text-white rounded flex items-center gap-2 ${availabilityMode === 'available' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}>
+          <button onClick={handleEdit} className={`px-4 text-white rounded flex items-center gap-2 ${availabilityMode === 'available' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}>
             <Edit size={16}/> Edit
           </button>
         </div>
@@ -329,7 +358,9 @@ const CalendarSection = ({
       )}
 
       <div className="border rounded-lg p-4">
-        {isEditMode && selectorView === 'calendar' && <div className="text-gray-600 mb-3 text-sm">{selecting ? 'Select end date' : 'Select start date'}</div>}
+        {isEditMode && selectorView === 'calendar' && (
+          <div className="text-gray-600 mb-3 text-sm">{selecting ? 'Select end date' : 'Select start date'}</div>
+        )}
         <Calendar year={currentMonth.getFullYear()} month={currentMonth.getMonth()} />
 
         {(rangeStart || rangeEnd || displayDates.length > 0) && selectorView === 'calendar' && (
@@ -337,7 +368,7 @@ const CalendarSection = ({
             <div className="flex items-center gap-3">
               <input readOnly value={rangeStart || displayDates[0]?.date || ''} className="px-3 py-1 border rounded w-28 text-sm" />
               <span className="text-gray-500">to</span>
-              <input readOnly value={rangeEnd || displayDates[displayDates.length-1]?.date || ''} className="px-3 py-1 border rounded w-28 text-sm" />
+              <input readOnly value={rangeEnd || displayDates[displayDates.length - 1]?.date || ''} className="px-3 py-1 border rounded w-28 text-sm" />
             </div>
             {isEditMode && <button onClick={resetSelection} className="text-red-600 text-sm hover:text-red-800">Reset</button>}
           </div>
@@ -346,11 +377,15 @@ const CalendarSection = ({
 
       {selectorView === 'calendar' && (
         <div className="mt-4 text-sm text-gray-600">
-          {isEditMode 
-            ? (rangeStart && rangeEnd ? `Selected: ${new Date(rangeStart).toLocaleDateString()} - ${new Date(rangeEnd).toLocaleDateString()}` : 'No selection')
-            : displayDates.length > 0 
+          {isEditMode
+            ? (rangeStart
+                ? rangeEnd
+                  ? `Selected: ${new Date(rangeStart).toLocaleDateString()} - ${new Date(rangeEnd).toLocaleDateString()}`
+                  : `Selected: ${new Date(rangeStart).toLocaleDateString()}`
+                : 'No selection')
+            : displayDates.length > 0
               ? `${availabilityMode === 'available' ? 'Available' : 'Unavailable'} from ${new Date(displayDates[0].date).toLocaleDateString()} to ${new Date(displayDates[displayDates.length-1].date).toLocaleDateString()}`
-              : `No dates set`}
+              : 'No dates set'}
         </div>
       )}
     </div>

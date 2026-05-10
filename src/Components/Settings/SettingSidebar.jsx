@@ -84,7 +84,6 @@ const SettingSidebar = ({ iconOnly = false }) => {
   const isLinkActive = (path) => {
     const currentPathname = location.pathname;
     
-  console.log("currentPathname:", currentPathname, "| path:", path);
     if (path.includes('#')) {
       const [basePath] = path.split('#');
       return currentPathname.includes(basePath);

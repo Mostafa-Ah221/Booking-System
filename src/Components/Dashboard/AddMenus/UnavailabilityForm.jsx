@@ -13,7 +13,6 @@ const UnavailabilityForm = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  // إغلاق النافذة عند الضغط على الخلفية
   const handleOverlayClick = (e) => {
     if (e.target.id === 'overlay') {
       onClose();

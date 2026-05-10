@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Share, Edit, Save, X, Share2 } from 'lucide-react';
+import { Share, Edit, Save, X, Share2, Trash2 } from 'lucide-react';
 import { CgProfile } from 'react-icons/cg';
 import Availability from './Availability';
 import PhoneInput from "react-phone-input-2";
@@ -22,6 +22,7 @@ const ProfilePage = () => {
   const [isUpdateShareModalOpen, setIsUpdateShareModalOpen] = useState(false);
   const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
   const [displayImage, setDisplayImage] = useState(null);
+  const [removePhoto, setRemovePhoto] = useState(false); // ✅ NEW
   const [phoneValue, setPhoneValue] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -31,7 +32,6 @@ const ProfilePage = () => {
   const { profile, staffProfile, loading = false } = useSelector(state => state.profileData);
 
   const currentProfile = userType === 'staff' ? staffProfile : profile;
-console.log(profile);
 
   const [profileData, setProfileData] = useState({
     name: '',
@@ -46,7 +46,7 @@ console.log(profile);
   });
 
 
-    useEffect(() => {
+  useEffect(() => {
     if (!currentProfile && !loading && !profileLoaded) {
       if (userType === 'staff') {
         dispatch(StaffFetchProfileData());
@@ -72,14 +72,12 @@ console.log(profile);
         over_time: userData.over_time || 0
       });
       
-      // Set phone value for PhoneInput component
       if (userData.code_phone && userData.phone) {
         setPhoneValue(`${userData.code_phone?.replace('+', '')}${userData.phone}`);
-
       }
       
-      // Set display image if exists
       setDisplayImage(userData.photo || null);
+      setRemovePhoto(false); // ✅ reset on profile load
     }
   }, [currentProfile]);
 
@@ -89,18 +87,16 @@ console.log(profile);
       [field]: value
     }));
   };
-  // console.log(currentProfile?.user?.status);
 
   const handlePhoneChange = (value, country) => {
     setPhoneValue(value);
 
-setProfileData(prev => ({
-  ...prev,
-  phone: value.slice(country.dialCode.length),  // "1033540104" ✅
-  code_phone: `+${country.dialCode}`,            // "+20" ✅
-}));
+    setProfileData(prev => ({
+      ...prev,
+      phone: value.slice(country.dialCode.length),
+      code_phone: `+${country.dialCode}`,
+    }));
 
-    // Validate phone number
     if (!value || value.length <= country.dialCode.length + 1) {
       setPhoneError("Please enter a valid phone number");
       return;
@@ -121,6 +117,7 @@ setProfileData(prev => ({
       photo: imageFile
     }));
     setDisplayImage(URL.createObjectURL(imageFile));
+    setRemovePhoto(false); // ✅ if user picks new photo, cancel remove
     setIsImageUploadOpen(false);
   };
 
@@ -128,6 +125,17 @@ setProfileData(prev => ({
     if (isEditing) {
       setIsImageUploadOpen(true);
     }
+  };
+
+  // ✅ NEW: handle remove photo
+  const handleRemovePhoto = (e) => {
+    e.stopPropagation(); // prevent triggering handleImageClick
+    setDisplayImage(null);
+    setRemovePhoto(true);
+    setProfileData(prev => ({
+      ...prev,
+      photo: null
+    }));
   };
 
   const handleSave = async () => {
@@ -139,23 +147,25 @@ setProfileData(prev => ({
       }
     });
 
+    // ✅ append remove_photo if user clicked X
+    if (removePhoto) {
+      formData.append('remove_photo', 1);
+    }
+
     try {
-     
-      
       if (userType === 'staff') {
         await dispatch(StaffUpdateProfileData(formData));
       } else {
-        
         await dispatch(updateProfileData(formData));
       }
       setIsEditing(false);
+      setRemovePhoto(false); // ✅ reset after save
     } catch (error) {
       console.error('Error updating profile:', error);
     }
   };
 
   const handleCancel = () => {
-    // Reset changes back to original profile data
     if (currentProfile?.user) {
       const userData = currentProfile.user;
       setProfileData({
@@ -170,15 +180,14 @@ setProfileData(prev => ({
         over_time: userData.over_time || 0
       });
       
-      // Reset phone value
       if (userData.code_phone && userData.phone) {
         setPhoneValue(`${userData.code_phone}${userData.phone}`);
       } else {
         setPhoneValue("");
       }
       
-      // Reset display image to original
       setDisplayImage(userData.photo || null);
+      setRemovePhoto(false); // ✅ reset on cancel
       setPhoneError("");
     }
     setIsEditing(false);
@@ -215,7 +224,7 @@ setProfileData(prev => ({
             className='w-full h-full rounded-xl object-cover' 
             src={displayImage} 
             alt="Profile"
-            onError={(e) => {
+            onError={() => {
               setDisplayImage(null); 
             }}
           />
@@ -229,7 +238,6 @@ setProfileData(prev => ({
       );
     }
 
-  
     return (
       <div className="flex flex-col items-center justify-center w-full h-full">
         {isEditing ? (
@@ -255,20 +263,19 @@ setProfileData(prev => ({
           {/* Tabs */}
           <div className="flex gap-6 mt-4 border-b justify-between">
             <div className='flex gap-6'>
-
-            {['Details'].map((tab) => (
-              <button
-                key={tab}
-                className={`py-1  border-b-2 transition-colors text-sm sm:text-base ${
-                  activeTab === tab.toLowerCase()
-                    ? 'border-indigo-600 text-indigo-600 font-medium'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setActiveTab(tab.toLowerCase())}
-              >
-                {tab}
-              </button>
-            ))}
+              {['Details'].map((tab) => (
+                <button
+                  key={tab}
+                  className={`py-1  border-b-2 transition-colors text-sm sm:text-base ${
+                    activeTab === tab.toLowerCase()
+                      ? 'border-indigo-600 text-indigo-600 font-medium'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => setActiveTab(tab.toLowerCase())}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
             <div className='flex gap-2'>
               {
@@ -286,16 +293,14 @@ setProfileData(prev => ({
               }
                    
               <button 
-                  className="flex items-center gap-1 text-sm mb-2  px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
-                  onClick={() => setIsShareModalOpen(true)}
+                className="flex items-center gap-1 text-sm mb-2  px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={() => setIsShareModalOpen(true)}
                 title='Share Link'>
-                  <Share2 className="w-3 h-3" />
-                  <span >Share</span>
-                </button>
-              
+                <Share2 className="w-3 h-3" />
+                <span >Share</span>
+              </button>
             </div>
           </div>
-          
         </div>
 
         {/* Profile Info */}
@@ -303,11 +308,28 @@ setProfileData(prev => ({
           <div>
             <div className="flex flex-col sm:flex-row items-center justify-between mb-6 text-sm">
               <div className="flex items-center gap-4 mb-3">
-                <div 
-                  className={`relative w-24 h-24 bg-indigo-100 rounded-xl flex items-center justify-center mr-2 text-indigo-700 font-bold shadow-sm overflow-hidden transition-all duration-200 ${isEditing ? 'cursor-pointer hover:bg-indigo-200' : ''}`}
-                  onClick={handleImageClick}
-                >
-                  {renderProfileImage()}
+
+                {/* ✅ Image container with X button */}
+                <div className="relative mr-2">
+                  <div 
+                    className={`relative w-24 h-24 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-700 font-bold shadow-sm overflow-hidden transition-all duration-200 ${isEditing ? 'cursor-pointer hover:bg-indigo-200' : ''}`}
+                    onClick={handleImageClick}
+                  >
+                    {renderProfileImage()}
+                  </div>
+
+                  {/* ✅ Pill remove button - only show when editing AND there's a photo */}
+                  {isEditing && displayImage && (
+                    <button
+                      onClick={handleRemovePhoto}
+                      type="button"
+                      className="absolute -top-3 -right-3 flex items-center gap-1 bg-white border border-red-200 hover:border-red-400 hover:bg-red-50 rounded-full px-2 py-1 shadow-sm transition-all duration-200 z-10 group"
+                      title="Remove photo"
+                    >
+                      <Trash2 size={10} className="text-red-400 group-hover:text-red-500 transition-colors duration-200" />
+                      <span className="text-xs text-red-400 group-hover:text-red-500 font-medium transition-colors duration-200 leading-none">Remove</span>
+                    </button>
+                  )}
                 </div>
                 
                 <div>
@@ -575,8 +597,7 @@ setProfileData(prev => ({
       </div>
 
       {/* Share Modal */}
-    
-    <ShareBookingModal 
+      <ShareBookingModal 
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         shareLink={userType === "staff" ? `s/${currentProfile?.user?.share_link}` : null}
@@ -584,8 +605,6 @@ setProfileData(prev => ({
         onUpdateLink={handleUpdateShareLink}
         loading={loading}
       />
-
-
     </div>
   );
 };

@@ -146,7 +146,16 @@ const AppointmentBooking_4 = () => {
         key: 'staff',
       });
     }
-
+    if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availableStaffGroups?.length) {
+      list.push({
+        step: counter++,
+        label: 'Staff',
+        icon: UserRound,
+        value: '__unavailable__',
+        key: 'staff_unavailable',
+        disabled: true,
+      });
+    }
     if (availableResources?.length > 0) {
       list.push({ step: counter++, label: 'Resource', icon: Package, value: selectedResource?.name, key: 'resource' });
     }
@@ -174,6 +183,9 @@ const AppointmentBooking_4 = () => {
     selectedType, selectedDate, selectedTime
   ]);
 
+const hasUnavailableStaff = bookingData?.require_staff_select && 
+  availableStaff?.length === 0 && 
+  !availableStaffGroups?.length;
   const hasAnySocial =
     (theme?.show_email === "1" && theme?.footer_email) ||
     (theme?.show_phone === "1" && theme?.footer_phone) ||
@@ -285,12 +297,14 @@ const AppointmentBooking_4 = () => {
     if (next && canGoToStep(next.step)) setCurrentStep(next.step);
   };
 
-  const canGoToStep = (targetStep) => {
-    if (targetStep === currentStep) return true;
-    const targetIdx = steps.findIndex((s) => s.step === targetStep);
-    if (targetIdx === -1) return false;
-    return steps.slice(0, targetIdx).every((s) => s.value !== null && s.value !== undefined);
-  };
+    const canGoToStep = (targetStep) => {
+      if (targetStep === currentStep) return true;
+      const targetIdx = steps.findIndex((s) => s.step === targetStep);
+      if (targetIdx === -1) return false;
+      const hasDisabledBefore = steps.slice(0, targetIdx).some((s) => s.disabled);
+      if (hasDisabledBefore) return false;
+      return steps.slice(0, targetIdx).every((s) => s.value !== null && s.value !== undefined);
+    };
 
   const handleStepClick = (step) => {
     if (canGoToStep(step)) setCurrentStep(step);
@@ -311,67 +325,68 @@ const AppointmentBooking_4 = () => {
   );
 
   // ── Dropdown Box ───────────────────────────────────────────────────────────
-  const renderDropdownBox = (step) => {
-    const isExpanded = expandedDropdown === step.key;
-    const Icon = step.icon;
-    const hasValue = !!step.value;
+ const renderDropdownBox = (step) => {
+  const isExpanded = expandedDropdown === step.key;
+  const Icon = step.icon;
+  const hasValue = !!step.value;
+  const isDisabled = step.disabled;
 
-    return (
+  return (
+    <div
+      key={step.key}
+      className="overflow-hidden transition-all duration-200"
+      style={{
+        border: `1.5px solid ${isDisabled ? 'rgba(255,0,0,0.4)' : hasValue ? accentColor : accentWithOpacity(0.35)}`,
+        borderRadius: '10px',
+        backgroundColor: isDisabled ? 'rgba(255,0,0,0.06)' : hasValue ? accentWithOpacity(0.12) : accentWithOpacity(0.04),
+      }}
+    >
       <div
-        key={step.key}
-        className="overflow-hidden transition-all duration-200"
-        style={{
-          border: `1.5px solid ${hasValue ? accentColor : accentWithOpacity(0.35)}`,
-          borderRadius: '10px',
-          backgroundColor: hasValue ? accentWithOpacity(0.12) : accentWithOpacity(0.04),
-        }}
+        className={`flex items-center justify-between p-4 ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'} select-none`}
+        onClick={() => !isDisabled && toggleDropdown(step.key)}
       >
-        <div
-          className="flex items-center justify-between p-4 cursor-pointer select-none transition-all duration-150"
-          style={{ backgroundColor: isExpanded ? accentWithOpacity(0.08) : 'transparent' }}
-          onClick={() => toggleDropdown(step.key)}
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: hasValue ? accentColor : accentWithOpacity(0.2) }}
-            >
-              <Icon className="w-4 h-4" style={{ color: hasValue ? bgColor : textColor }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide" style={{ color: textColor, opacity: 0.6 }}>
-                {step.label}
-              </p>
-              <p className="font-semibold truncate" style={{ color: textColor, maxWidth: '260px', opacity: hasValue ? 1 : 0.5 }}>
-                {step.value || `Select ${step.label}`}
-              </p>
-            </div>
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: isDisabled ? 'rgba(255,0,0,0.15)' : hasValue ? accentColor : accentWithOpacity(0.2) }}
+          >
+            <Icon className="w-4 h-4" style={{ color: isDisabled ? '#ef4444' : hasValue ? bgColor : textColor }} />
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-            {hasValue && (
-              <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
-                <Check className="w-3 h-3" style={{ color: bgColor }} />
-              </div>
-            )}
-            {isExpanded
-              ? <ChevronUp className="w-4 h-4" style={{ color: textColor, opacity: 0.7 }} />
-              : <ChevronDown className="w-4 h-4" style={{ color: textColor, opacity: 0.7 }} />
-            }
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: textColor, opacity: 0.6 }}>
+              {step.label}
+            </p>
+            <p className="font-semibold truncate" style={{ 
+              color: isDisabled ? '#ef4444' : textColor, 
+              maxWidth: '260px', 
+              opacity: isDisabled ? 1 : hasValue ? 1 : 0.5 
+            }}>
+              {isDisabled 
+                ? 'No staff available — contact provider' 
+                : step.value || `Select ${step.label}`}
+            </p>
           </div>
         </div>
-
-        {isExpanded && (
-          <div className="max-h-72 overflow-y-auto" style={{ borderTop: `1px solid ${accentWithOpacity(0.2)}` }}>
-            {step.key === 'workspace' && renderWorkspaceOptions()}
-            {step.key === 'interview' && renderInterviewOptions()}
-            {step.key === 'staff' && renderStaffOptions()}
-            {step.key === 'resource' && renderResourceOptions()}
-            {step.key === 'type' && renderTypeOptions()}
-          </div>
+        {/* بدون سهم لو disabled */}
+        {!isDisabled && (
+          isExpanded
+            ? <ChevronUp className="w-4 h-4 flex-shrink-0 ml-2" style={{ color: textColor, opacity: 0.7 }} />
+            : <ChevronDown className="w-4 h-4 flex-shrink-0 ml-2" style={{ color: textColor, opacity: 0.7 }} />
         )}
       </div>
-    );
-  };
+
+      {isExpanded && !isDisabled && (
+        <div className="max-h-72 overflow-y-auto" style={{ borderTop: `1px solid ${accentWithOpacity(0.2)}` }}>
+          {step.key === 'workspace' && renderWorkspaceOptions()}
+          {step.key === 'interview' && renderInterviewOptions()}
+          {step.key === 'staff' && renderStaffOptions()}
+          {step.key === 'resource' && renderResourceOptions()}
+          {step.key === 'type' && renderTypeOptions()}
+        </div>
+      )}
+    </div>
+  );
+};
 
   // ── Option Row ─────────────────────────────────────────────────────────────
   const OptionRow = ({ isSelected, onClick, children }) => (
@@ -542,85 +557,86 @@ const AppointmentBooking_4 = () => {
         </div>
 
         {/* Date & Time */}
-        {dateTimeStep && (
-          <div
-            className="mb-6 rounded-xl overflow-hidden"
-            style={{
-              border: `1.5px solid ${selectedDate && selectedTime ? accentColor : accentWithOpacity(0.35)}`,
-              backgroundColor: selectedDate && selectedTime ? accentWithOpacity(0.12) : accentWithOpacity(0.04),
-            }}
-          >
-            <div className="flex items-center gap-3 p-4" style={{ borderBottom: `1px solid ${accentWithOpacity(0.2)}` }}>
-              <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: selectedDate && selectedTime ? accentColor : accentWithOpacity(0.2) }}
-              >
-                <Clock className="w-4 h-4" style={{ color: selectedDate && selectedTime ? bgColor : textColor }} />
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: textColor, opacity: 0.6 }}>Date & Time</p>
-                <p className="font-semibold" style={{ color: textColor, opacity: selectedDate && selectedTime ? 1 : 0.5 }}>
-                  {selectedDate && selectedTime ? `${selectedDate} | ${selectedTime}` : 'Select Date & Time'}
-                </p>
-              </div>
-              {selectedDate && selectedTime && (
-                <div className="ml-auto w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
-                  <Check className="w-3 h-3" style={{ color: bgColor }} />
+          {dateTimeStep && !hasUnavailableStaff && (
+            <div
+              className="mb-6 rounded-xl overflow-hidden"
+              style={{
+                border: `1.5px solid ${selectedDate && selectedTime ? accentColor : accentWithOpacity(0.35)}`,
+                backgroundColor: selectedDate && selectedTime ? accentWithOpacity(0.12) : accentWithOpacity(0.04),
+              }}
+            >
+              <div className="flex items-center gap-3 p-4" style={{ borderBottom: `1px solid ${accentWithOpacity(0.2)}` }}>
+                <div
+                  className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: selectedDate && selectedTime ? accentColor : accentWithOpacity(0.2) }}
+                >
+                  <Clock className="w-4 h-4" style={{ color: selectedDate && selectedTime ? bgColor : textColor }} />
                 </div>
-              )}
-            </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide" style={{ color: textColor, opacity: 0.6 }}>Date & Time</p>
+                  <p className="font-semibold" style={{ color: textColor, opacity: selectedDate && selectedTime ? 1 : 0.5 }}>
+                    {selectedDate && selectedTime ? `${selectedDate} | ${selectedTime}` : 'Select Date & Time'}
+                  </p>
+                </div>
+                {selectedDate && selectedTime && (
+                  <div className="ml-auto w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: accentColor }}>
+                    <Check className="w-3 h-3" style={{ color: bgColor }} />
+                  </div>
+                )}
+              </div>
 
-            <div className="p-4">
-              {bookingDataLoading ? (
-                <div className="text-center py-16">
-                  <Loader />
-                  <p className="text-sm mt-4" style={{ color: textColor, opacity: 0.6 }}>Loading available times...</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <CalendarSection4
-                    selectedDate={selectedDate}
-                    onDateSelect={(date) => setSelectedDate(date)}
-                    availableDates={bookingData?.available_dates || []}
-                    availableTimes={bookingData?.available_times || []}
-                    availableTimesFromAPI={bookingData?.raw_available_times || []}
-                    unavailableDates={bookingData?.unavailable_dates || []}
-                    unavailableTimes={bookingData?.unavailable_times || []}
-                    disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
-                    durationCycle={parseInt(bookingData?.duration_cycle) || 15}
-                    durationPeriod={bookingData?.duration_period || "minutes"}
-                    restCycle={parseInt(bookingData?.rest_cycle) || 0}
-                    setSelectedTimezone={setSelectedTimezone}
-                    selectedTimeZone={selectedTimezone}
-                    themeColor={theme?.colors}
-                    workspaceTimezone={bookingData?.workspace_timezone || 'Africa/Cairo'}
-                    initialDate={firstAvailableDate}
-                  />
-                  <TimeSelectionSection2
-                    selectedTime={selectedTime}
-                    onTimeSelect={(time) => setSelectedTime(time)}
-                    availableTimes={bookingData?.available_times || []}
-                    availableTimesFromAPI={bookingData?.raw_available_times || []}
-                    selectedDate={selectedDate}
-                    disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
-                    unavailableTimes={bookingData?.unavailable_times || []}
-                    unavailableDates={bookingData?.unavailable_dates || []}
-                    requireEndTime={bookingData?.require_end_time}
-                    selectedEndTime={selectedEndTime}
-                    durationCycle={parseInt(bookingData?.duration_cycle) || 0}
-                    durationPeriod={bookingData?.duration_period || 'minutes'}
-                    restCycle={parseInt(bookingData?.rest_cycle) || 0}
-                    setSelectedEndTime={setSelectedEndTime}
-                    themeColor={theme?.colors}
-                  />
-                </div>
-              )}
+              <div className="p-4">
+                {bookingDataLoading ? (
+                  <div className="text-center py-16">
+                    <Loader />
+                    <p className="text-sm mt-4" style={{ color: textColor, opacity: 0.6 }}>Loading available times...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <CalendarSection4
+                      selectedDate={selectedDate}
+                      onDateSelect={(date) => setSelectedDate(date)}
+                      availableDates={bookingData?.available_dates || []}
+                      availableTimes={bookingData?.available_times || []}
+                      availableTimesFromAPI={bookingData?.raw_available_times || []}
+                      unavailableDates={bookingData?.unavailable_dates || []}
+                      unavailableTimes={bookingData?.unavailable_times || []}
+                      disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
+                      durationCycle={parseInt(bookingData?.duration_cycle) || 15}
+                      durationPeriod={bookingData?.duration_period || "minutes"}
+                      restCycle={parseInt(bookingData?.rest_cycle) || 0}
+                      setSelectedTimezone={setSelectedTimezone}
+                      selectedTimeZone={selectedTimezone}
+                      themeColor={theme?.colors}
+                      workspaceTimezone={bookingData?.workspace_timezone || 'Africa/Cairo'}
+                      initialDate={firstAvailableDate}
+                    />
+                    <TimeSelectionSection2
+                      selectedTime={selectedTime}
+                      onTimeSelect={(time) => setSelectedTime(time)}
+                      availableTimes={bookingData?.available_times || []}
+                      availableTimesFromAPI={bookingData?.raw_available_times || []}
+                      selectedDate={selectedDate}
+                      disabledTimes={bookingData?.converted_disabled_times || bookingData?.disabled_times || []}
+                      unavailableTimes={bookingData?.unavailable_times || []}
+                      unavailableDates={bookingData?.unavailable_dates || []}
+                      requireEndTime={bookingData?.require_end_time}
+                      selectedEndTime={selectedEndTime}
+                      durationCycle={parseInt(bookingData?.duration_cycle) || 0}
+                      durationPeriod={bookingData?.duration_period || 'minutes'}
+                      restCycle={parseInt(bookingData?.rest_cycle) || 0}
+                      setSelectedEndTime={setSelectedEndTime}
+                      themeColor={theme?.colors}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Your Info */}
-        {selectedDate && selectedTime && infoStep && (
+        {selectedDate && selectedTime && infoStep && !hasUnavailableStaff && (
+
           <div className="mb-6">
             <BookingSummarySidebar2
               bookingData={isInterviewMode ? { ...bookingData, selectedInterview } : bookingData}

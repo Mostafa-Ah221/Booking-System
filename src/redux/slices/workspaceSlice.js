@@ -49,27 +49,51 @@ const workspaceSlice = createSlice({
     },
 
     updateWorkspaceInList(state, action) {
-  const updatedWorkspace = action.payload;
-  
-  if (Array.isArray(state.allWorkspaces)) {
-    const index = state.allWorkspaces.findIndex(ws => ws.id === updatedWorkspace.id);
-    if (index !== -1) {
-      state.allWorkspaces[index] = { ...state.allWorkspaces[index], ...updatedWorkspace };
-    }
-  }
-  
-  if (Array.isArray(state.workspaces)) {
-    const index = state.workspaces.findIndex(ws => ws.id === updatedWorkspace.id);
-    if (index !== -1) {
-      state.workspaces[index] = { ...state.workspaces[index], ...updatedWorkspace };
-    }
-  }
+      const updatedWorkspace = action.payload;
 
-  // ✅ زود السطرين دول بس
-  if (state.workspace && state.workspace.id === updatedWorkspace.id) {
-    state.workspace = { ...state.workspace, ...updatedWorkspace };
-  }
-},
+      if (Array.isArray(state.allWorkspaces)) {
+        const index = state.allWorkspaces.findIndex(ws => ws.id === updatedWorkspace.id);
+        if (index !== -1) {
+          state.allWorkspaces[index] = { ...state.allWorkspaces[index], ...updatedWorkspace };
+        }
+      }
+
+      if (Array.isArray(state.workspaces)) {
+        const index = state.workspaces.findIndex(ws => ws.id === updatedWorkspace.id);
+        if (index !== -1) {
+          state.workspaces[index] = { ...state.workspaces[index], ...updatedWorkspace };
+        }
+      }
+
+      if (state.workspace && state.workspace.id === updatedWorkspace.id) {
+        state.workspace = { ...state.workspace, ...updatedWorkspace };
+      }
+    },
+
+    /**
+     * Reorders workspaces in both `workspaces` and `allWorkspaces` arrays
+     * based on the new positions array: [{ id, position }, ...]
+     */
+    reorderWorkspacesInList(state, action) {
+      const orderMap = {};
+      action.payload.forEach(({ id, position }) => {
+        orderMap[id] = position;
+      });
+
+      const sortByPosition = (list) => {
+        if (!Array.isArray(list)) return list;
+        return [...list]
+          .map(ws => ({
+            ...ws,
+            position: orderMap[ws.id] !== undefined ? orderMap[ws.id] : ws.position,
+          }))
+          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      };
+
+      state.allWorkspaces = sortByPosition(state.allWorkspaces);
+      state.workspaces = sortByPosition(state.workspaces);
+    },
+
     setLoading(state, action) {
       state.loading = action.payload;
       if (action.payload) {
@@ -89,25 +113,25 @@ const workspaceSlice = createSlice({
       state.allWorkspaces = null;
     },
     addWorkspaceToList(state, action) {
-    if (action.payload) {
+      if (action.payload) {
+        if (Array.isArray(state.allWorkspaces)) {
+          state.allWorkspaces.push(action.payload);
+        }
+        if (Array.isArray(state.workspaces)) {
+          state.workspaces.push(action.payload);
+        }
+      }
+    },
+
+    removeWorkspaceFromList(state, action) {
+      const workspaceId = action.payload;
       if (Array.isArray(state.allWorkspaces)) {
-        state.allWorkspaces.push(action.payload);
+        state.allWorkspaces = state.allWorkspaces.filter(ws => ws.id !== workspaceId);
       }
       if (Array.isArray(state.workspaces)) {
-        state.workspaces.push(action.payload);
+        state.workspaces = state.workspaces.filter(ws => ws.id !== workspaceId);
       }
-    }
-  },
-  
-  removeWorkspaceFromList(state, action) {
-    const workspaceId = action.payload;
-    if (Array.isArray(state.allWorkspaces)) {
-      state.allWorkspaces = state.allWorkspaces.filter(ws => ws.id !== workspaceId);
-    }
-    if (Array.isArray(state.workspaces)) {
-      state.workspaces = state.workspaces.filter(ws => ws.id !== workspaceId);
-    }
-  },
+    },
   }
 });
 

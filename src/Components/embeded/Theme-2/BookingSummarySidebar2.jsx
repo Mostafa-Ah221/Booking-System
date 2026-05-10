@@ -55,7 +55,13 @@ const BookingSummarySidebar2 = ({
 
   const handlePhoneChange = (value, country) => {
     setPhoneValue(value);
-    const phoneWithoutCode = value.replace(country.dialCode, '').trim();
+    let phoneWithoutCode = value.startsWith(country.dialCode)
+  ? value.slice(country.dialCode.length)
+  : value;
+
+if (phoneWithoutCode.startsWith('0')) {
+  phoneWithoutCode = phoneWithoutCode.slice(1);
+}
     onFormChange('phone', phoneWithoutCode);
     onFormChange('code_phone', `+${country.dialCode}`);
 
@@ -208,7 +214,6 @@ const BookingSummarySidebar2 = ({
         )}
       </div>
 
-      {/* ✅ Submit Button مع لون النص الديناميكي */}
       <button
         onClick={onScheduleAppointment}
         className="w-full py-3 rounded-sm font-semibold mt-6 transition-all shadow-md disabled:cursor-not-allowed"
@@ -216,6 +221,7 @@ const BookingSummarySidebar2 = ({
           background: firstColor,
           color: buttonTextColor,
           opacity: isDisabled ? 0.5 : 1,
+          border: `1px solid ${textColor}`
         }}
         disabled={isDisabled}
       >

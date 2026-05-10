@@ -71,7 +71,6 @@ useEffect(() => {
     const formatted = convertDateFormat(date);
     const clean = time.slice(0, 5);
     
-    // ✅ استخدم الـ converted أولاً، لو مش موجود fallback للـ raw
     const timesToCheck = convertedDisabledTimes.length > 0 
       ? convertedDisabledTimes 
       : disabledTimes;
@@ -199,7 +198,7 @@ useEffect(() => {
               <h3 className="text-center font-semibold mb-4 sm:mb-5 md:mb-6 text-sm sm:text-base md:text-lg" style={{ color: textColor }}>
                 {titles[period]}
               </h3>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-2.5 md:gap-3">
+              <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4">
                 {displayTimes.map((time, idx) => {
                   const booked = isTimeBooked(selectedDate, time);
                   const isFirstTime = idx === 0 && period === 'morning';
@@ -231,20 +230,16 @@ useEffect(() => {
                           onTimeSelect(time);
                         }
                       }}
-                      className={`py-2 sm:py-2.5 md:py-3 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base transition-all border rounded
+                      className={`py-2  px-4 sm:px-5 md:px-6 text-xs sm:text-sm md:text-base transition-all border rounded
                         ${booked ? 'bg-gray-700/30 text-gray-500 line-through border-gray-600/20 cursor-not-allowed' : 'hover:scale-105'}
                         ${isSelected ? 'shadow-lg scale-105' : 'shadow-sm hover:shadow-md'}
                       `}
-                     style={{
-                        backgroundColor: isSelected
-                          ? secondColor
-                          : `${secondColor}20`, 
-                        color: isSelected
-                          ? textColor
-                          : booked
-                            ? '#9ca3af'
-                            : textColor,
-                        borderColor: isSelected ? secondColor : firstColor,
+                      style={{
+                        backgroundColor: isSelected ? secondColor : '',
+                        color: isSelected ? firstColor : booked ? secondColor : textColor,
+                        borderColor: isSelected ? secondColor : secondColor,
+                        minWidth: '80px',        
+                        textAlign: 'center',  
                       }}
 
                     >

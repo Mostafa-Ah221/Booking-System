@@ -77,7 +77,6 @@ function createDedupedRequest(key, requestFn) {
 
 export function fetchWhatsAppIntegrations() {
   return async (dispatch) => {
-    // ✅ استخدم الـ cache فوراً
     if (integrationsCache && cacheTimestamp && 
         Date.now() - cacheTimestamp < CACHE_DURATION) {
       dispatch(whatsAppActions.setIntegrationsWhatsApp(integrationsCache));
@@ -89,7 +88,7 @@ export function fetchWhatsAppIntegrations() {
     return createDedupedRequest(cacheKey, async () => {
       dispatch(whatsAppActions.setLoading(true));
       try {
-        await rateLimiter.wait(); // ✅ Rate limiting ذكي
+        await rateLimiter.wait(); 
         
         const response = await axiosInstance.get('/whatsapp/integrations');
 

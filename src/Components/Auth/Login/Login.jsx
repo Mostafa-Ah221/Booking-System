@@ -23,7 +23,6 @@ const Login = () => {
 
   const access_token = location.state?.access_token || '';
 
-  // ✅ قراءة redirect param لو جه من deep link
   const redirectAfterLogin = new URLSearchParams(location.search).get('redirect');
 
   const validationSchema = Yup.object().shape({
