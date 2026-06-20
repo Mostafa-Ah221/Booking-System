@@ -137,7 +137,7 @@ const textColor = colors.text_color;
 
           {/* Service Info */}
           <div className="flex items-center mb-6">
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center mr-4 overflow-hidden" style={{ background: firstColor }}>
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center mr-4 overflow-hidden" style={{ background: firstColor , border: `1px solid ${textColor}30` }}>
               {bookingData?.photo ? (
                 <img
                   src={bookingData.photo}
@@ -260,7 +260,7 @@ const textColor = colors.text_color;
               </div>
 
               {/* Address Input (conditional) */}
-              {(bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && (
+              {selectedType === 'athome' && ( 
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: textColor }}>
                     Address <span className="text-red-500">*</span>
@@ -333,14 +333,13 @@ const textColor = colors.text_color;
                 !formData.name || 
                 !formData.email || 
                 phoneError || 
-                ((bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && !formData.address) || 
-                isBooking
-              }
+                 (selectedType === 'athome' && !formData.address) ||
+                  isBooking
+                }
               className="w-full py-3 rounded-lg font-semibold mt-6 transition-all shadow-md disabled:cursor-not-allowed text-white"
-              style={{ 
-                background: secondColor,
+               style={{ 
                 opacity: (!formData.name || !formData.email || phoneError || 
-                  ((bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && !formData.address) || 
+                  (selectedType === 'athome' && !formData.address) || 
                   isBooking) ? 0.5 : 1
               }}
             >

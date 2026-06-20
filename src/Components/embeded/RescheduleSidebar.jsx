@@ -504,7 +504,7 @@ const fetchInterviewDetails = async (shareLink, staffResource = null, resource =
     console.log('📦 Resources received in fetchInterviewDetails:', resource);
     console.log('📦 Resources disabled_times:', resource?.disabled_times);
     
-    const response = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${shareLink}`);
+    const response = await fetch(`https://api.appointroll.com/api/public/book/resource?interview_share_link=${shareLink}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -554,8 +554,6 @@ const fetchInterviewDetails = async (shareLink, staffResource = null, resource =
       setRestTimes(interview?.rest_cycle || 0);
 
       if (dataSource.available_dates && dataSource.available_dates.length > 0) {
-        const firstDate = new Date(dataSource.available_dates[0].from);
-        setCurrentMonth(firstDate);
         
         setTimeout(() => {
           findFirstAvailableDateTime(mergedInterview);
@@ -593,7 +591,6 @@ const findFirstAvailableDateTime = (interview) => {
       const currentDate = new Date(Math.max(fromDate.getTime(), today.getTime()));
       const endDate = new Date(toDate.getTime());
       
-      // اجمع كل الأيام في الـ range ده
       while (currentDate <= endDate) {
         allPossibleDates.push(new Date(currentDate));
         currentDate.setDate(currentDate.getDate() + 1);
@@ -616,6 +613,7 @@ const findFirstAvailableDateTime = (interview) => {
     if (timeSlots.length > 0) {
       setSelectedDate(new Date(date));
       setSelectedTime(timeSlots[0]);
+      setCurrentMonth(new Date(date));
       return;
     }
   }

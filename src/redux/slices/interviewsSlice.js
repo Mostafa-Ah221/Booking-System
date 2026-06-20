@@ -168,7 +168,22 @@ const interviewsSlice = createSlice({
       state.interviews.unshift(newInterview);
     }
   }
-}
+},
+reorderInterviews(state, action) {
+  const order = action.payload; // [{ id, position }]
+ 
+  const applyOrder = (list) => {
+    if (!Array.isArray(list)) return list;
+    return [...list].sort((a, b) => {
+      const posA = order.find(o => o.id === a.id)?.position ?? Infinity;
+      const posB = order.find(o => o.id === b.id)?.position ?? Infinity;
+      return posA - posB;
+    });
+  };
+ 
+  state.interviews    = applyOrder(state.interviews);
+  state.allInterviews = applyOrder(state.allInterviews);
+},
     
   }
 });
@@ -177,3 +192,4 @@ const interviewAction = interviewsSlice.actions;
 const interviewReducer = interviewsSlice.reducer;
 
 export { interviewAction, interviewReducer };
+

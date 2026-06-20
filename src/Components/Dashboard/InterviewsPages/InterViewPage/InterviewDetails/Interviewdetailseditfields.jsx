@@ -252,6 +252,7 @@ const InterviewDetailsEditFields = ({
           </div>
         )}
       </div>
+ 
 
       {/* ── online/inperson → extra_modes checkboxes ── */}
       {formData.mode === 'online/inperson' && (
@@ -319,6 +320,24 @@ const InterviewDetailsEditFields = ({
       className={`w-full outline-none p-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.location ? 'border-red-500' : ''}`}
     />
     {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+  </div>
+)}
+     {/* Travel Time — يظهر فقط عند athome */}
+{(formData.inperson_mode === 'athome' ||
+  (formData.mode === 'online/inperson' && formData.extra_modes?.includes('athome'))) && (
+  <div className="space-y-2">
+    <label className="block text-sm font-medium text-gray-700">Travel Time (Minutes)</label>
+    <input
+      type="number"
+      name="travel_time"
+      value={formData.travel_time}
+      onChange={handleInputChange}
+      placeholder="Enter travel time"
+      min="0"
+      onKeyDown={(e) => ['.', 'e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+      className={`w-full outline-none p-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.travel_time ? 'border-red-500' : ''}`}
+    />
+    {errors.travel_time && <p className="text-red-500 text-sm mt-1">{errors.travel_time}</p>}
   </div>
 )}
 
@@ -405,9 +424,8 @@ const InterviewDetailsEditFields = ({
             onChange={handleInputChange}
             placeholder="Maximum Clients per Time Slot (optional)"
             min="1"
-            onKeyDown={(e) => {
-              if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
-            }}
+            step="1"
+            onKeyDown={(e) => ['.',  'e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
             className="w-full outline-none p-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>

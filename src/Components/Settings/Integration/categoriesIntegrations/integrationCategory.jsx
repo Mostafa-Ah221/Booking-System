@@ -1,5 +1,6 @@
+import { Lock } from "lucide-react";
 
-const IntegrationCategory = ({ category, onConnectClick, onDeleteClick }) => {
+const IntegrationCategory = ({ category, onConnectClick, onDeleteClick, onLockedClick }) => {
   return (
     <div>
       <h2 className="text-sm font-medium text-gray-800 pb-2 my-7 relative 
@@ -15,23 +16,26 @@ const IntegrationCategory = ({ category, onConnectClick, onDeleteClick }) => {
               <div className="flex gap-2">
                 <button
                   onClick={() => {
-                    onConnectClick(item.name, item.id);
-                  }}
+  console.log('clicked - locked:', item.locked, 'onLockedClick:', onLockedClick);
+  if (item.locked) {
+    onLockedClick?.();
+  } else {
+    onConnectClick(item.name, item.id);
+  }
+}}
                   className={`text-xs px-3 py-1 rounded-md transition-colors ${
-                    item.connected 
-                      ? 'bg-green-500 text-white hover:bg-green-600' 
+                    item.connected
+                      ? 'bg-green-500 text-white hover:bg-green-600'
                       : 'bg-blue-500 text-white hover:bg-blue-600'
                   }`}
                   disabled={item.disabled}
                 >
                   {item.connected ? 'Connected' : 'Connect'}
                 </button>
-                
-                {item.connected && onDeleteClick && (
+
+                {item.connected && !item.locked && onDeleteClick && (
                   <button
-                    onClick={() => {
-                      onDeleteClick(item.id, item.name);
-                    }}
+                    onClick={() => onDeleteClick(item.id, item.name)}
                     className="text-xs px-3 py-1 bg-red-500 text-white hover:bg-red-600 rounded-md transition-colors"
                     disabled={item.disabled}
                   >
@@ -40,10 +44,10 @@ const IntegrationCategory = ({ category, onConnectClick, onDeleteClick }) => {
                 )}
               </div>
             </div>
-            <div className="flex-1 mt-2">
+            <div className="flex-1 mt-2 w-full">
               <h3 className="text-sm font-medium">{item.name}</h3>
               <p className="text-xs text-gray-600 mt-1">{item.description}</p>
-              {item.connected && (
+              {item.connected && !item.locked && (
                 <span className="text-xs text-green-600 mt-1 block">✓ Integration active</span>
               )}
             </div>

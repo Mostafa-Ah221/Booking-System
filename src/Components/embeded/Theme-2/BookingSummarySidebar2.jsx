@@ -50,7 +50,7 @@ const BookingSummarySidebar2 = ({
     !formData.name ||
     !formData.email ||
     !!phoneError ||
-    ((bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && !formData.address) ||
+    (selectedType === 'athome' && !formData.address) || 
     isBooking;
 
   const handlePhoneChange = (value, country) => {
@@ -164,7 +164,7 @@ if (phoneWithoutCode.startsWith('0')) {
         </div>
 
         {/* Address */}
-        {(bookingData?.inperson_mode === 'athome' || selectedType === 'athome') && (
+        {selectedType === 'athome' && (
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: textColor }}>
               Address <span className="text-red-500">*</span>

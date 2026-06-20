@@ -53,22 +53,20 @@ export default function AssignGroupsModal({
     }
   }, [workspaceId, isOpen, isResourceMode, dispatch]);
    
-  useEffect(() => {
-    if (editingGroup && groups && !isResourceMode) {
-      // ✅ استخدم group_id بدلاً من id
-      const currentGroup = groups.find(g => g.group_id === editingGroup.id);
-      
-      if (currentGroup) {
-        setGroupName(currentGroup.group_name || '');
-        const staffIds = currentGroup.staff?.map(s => s.id) || [];
-        setSelectedMembers(staffIds);
-      }
-    } else {
-      setGroupName('');
-      setSelectedMembers([]);
+useEffect(() => {
+  if (editingGroup && groups && !isResourceMode) {
+    const currentGroup = groups.find(g => g.id === editingGroup.id);
+    
+    if (currentGroup) {
+      setGroupName(currentGroup.name || '');
+      const staffIds = currentGroup.recruiter?.map(s => s.id) || [];
+      setSelectedMembers(staffIds);
     }
-  }, [editingGroup, groups, isResourceMode]);
-
+  } else {
+    setGroupName('');
+    setSelectedMembers([]);
+  }
+}, [editingGroup, groups, isResourceMode]);
   useEffect(() => {
     if (filteredMembers && filteredMembers.length > 0) {
       const allSelected = filteredMembers.every(m => selectedMembers.includes(m.id));

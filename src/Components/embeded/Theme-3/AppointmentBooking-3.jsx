@@ -17,7 +17,6 @@ const AppointmentBooking_3 = () => {
   const { id, idAdmin, idCustomer, idSpace } = useParams();
   const navigate = useNavigate();
   const isInterviewMode = !!idCustomer || !!idSpace || !!idAdmin;
-
   // ── States ─────────────────────────────────────────────────────────────────────
   const [workspaces, setWorkspaces] = useState(null);
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
@@ -31,7 +30,6 @@ const AppointmentBooking_3 = () => {
   const [theme, setTheme] = useState(null);
   const [firstAvailableDate, setFirstAvailableDate] = useState(null);
 
-console.log(theme);
 
   // ── Refs (dropdowns) ───────────────────────────────────────────────────────
   const staffDropdownRef = useRef(null);
@@ -117,8 +115,8 @@ useEffect(() => {
     numberOfSlots,
     selectedEndTime,
     setSelectedEndTime,
-    // noAvailability,
-    
+    noAvailability,
+    loading
   } = useBookingLogic(
     bookingId,
     navigate,
@@ -127,7 +125,8 @@ useEffect(() => {
     idCustomer || idSpace || idAdmin,
     !!idCustomer,
     setTheme,theme,
-    selectedInterview
+    selectedInterview,
+    
   );
 
   // ── Build steps dynamically (with unique key) ───────────────────────────────
@@ -166,7 +165,9 @@ useEffect(() => {
         key: 'staff',
       });
     }
-    if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availableStaffGroups?.length) {
+    if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availableStaffGroups?.length && !idCustomer) {
+
+
     list.push({
       step: counter++,
       label: 'Staff',
@@ -176,6 +177,20 @@ useEffect(() => {
       disabled: true,
     });
   }
+  if (
+  bookingData?.interview_type === 'collective-booking' &&
+  (availableStaffGroups?.length ?? 0) === 0 &&
+  !selectedStaffGroup
+) {
+  list.push({
+    step: counter++,
+    label: 'Staff Group',
+    icon: PiUsersThreeLight,
+    value: '__unavailable__',
+    key: 'staff_group_unavailable',
+    disabled: true,
+  });
+}
     if (availableResources?.length > 0) {
       list.push({
         step: counter++,
@@ -222,8 +237,17 @@ useEffect(() => {
   idAdmin, workspaces, selectedWorkspace, isInterviewMode, selectedInterview,
   availableStaff, availableStaffGroups, selectedStaff, selectedStaffGroup,
   availableResources, selectedResource, bookingData?.mode, bookingData?.extra_modes,
-  selectedType, selectedDate, selectedTime,
+  selectedType, selectedDate, selectedTime,idCustomer, bookingData?.interview_type,
 ]);
+useEffect(() => {
+  if (!selectedType && bookingData) {
+    if (bookingData.extra_modes && bookingData.extra_modes.length === 1) {
+      setSelectedType(bookingData.extra_modes[0]);
+    } else if (!bookingData.extra_modes?.length && bookingData.inperson_mode) {
+      setSelectedType(bookingData.inperson_mode);
+    }
+  }
+}, [bookingData?.extra_modes, bookingData?.inperson_mode]);
 useEffect(() => {
   if (selectedDate && !firstAvailableDate) {
     setFirstAvailableDate(selectedDate);
@@ -238,6 +262,8 @@ useEffect(() => {
     (theme?.show_linkedin === "1" && theme?.footer_linkedin);
 
   // ── Auto-select single items ───────────────────────────────────────────────
+  
+
   // Auto-select single items + auto-advance step
 useEffect(() => {
   // Workspace
@@ -251,7 +277,7 @@ useEffect(() => {
   // Interviews
   if (interviews?.length === 1 && !selectedInterview) {
     handleInterviewSelect(interviews[0]);
-    goToNextStep();
+    // goToNextStep();
   }
 }, [interviews]);
 
@@ -285,7 +311,7 @@ useEffect(() => {
   const fetchWorkspaces = async () => {
     setWorkspacesLoading(true);
     try {
-      const res = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
+      const res = await fetch(`https://api.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
       const data = await res.json();
       if (data.data?.workspaces) {
         setWorkspaces(data.data.workspaces);
@@ -307,8 +333,8 @@ useEffect(() => {
     setInterviewsLoading(true);
     try {
       const url = mode === 'customer'
-        ? `https://backend-booking.appointroll.com/api/public/book/resource?staff_share_link=${resourceId}`
-        : `https://backend-booking.appointroll.com/api/public/book/resource?workspace_share_link=${resourceId}`;
+        ? `https://api.appointroll.com/api/public/book/resource?staff_share_link=${resourceId}`
+        : `https://api.appointroll.com/api/public/book/resource?workspace_share_link=${resourceId}`;
       const res = await fetch(url);
       const data = await res.json();
 
@@ -377,16 +403,20 @@ useEffect(() => {
       setCurrentStep(step);
     }
   };
-
+if (!loading && noAvailability && bookingData) {
+  return <NoAppointments themeColor={theme} />;
+}
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col md:flex-row" >
+<div className="flex flex-col md:flex-row md:h-screen md:overflow-hidden">
+
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* LEFT SIDEBAR */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="relative w-[100%]  md:w-1/4 flex flex-col border-r border-gray-500 border-opacity-10 " style={{ background: secondColor, color: "white" }}>
-       <div className="absolute inset-0 bg-black/5 pointer-events-none" />
+     <div className="relative w-full md:w-1/4 flex flex-col border-r border-gray-500 border-opacity-10 md:h-screen md:overflow-y-auto"
+          style={{ background: secondColor, color: "white" }}>
+              <div className="absolute inset-0 bg-black/5 pointer-events-none" />
         {/* Logo and Name */}
         <div className="p-6">
           <div className="flex items-center gap-3 mb-0 md:mb-6" >
@@ -428,7 +458,8 @@ useEffect(() => {
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {/* MAIN CONTENT */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 p-4 overflow-y-auto pb-12" style={{background:`${secondColor}E6`}}>
+        <div className="flex-1 p-4 pb-12 md:h-screen md:overflow-y-auto"
+       style={{ background: `${secondColor}E6` }}>
         <div className='flex items-center gap-5'>
         <div
             title="Back"
@@ -697,7 +728,7 @@ useEffect(() => {
                             </div>
                         )}
                         <div className="flex-1 flex justify-between border-b">
-                            <h3 className="w-full font-semibold  pb-5 line-clamp-5 break-words" style={{ color: selectedStaff?.id === staff.id ? firstColor : textColor }}>
+                            <h3 className="w-full font-semibold  pb-5 line-clamp-5 break-words max-w-32 md:max-w-64 " style={{ color: selectedStaff?.id === staff.id ? firstColor : textColor }}>
                             {staff.name}
                             </h3>
                                 {selectedStaff?.id === staff.id && (
@@ -712,31 +743,56 @@ useEffect(() => {
             </div>
         )}
 
-{/* ────────── Staff Unavailable ────────── */}
-{currentStep === steps.find((s) => s.key === 'staff_unavailable')?.step && (
-  <div className="space-y-6">
-    <h2 className="text-2xl font-bold mb-6" style={{ color: firstColor }}>
-      Staff Required
-    </h2>
-    <div
-      className="mx-2 p-6 rounded-lg flex items-center gap-4"
-      style={{ background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.3)' }}
-    >
-      <div
-        className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: 'rgba(239,68,68,0.15)' }}
-      >
-        <UserRound className="w-6 h-6 text-red-400" />
-      </div>
-      <div>
-        <p className="font-semibold text-red-400">No staff available</p>
-        <p className="text-sm mt-1" style={{ color: textColor, opacity: 0.7 }}>
-          This service requires a staff member to be assigned. Please contact the provider.
-        </p>
-      </div>
-    </div>
-  </div>
-)}
+          {/* ────────── Staff Unavailable ────────── */}
+          {currentStep === steps.find((s) => s.key === 'staff_unavailable')?.step && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold mb-6" style={{ color: firstColor }}>
+                Staff Required
+              </h2>
+              <div
+                className="mx-2 p-6 rounded-lg flex items-center gap-4"
+                style={{ background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.3)' }}
+              >
+                <div
+                  className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(239,68,68,0.15)' }}
+                >
+                  <UserRound className="w-6 h-6 text-red-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-red-400">No staff available</p>
+                  <p className="text-sm mt-1" style={{ color: textColor, opacity: 0.7 }}>
+                    This service requires a staff member to be assigned. Please contact the provider.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* ────────── Staff Group Unavailable ────────── */}
+          {currentStep === steps.find((s) => s.key === 'staff_group_unavailable')?.step && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold mb-6" style={{ color: firstColor }}>
+                Staff Group Required
+              </h2>
+              <div
+                className="mx-2 p-6 rounded-lg flex items-center gap-4"
+                style={{ background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.3)' }}
+              >
+                <div
+                  className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(239,68,68,0.15)' }}
+                >
+                  <PiUsersThreeLight className="w-6 h-6 text-red-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-red-400">No staff group available</p>
+                  <p className="text-sm mt-1" style={{ color: textColor, opacity: 0.7 }}>
+                    This service requires a staff group to be assigned. Please contact the provider.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {/* ────────────────────────────────────────────────────────────────── */}
           {/* Step 3: Resource Selection */}
           {/* ────────────────────────────────────────────────────────────────── */}

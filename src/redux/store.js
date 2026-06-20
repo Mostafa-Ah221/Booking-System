@@ -19,7 +19,7 @@ import { notificationsReducer } from './slices/notificationsSlice';
 import { resourceReducer } from './slices/resourcesSlice';
 import { themeReducer } from "./slices/themeSlice";
 import { whatsappReducer } from './slices/whatsAiwntaSlice';
-
+import subscriptionReducer from "./slices/subscriptionSlice";
 
 
 const store = configureStore({
@@ -44,6 +44,7 @@ const store = configureStore({
     resources: resourceReducer,
     themes: themeReducer,
     whatsappIwenta: whatsappReducer,
+    subscription: subscriptionReducer,
   },
 });
 

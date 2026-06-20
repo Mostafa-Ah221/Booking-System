@@ -23,7 +23,8 @@ import {
   MessageSquare,
   Globe2,
   Plug,
-  AppWindow
+  AppWindow,
+   
 } from 'lucide-react';
 import { IoTvOutline } from "react-icons/io5";
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -78,7 +79,14 @@ const SettingSidebar = ({ iconOnly = false }) => {
       items: [
         { title: 'Export', icon: FileText, path: "export-data" }
       ]
-    }
+    },
+    {
+  title: 'Billing & Plans',
+  icon: CreditCard,
+  items: [
+    { title: 'Subscription invoices', icon: FileText, path: "subscription-invoices" }
+  ]
+}
   ];
 
   const isLinkActive = (path) => {

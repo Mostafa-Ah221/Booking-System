@@ -513,6 +513,7 @@ const isSlotPastInUTC = (isoDate, utcTime) => {
       if (timeSlots.length > 0) {
         onDateSelect(new Date(date));
         onTimeSelect(timeSlots[0]);
+         setCurrentMonth(new Date(date));
         return;
       }
     }
@@ -528,7 +529,7 @@ const isSlotPastInUTC = (isoDate, utcTime) => {
 
     try {
       const response = await fetch(
-        `https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${shareLink}`
+        `https://api.appointroll.com/api/public/book/resource?interview_share_link=${shareLink}`
       );
 
       if (!response.ok) {
@@ -624,6 +625,7 @@ const isSlotPastInUTC = (isoDate, utcTime) => {
               if (timeSlots.length > 0) {
                 onDateSelect(new Date(date));
                 onTimeSelect(timeSlots[0]);
+                 setCurrentMonth(new Date(date));
                 break;
               }
             }

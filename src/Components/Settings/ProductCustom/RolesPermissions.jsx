@@ -5,6 +5,8 @@ import { getRoles, deleteRoleById } from "../../../redux/apiCalls/RolesCallApli"
 import RoleModal from '../../Dashboard/AddMenus/ModelsForAdd/NewRoleModal';
 import { usePermission } from '../../hooks/usePermission';
 import Loader from '../../Loader';
+import { usePlan } from '../../../redux/apiCalls/Useplan.js';
+import UpgradeRequiredModal from '../../Pricing/Upgraderequiredmodal.jsx';
 
 // DeleteConfirmationModal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, roleName }) => {
@@ -62,19 +64,18 @@ const RolesPermissions = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState(null);
   const [openActionMenus, setOpenActionMenus] = useState({});
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false); // ✅ جديد
 
   const dispatch = useDispatch();
 
   const { roles, loading, error } = useSelector((state) => state.roles);
-  
-  // تأكد من البيانات الصحيحة
   const rolesData = Array.isArray(roles) ? roles : (roles?.data ? roles.data : []);
-  
-  console.log('Roles from Redux:', roles);
-  console.log('Roles Data:', rolesData);
-  
+
+  // ✅ جديد
+  const { isFree } = usePlan();
+
   // Get permissions
-  const canEditRole = usePermission("edit roles");
+  const canEditRole   = usePermission("edit roles");
   const canDeleteRole = usePermission("destroy roles");
   const canCreateRole = usePermission("create roles");
 
@@ -82,10 +83,8 @@ const RolesPermissions = () => {
     dispatch(getRoles());
   }, [dispatch]);
 
-  // Filter roles based on search term
   const filteredRoles = useMemo(() => {
     if (!searchTerm.trim()) return rolesData;
-    
     return rolesData.filter(role => 
       role.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       role.permissions?.some(permission => 
@@ -94,7 +93,6 @@ const RolesPermissions = () => {
     );
   }, [rolesData, searchTerm]);
 
-  // Handle action functions
   const handleEdit = (roleId, roleName) => {
     const role = rolesData.find(r => r.id === roleId);
     setEditRole(role);
@@ -102,19 +100,22 @@ const RolesPermissions = () => {
     setOpenActionMenus({});
   };
 
+  // ✅ التعديل هنا فقط
   const handleNewRole = () => {
+    if (isFree && rolesData.length >= 1) {
+      setIsUpgradeModalOpen(true);
+      return;
+    }
     setEditRole(null);
     setIsRoleModalOpen(true);
   };
 
-  // فتح مودال التأكيد للحذف
   const handleDelete = (roleId, roleName) => {
     setRoleToDelete({ id: roleId, name: roleName });
     setIsDeleteModalOpen(true);
     setOpenActionMenus({});
   };
 
-  // تنفيذ عملية الحذف
   const confirmDelete = async () => {
     if (roleToDelete) {
       try {
@@ -134,42 +135,38 @@ const RolesPermissions = () => {
   };
 
   const toggleFeature = (roleId) => {
-    setExpandedFeatures(prev => ({
-      ...prev,
-      [roleId]: !prev[roleId]
-    }));
+    setExpandedFeatures(prev => ({ ...prev, [roleId]: !prev[roleId] }));
   };
 
   const toggleDropdown = (roleId) => {
-    setOpenDropdowns(prev => ({
-      ...prev,
-      [roleId]: !prev[roleId]
-    }));
+    setOpenDropdowns(prev => ({ ...prev, [roleId]: !prev[roleId] }));
   };
 
   const toggleActionMenu = (roleId) => {
-    setOpenActionMenus(prev => ({
-      ...prev,
-      [roleId]: !prev[roleId]
-    }));
+    setOpenActionMenus(prev => ({ ...prev, [roleId]: !prev[roleId] }));
   };
 
   const handleModalClose = () => {
     setIsRoleModalOpen(false);
     setEditRole(null);
-    // Refresh roles after modal closes
     dispatch(getRoles());
   };
 
   return (
     <div className="w-full min-h-screen bg-gray-50">
+
+      {/* ✅ جديد */}
+      <UpgradeRequiredModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+      />
+
       <div className="p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-4 sm:mb-6">
           <h1 className="text-xl sm:text-2xl font-semibold mb-4">Roles and Permissions</h1>
           
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            {/* Search Input */}
             <div className="relative flex-1 sm:max-w-xs">
               <input
                 type="text"
@@ -183,7 +180,6 @@ const RolesPermissions = () => {
               </svg>
             </div>
             
-            {/* New Role Button */}
             {canCreateRole && (
               <button
                 className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
@@ -198,7 +194,6 @@ const RolesPermissions = () => {
 
         {/* Main Content */}
         <div className="bg-white shadow-lg rounded-lg">
-          {/* Table Header */}
           <div className="px-4 sm:px-6 py-4 bg-gray-50 border-b border-gray-200">
             <h2 className="text-base sm:text-lg font-semibold text-gray-900">
               System Roles
@@ -233,7 +228,7 @@ const RolesPermissions = () => {
           ) : (
             <>
               {/* Desktop Table View */}
-              <div className="hidden lg:block ">
+              <div className="hidden lg:block">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -285,7 +280,6 @@ const RolesPermissions = () => {
                                   Permissions for "{role.name}"
                                 </h4>
                               </div>
-                              
                               <div className="max-h-48 overflow-y-auto">
                                 {role.permissions && role.permissions.length > 0 ? (
                                   role.permissions.map((permission) => (
@@ -350,7 +344,6 @@ const RolesPermissions = () => {
               <div className="lg:hidden divide-y divide-gray-200">
                 {filteredRoles.map((role, index) => (
                   <div key={role.id} className="p-4 sm:p-6 hover:bg-gray-50 transition-colors">
-                    {/* Header Row */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center flex-1 min-w-0">
                         <div className="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
@@ -362,13 +355,10 @@ const RolesPermissions = () => {
                           <h3 className="text-base font-semibold text-gray-900 capitalize truncate">
                             {role.name || 'Unknown Role'}
                           </h3>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            ID: {index + 1}
-                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">ID: {index + 1}</p>
                         </div>
                       </div>
                       
-                      {/* Actions Menu */}
                       <div className="relative ml-2">
                         <button
                           onClick={() => toggleActionMenu(role.id)}
@@ -402,7 +392,6 @@ const RolesPermissions = () => {
                       </div>
                     </div>
 
-                    {/* Permissions Badge */}
                     <button
                       onClick={() => toggleDropdown(role.id)}
                       className="w-full mb-3 inline-flex items-center justify-center px-3 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
@@ -412,7 +401,6 @@ const RolesPermissions = () => {
                       <Eye className="h-4 w-4 ml-2" />
                     </button>
 
-                    {/* Expanded Permissions */}
                     {openDropdowns[role.id] && (
                       <div className="mb-3 bg-gray-50 rounded-lg p-3 space-y-2">
                         <div className="flex items-center mb-2">
@@ -436,7 +424,6 @@ const RolesPermissions = () => {
                       </div>
                     )}
 
-                    {/* Created Date */}
                     <div className="text-xs text-gray-500">
                       Created: {role.created_at ? new Date(role.created_at).toLocaleDateString() : 'N/A'}
                     </div>
@@ -446,28 +433,22 @@ const RolesPermissions = () => {
             </>
           )}
 
-          {/* Click outside to close dropdowns */}
           {(Object.keys(openDropdowns).some(key => openDropdowns[key]) || 
             Object.keys(openActionMenus).some(key => openActionMenus[key])) && (
             <div 
               className="fixed inset-0 z-40" 
-              onClick={() => {
-                setOpenDropdowns({});
-                setOpenActionMenus({});
-              }}
-            ></div>
+              onClick={() => { setOpenDropdowns({}); setOpenActionMenus({}); }}
+            />
           )}
         </div>
       </div>
 
-      {/* مودال التعديل والإضافة */}
       <RoleModal
         isOpen={isRoleModalOpen} 
         onClose={handleModalClose} 
         editRole={editRole} 
       />
 
-      {/* مودال تأكيد الحذف */}
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={cancelDelete}

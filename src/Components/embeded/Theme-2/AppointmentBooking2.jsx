@@ -61,6 +61,7 @@ console.log(theme);
 
   // ── useBookingLogic ────────────────────────────────────────────────────────
   const {
+    loading,
     availableResources,
     selectedResource,
     setSelectedResource,
@@ -88,7 +89,7 @@ console.log(theme);
     numberOfSlots,
     selectedEndTime,
     setSelectedEndTime,
-    // noAvailability,
+    noAvailability,
   } = useBookingLogic(
     bookingId,
     navigate,
@@ -96,7 +97,9 @@ console.log(theme);
     selectedInterview?.id,
     idCustomer || idSpace || idAdmin,
     !!idCustomer,
-    setTheme,theme
+    setTheme,
+    theme,
+    
   );
 
   // ── Build steps dynamically (with unique key) ───────────────────────────────
@@ -131,6 +134,20 @@ if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availa
     icon: UserRound,
     value: '__unavailable__',
     key: 'staff_unavailable',
+    disabled: true,
+  });
+}
+if (
+  bookingData?.interview_type === 'collective-booking' &&
+  (availableStaffGroups?.length ?? 0) === 0 &&
+  !selectedStaffGroup
+) {
+  list.push({
+    step: counter++,
+    label: 'Staff Group',
+    icon: PiUsersThreeLight,
+    value: '__unavailable__',
+    key: 'staff_group_unavailable',
     disabled: true,
   });
 }
@@ -179,7 +196,8 @@ if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availa
   }, [
   isInterviewMode, selectedInterview, availableStaff, availableStaffGroups,
   selectedStaff, selectedStaffGroup, availableResources, selectedResource,
-  bookingData?.mode, bookingData?.extra_modes, selectedType, selectedDate, selectedTime, theme
+  bookingData?.mode, bookingData?.extra_modes, selectedType, selectedDate, selectedTime, theme,
+   bookingData?.interview_type,
 ]);
 
   const hasAnySocial = 
@@ -192,6 +210,15 @@ if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availa
     (theme?.show_tiktok === "1" && theme?.footer_tiktok) ||
     (theme?.show_snapchat === "1" && theme?.footer_snapchat) 
   // ── Auto-select single items ───────────────────────────────────────────────
+  useEffect(() => {
+  if (!selectedType && bookingData) {
+    if (bookingData.extra_modes && bookingData.extra_modes.length === 1) {
+      setSelectedType(bookingData.extra_modes[0]);
+    } else if (!bookingData.extra_modes?.length && bookingData.inperson_mode) {
+      setSelectedType(bookingData.inperson_mode);
+    }
+  }
+}, [bookingData?.extra_modes, bookingData?.inperson_mode]);
   useEffect(() => {
     if (availableStaff?.length === 1 && !selectedStaff) {
       setSelectedStaff(availableStaff[0]);
@@ -224,7 +251,7 @@ if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availa
   const fetchWorkspaces = async () => {
     setWorkspacesLoading(true);
     try {
-      const res = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
+      const res = await fetch(`https://api.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
       const data = await res.json();
       if (data.data?.workspaces) {
         if (data.data?.theme && !theme) {  
@@ -245,8 +272,8 @@ if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availa
     setInterviewsLoading(true);
     try {
       const url = mode === 'customer'
-        ? `https://backend-booking.appointroll.com/api/public/book/resource?staff_share_link=${resourceId}`
-        : `https://backend-booking.appointroll.com/api/public/book/resource?workspace_share_link=${resourceId}`;
+        ? `https://api.appointroll.com/api/public/book/resource?staff_share_link=${resourceId}`
+        : `https://api.appointroll.com/api/public/book/resource?workspace_share_link=${resourceId}`;
       const res = await fetch(url);
       const data = await res.json();
 
@@ -306,6 +333,9 @@ if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availa
       setCurrentStep(step);
     }
   };
+if (!loading && noAvailability && bookingData) {
+  return <NoAppointments themeColor={theme} />;
+}
 
   
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -383,7 +413,11 @@ if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availa
               className="text-xs mt-1"
               style={{ color: isDisabled ? '#ef4444' : isActive ? firstColor : textColor }}
             >
-              {isDisabled ? 'No staff available' : s.value}
+              {isDisabled 
+                ? (s.key === 'staff_group_unavailable' 
+                    ? 'No staff group available' 
+                    : 'No staff available') 
+                : s.value}
             </p>
           </div>
         </div>
@@ -490,7 +524,7 @@ if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availa
                     </p>
                   )}
                   <p className="text-xs opacity-70" style={{ color: selectedStaffGroup?.group_id === group.group_id ? firstColor : textColor }}>
-                    {group.staff.length} staff member
+                    {group.staff?.length ?? 0} staff member
                   </p>
                 </div>
               </div>
@@ -574,6 +608,27 @@ if (bookingData?.require_staff_select && availableStaff?.length === 0 && !availa
       <p className="font-semibold text-red-400">No staff available</p>
       <p className="text-sm mt-1" style={{ color: textColor, opacity: 0.7 }}>
         This service requires a staff member to be assigned. Please contact the provider.
+      </p>
+    </div>
+  </div>
+)}
+
+{/* ✅ Staff Group Unavailable */}
+{currentStep === steps.find((s) => s.key === 'staff_group_unavailable')?.step && (
+  <div
+    className="p-6 rounded-lg flex items-center gap-4"
+    style={{ background: 'rgba(239,68,68,0.08)', border: '1.5px solid rgba(239,68,68,0.3)' }}
+  >
+    <div
+      className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+      style={{ background: 'rgba(239,68,68,0.15)' }}
+    >
+      <PiUsersThreeLight className="w-6 h-6 text-red-400" />
+    </div>
+    <div>
+      <p className="font-semibold text-red-400">No staff group available</p>
+      <p className="text-sm mt-1" style={{ color: textColor, opacity: 0.7 }}>
+        This service requires a staff group to be assigned. Please contact the provider.
       </p>
     </div>
   </div>

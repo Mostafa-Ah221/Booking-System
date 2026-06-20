@@ -85,22 +85,23 @@ export default function AssignGroupToIntVw() {
   const dispatch = useDispatch();
   const { interview, loading } = useSelector(state => state.interview);
   const interviewType = interview?.type;
+  console.log(interview);
   
   const prevInterviewIdRef = useRef(null);
   
   const groups = interview?.groups || [];
   const resources = interview?.resources || [];
-  
+  console.log('interview from redux:', JSON.stringify(interview?.groups));
 
   const displayData = interviewType === 'resource' 
     ? resources.map(r => ({ ...r, name: r.name, id: r.id }))
     : groups.map(g => ({ 
-        ...g, 
+        ...g,
         name: g.name, 
-        id: g.group_id,
+        id:  g.id,
         description: g.group_description 
       }));
-  
+  console.log('groups raw data:', JSON.stringify(groups[0]));
   console.log('Display Data:', displayData);
   
   const filteredData = displayData?.filter(item => {
@@ -126,36 +127,30 @@ export default function AssignGroupToIntVw() {
     setDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
-    
-    setIsDeleting(true);
-    
-    try {
-      if (interviewType === 'resource') {
-        const formData = new FormData();
-        formData.append('resource_id', itemToDelete.id);
-        await dispatch(unAssignStaffFromInterview(interview?.id, formData));
-      } else {
-        // ✅ استخدم group_id الأصلي من الـ item
-        const originalGroupId = groups.find(g => g.group_id === itemToDelete.id)?.group_id || itemToDelete.id;
-        await dispatch(deleteGroup(originalGroupId, interview?.id));
-      }
-      
-      // Close modal after successful delete
-      setDeleteModalOpen(false);
-      setItemToDelete(null);
-    } catch (error) {
-      console.error('Delete error:', error);
-    } finally {
-      setIsDeleting(false);
+ const handleConfirmDelete = async () => {
+  if (!itemToDelete) return;
+  setIsDeleting(true);
+  try {
+    if (interviewType === 'resource') {
+      const formData = new FormData();
+      formData.append('resource_id', itemToDelete.id);
+      await dispatch(unAssignStaffFromInterview(interview?.id, formData));
+    } else {
+      await dispatch(deleteGroup(itemToDelete.id, interview?.id)); 
     }
-  };
-
-  const handleEditItem = (item) => {
-    setEditingItem(item);
-    setIsModalOpen(true);
-  };
+    setDeleteModalOpen(false);
+    setItemToDelete(null);
+  } catch (error) {
+    console.error('Delete error:', error);
+  } finally {
+    setIsDeleting(false);
+  }
+};
+const handleEditItem = (item) => {
+  const originalGroup = groups.find(g => g.id === item.id);
+  setEditingItem(originalGroup || item);
+  setIsModalOpen(true);
+};
 
   return (
     <div className="min-h-screen bg-gray-50 p-6" dir="rtl">

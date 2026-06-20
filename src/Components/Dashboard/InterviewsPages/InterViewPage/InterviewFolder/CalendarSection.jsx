@@ -342,7 +342,7 @@ const CalendarSection = ({
             <h2 className="text-xl font-semibold">{availabilityMode === 'available' ? 'Available Dates' : 'Unavailable Dates'}</h2>
             <p className="text-sm text-gray-500 mt-1">Select a range of dates</p>
           </div>
-          <button onClick={handleEdit} className={`px-4 text-white rounded flex items-center gap-2 ${availabilityMode === 'available' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}>
+          <button onClick={handleEdit} className={`px-4 text-white rounded flex items-center gap-2 w-fit ml-auto ${availabilityMode === 'available' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}`}>
             <Edit size={16}/> Edit
           </button>
         </div>
@@ -368,7 +368,8 @@ const CalendarSection = ({
             <div className="flex items-center gap-3">
               <input readOnly value={rangeStart || displayDates[0]?.date || ''} className="px-3 py-1 border rounded w-28 text-sm" />
               <span className="text-gray-500">to</span>
-              <input readOnly value={rangeEnd || displayDates[displayDates.length - 1]?.date || ''} className="px-3 py-1 border rounded w-28 text-sm" />
+              <input readOnly value={rangeEnd || (displayDates.length > 1 ? displayDates[displayDates.length - 1]?.date : '')}
+                 placeholder="∞ No end" className="px-3 py-1 border rounded w-28 text-sm" />
             </div>
             {isEditMode && <button onClick={resetSelection} className="text-red-600 text-sm hover:text-red-800">Reset</button>}
           </div>
@@ -384,8 +385,10 @@ const CalendarSection = ({
                   : `Selected: ${new Date(rangeStart).toLocaleDateString()}`
                 : 'No selection')
             : displayDates.length > 0
+            ? displayDates.length > 1
               ? `${availabilityMode === 'available' ? 'Available' : 'Unavailable'} from ${new Date(displayDates[0].date).toLocaleDateString()} to ${new Date(displayDates[displayDates.length-1].date).toLocaleDateString()}`
-              : 'No dates set'}
+              : `${availabilityMode === 'available' ? 'Available' : 'Unavailable'} from ${new Date(displayDates[0].date).toLocaleDateString()} - No end`
+            : 'No dates set'}
         </div>
       )}
     </div>

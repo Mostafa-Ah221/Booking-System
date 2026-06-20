@@ -55,29 +55,39 @@ const themeSlice = createSlice({
     },
 
     updateTheme(state, action) {
-      if (Array.isArray(state.themes)) {
-        const index = state.themes.findIndex(
-          (t) => t.id === action.payload.id
-        );
+  if (Array.isArray(state.themes)) {
+    const index = state.themes.findIndex(
+      (t) => t.id === action.payload.id
+    );
+    if (index !== -1) {
+      state.themes[index] = {
+        ...state.themes[index],
+        ...action.payload,
+      };
+    }
+  }
 
-        if (index !== -1) {
-          state.themes[index] = {
-            ...state.themes[index],
-            ...action.payload,
-          };
-        }
-      }
-
-      if (state.theme?.id === action.payload.id) {
-        state.theme = {
-          ...state.theme,
+  if (state.theme) {
+    // ✅ الحل: حدث الـ nested theme object صح
+    if (state.theme.theme?.id === action.payload.id) {
+      state.theme = {
+        ...state.theme,
+        theme: {
+          ...state.theme.theme,
           ...action.payload,
-        };
-      }
-      
-      state.loading = false;
-      state.error = null;
-    },
+        },
+      };
+    } else if (state.theme.id === action.payload.id) {
+      state.theme = {
+        ...state.theme,
+        ...action.payload,
+      };
+    }
+  }
+
+  state.loading = false;
+  state.error = null;
+},
 
     removeTheme(state, action) {
       state.themes = state.themes.filter((t) => t.id !== action.payload);

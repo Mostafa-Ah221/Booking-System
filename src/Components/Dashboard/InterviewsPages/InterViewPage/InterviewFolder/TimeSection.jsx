@@ -30,6 +30,17 @@ const TimeSection = ({
   const { id } = useOutletContext();
   const dispatch = useDispatch();
 
+  // Convert 24h "HH:MM" → "H:MM AM/PM"
+  const to12Hour = (time24) => {
+    if (!time24) return '';
+    const [hourStr, minute] = time24.split(':');
+    let hour = parseInt(hourStr, 10);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    if (hour === 0) hour = 12;
+    else if (hour > 12) hour -= 12;
+    return `${hour}:${minute} ${period}`;
+  };
+
   useEffect(() => {
     if (id) {
       dispatch(editInterviewById(id));
@@ -41,7 +52,7 @@ const TimeSection = ({
 
     const token = localStorage.getItem("access_token");
 
-    fetch(`https://backend-booking.appointroll.com/api/workspace/edit/${interview.workspace_id}`, {
+    fetch(`https://api.appointroll.com/api/workspace/edit/${interview.workspace_id}`, {
       headers: {
         Authorization: `${token}`,
         "Content-Type": "application/json",
@@ -59,7 +70,6 @@ const TimeSection = ({
 
   const activeWorkspaceData = localWorkspaceData || getWorkspaceData;
 
-  // ✅ workspace timezone
   const workspaceTimezone = activeWorkspaceData?.available_times_time_zone;
 
   const dayIdToName = {
@@ -91,7 +101,6 @@ const TimeSection = ({
     if (!interview || hasLoadedOnce) return;
     if (!activeWorkspaceData) return;
 
-    // ✅ workspace timezone له الأولوية دايماً
     const wsTimezone = activeWorkspaceData?.available_times_time_zone;
     const interviewTimezone = availabilityMode === 'available'
       ? interview.available_times_time_zone
@@ -197,14 +206,13 @@ const TimeSection = ({
         .map(day => ({
           day_id: day.day_id,
           times: day.timeSlots.map(slot => ({
-            from: slot.from,
+            from: slot.from, // stored as 24h internally
             to: slot.to,
           }))
         }));
 
       if (handleSave) {
         const formData = {
-          // ✅ استخدم workspace timezone لو موجود
           time_zone: workspaceTimezone || (typeof timeZone === 'object' ? timeZone.value : timeZone)
         };
 
@@ -228,6 +236,7 @@ const TimeSection = ({
     }
   };
 
+  // Returns 24h strings internally; display handled by to12Hour()
   const generateTimeOptions = (isToField = false, fromTime = null, dayId = null) => {
     const options = [];
     const source = activeWorkspaceData?.available_times || [];
@@ -389,6 +398,7 @@ const TimeSection = ({
     const currentDay = weekDays.find(day => day.day_id === dayId);
     const currentSlot = currentDay?.timeSlots[slotIndex];
 
+    // timeOptions are 24h strings internally
     const timeOptions = field === 'to'
       ? generateTimeOptions(true, currentSlot?.from, dayId)
       : generateTimeOptions(false, null, dayId);
@@ -413,7 +423,7 @@ const TimeSection = ({
     const menuPositionClass = [6, 7].includes(dayId) ? 'bottom-full mb-1' : 'top-full mt-1';
 
     return (
-      <div ref={containerRef} className="relative w-full sm:w-20">
+      <div ref={containerRef} className="relative w-full sm:w-28">
         <button
           ref={buttonRef}
           onClick={handleToggle}
@@ -422,14 +432,15 @@ const TimeSection = ({
           }`}
           disabled={isTimeSectionDisabled || isSaving}
         >
-          <span className="text-xs sm:text-sm">{value}</span>
+          {/* Display in 12h format */}
+          <span className="text-xs sm:text-sm">{to12Hour(value)}</span>
           <ChevronDown size={14} className={`transition-transform duration-200 sm:w-4 sm:h-4 ${selectedTimeDropdown === dropdownId ? 'transform rotate-180' : ''}`} />
         </button>
 
         {selectedTimeDropdown === dropdownId && !isTimeSectionDisabled && !isSaving && (
           <div
             className={`absolute z-30 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto ${menuPositionClass}`}
-            style={{ minWidth: '80px' }}
+            style={{ minWidth: '110px' }}
           >
             {timeOptions.length > 0 ? (
               timeOptions.map((option, idx) => (
@@ -437,11 +448,12 @@ const TimeSection = ({
                   key={idx}
                   className="px-2 sm:px-3 py-2 text-xs sm:text-sm hover:bg-gray-100 cursor-pointer transition-colors duration-150"
                   onClick={() => {
+                    // Save internally as 24h, display as 12h
                     handleTimeChange(dayId, slotIndex, field, option);
                     handleTimeDropdownToggle(null);
                   }}
                 >
-                  {option}
+                  {to12Hour(option)}
                 </div>
               ))
             ) : (
@@ -493,7 +505,7 @@ const TimeSection = ({
         )}
       </div>
 
-      {/* ✅ Timezone — fixed لو workspace عنده timezone، dropdown لو مفيش */}
+      {/* Timezone — fixed if workspace has timezone, dropdown otherwise */}
       <div
         ref={timezoneRef}
         className="mb-4"

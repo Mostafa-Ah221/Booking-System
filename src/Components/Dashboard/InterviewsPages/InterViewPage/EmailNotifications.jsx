@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {  Calendar, X, Check, Plus, Trash2, MessageSquare, CheckCircle, AlertCircle, Mail } from 'lucide-react';
+import { Calendar, X, Check, Plus, Trash2, MessageSquare, CheckCircle, AlertCircle, Mail } from 'lucide-react';
 import { notificationReminder } from '../../../../redux/apiCalls/interviewCallApi';
 import { fetchSmsSettings, fetchSmsIntegrations } from '../../../../redux/apiCalls/smsIntegrationCallApi';
 import { fetchWhatsAppSettings, fetchWhatsAppIntegrations } from '../../../../redux/apiCalls/whatsAppCallApi';
@@ -10,12 +10,12 @@ import toast from "react-hot-toast";
 const UnifiedNotifications = () => {
   const dispatch = useDispatch();
   const { id } = useOutletContext();
-  
+
   const [activeTab, setActiveTab] = useState('customer');
   const [currentType, setCurrentType] = useState('email');
   const [isSaving, setIsSaving] = useState(false);
   const [savingReminderId, setSavingReminderId] = useState(null);
-  
+
   const { interview } = useSelector(state => state.interview);
   const [allReminders, setAllReminders] = useState([]);
   const [isDataReady, setIsDataReady] = useState(false);
@@ -24,42 +24,30 @@ const UnifiedNotifications = () => {
   const [hasValidWhatsAppIntegration, setHasValidWhatsAppIntegration] = useState(false);
   const [activeSmsIntegrationName, setActiveSmsIntegrationName] = useState('');
   const [activeWhatsAppIntegrationName, setActiveWhatsAppIntegrationName] = useState('');
-  
+
   const { integrations: smsIntegrations, settings: smsSettings, loading: smsLoading } = useSelector((state) => state.sms);
   const { integrationsWhatsApp, settings: whatsAppSettings, loading: whatsAppLoading } = useSelector((state) => state.whatsApp);
-  console.log(integrationsWhatsApp);
-  console.log(whatsAppSettings);
-  
+
   const loading = smsLoading || whatsAppLoading;
   const isSmsIntegrated = !loading && !isCheckingIntegrations && hasValidSmsIntegration;
   const isWhatsAppIntegrated = !loading && !isCheckingIntegrations && hasValidWhatsAppIntegration;
-  
+
   // Refs
   const hasInitializedRef = useRef(false);
   const saveTimeoutRef = useRef(null);
+  const hasCheckedRef = useRef(false); // ✅ منع تكرار checkAllIntegrations
 
-  // Debounced save function for select changes only
   const debouncedSave = (updatedReminders) => {
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set saving indicator immediately
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setIsSaving(true);
-
-    // Set new timeout for 3 seconds
     saveTimeoutRef.current = setTimeout(() => {
       saveAllRemindersToAPI(updatedReminders);
     }, 3000);
   };
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
   }, []);
 
@@ -71,7 +59,7 @@ const UnifiedNotifications = () => {
   };
 
   const getCurrentReminders = () => {
-    return allReminders.filter(reminder => 
+    return allReminders.filter(reminder =>
       reminder.method.toLowerCase() === currentType.toLowerCase()
     );
   };
@@ -82,9 +70,7 @@ const UnifiedNotifications = () => {
 
     const handleNavigation = () => {
       const newType = getTypeFromPath();
-      if (newType !== currentType) {
-        setCurrentType(newType);
-      }
+      if (newType !== currentType) setCurrentType(newType);
     };
 
     window.addEventListener('popstate', handleNavigation);
@@ -92,9 +78,7 @@ const UnifiedNotifications = () => {
 
     const intervalId = setInterval(() => {
       const newType = getTypeFromPath();
-      if (newType !== currentType) {
-        setCurrentType(newType);
-      }
+      if (newType !== currentType) setCurrentType(newType);
     }, 100);
 
     return () => {
@@ -138,35 +122,25 @@ const UnifiedNotifications = () => {
       if (emailReminders.length > 0) {
         methods.push({
           name: 'email',
-          reminders: emailReminders.map(reminder => ({
-            before: String(reminder.before),
-            type: reminder.type
-          }))
+          reminders: emailReminders.map(r => ({ before: String(r.before), type: r.type }))
         });
       }
 
       if (smsReminders.length > 0 && isSmsIntegrated) {
         methods.push({
           name: 'sms',
-          reminders: smsReminders.map(reminder => ({
-            before: String(reminder.before),
-            type: reminder.type
-          }))
+          reminders: smsReminders.map(r => ({ before: String(r.before), type: r.type }))
         });
       }
 
       if (whatsAppReminders.length > 0 && isWhatsAppIntegrated) {
         methods.push({
           name: 'whatsapp',
-          reminders: whatsAppReminders.map(reminder => ({
-            before: String(reminder.before),
-            type: reminder.type
-          }))
+          reminders: whatsAppReminders.map(r => ({ before: String(r.before), type: r.type }))
         });
       }
 
-      const formData = { methods };
-      const result = await dispatch(notificationReminder(id, formData));
+      const result = await dispatch(notificationReminder(id, { methods }));
 
       if (result.status) {
         toast.success('Reminders saved successfully!');
@@ -187,16 +161,12 @@ const UnifiedNotifications = () => {
       toast.error('SMS integration is required to add SMS reminders');
       return;
     }
-
     if (methodType === 'whatsApp' && !isWhatsAppIntegrated) {
       toast.error('WhatsApp integration is required to add WhatsApp reminders');
       return;
     }
 
-    const templateReminder = allReminders.length > 0 
-      ? allReminders[allReminders.length - 1] 
-      : null;
-
+    const templateReminder = allReminders.length > 0 ? allReminders[allReminders.length - 1] : null;
     const newReminder = {
       id: Date.now(),
       before: templateReminder ? templateReminder.before : (methodType === 'whatsApp' ? 60 : 30),
@@ -210,114 +180,91 @@ const UnifiedNotifications = () => {
   };
 
   const updateReminder = (id, field, value) => {
-    // For immediate UI update, allow any value temporarily
-    let displayValue = value;
-    
-    if (field === 'before') {
-      displayValue = value; // Allow user to type freely
-    }
-
     const updatedReminders = allReminders.map(reminder =>
       reminder.id === id
-        ? { ...reminder, [field]: field === 'before' ? displayValue : value }
+        ? { ...reminder, [field]: field === 'before' ? value : value }
         : reminder
     );
-
     setAllReminders(updatedReminders);
-    
-    // Only save immediately for non-number fields (select)
-    if (field !== 'before') {
-      debouncedSave(updatedReminders);
-    }
+    if (field !== 'before') debouncedSave(updatedReminders);
   };
 
   const handleBlurReminder = (id) => {
-    // Clear any pending timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set saving state for this specific reminder
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     setSavingReminderId(id);
     setIsSaving(true);
 
-    // Validate the reminder
     const validatedReminders = allReminders.map(reminder => {
       if (reminder.id === id) {
         let numValue = parseInt(reminder.before, 10);
-        if (isNaN(numValue) || numValue < 1) {
-          numValue = 1;
-        }
+        if (isNaN(numValue) || numValue < 1) numValue = 1;
         return { ...reminder, before: numValue };
       }
       return reminder;
     });
-    
-    // Update state with validated values
+
     setAllReminders(validatedReminders);
-    // Save immediately when blur
     saveAllRemindersToAPI(validatedReminders);
   };
 
   const removeReminder = async (id) => {
-    // Clear any pending saves
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     const filteredReminders = allReminders.filter(reminder => reminder.id !== id);
     setAllReminders(filteredReminders);
     await saveAllRemindersToAPI(filteredReminders);
   };
 
+  // ✅ checkSmsIntegrations مع reset قبل البدء
   const checkSmsIntegrations = async () => {
+    setHasValidSmsIntegration(false);
+    setActiveSmsIntegrationName('');
+
     if (!smsIntegrations || !Array.isArray(smsIntegrations) || smsIntegrations.length === 0) {
-      setHasValidSmsIntegration(false);
-      setActiveSmsIntegrationName('');
       return;
     }
 
     try {
       for (const integration of smsIntegrations) {
         const result = await dispatch(fetchSmsSettings(integration.id));
+        console.log('SMS integration object:', integration); 
+        console.log(`SMS Settings for integration ${integration.id}:`, result);
         if (result.status && result.data !== null) {
-          const integrationName = integration.name || integration.provider || 'Unknown SMS Integration';
           setHasValidSmsIntegration(true);
-          setActiveSmsIntegrationName(integrationName);
+          setActiveSmsIntegrationName(integration.name || integration.provider || 'Unknown SMS Integration');
           break;
         }
       }
     } catch (error) {
       console.error('Error checking SMS integrations:', error);
-      setHasValidSmsIntegration(false);
-      setActiveSmsIntegrationName('');
     }
   };
 
+  // ✅ checkWhatsAppIntegrations مع reset قبل البدء
   const checkWhatsAppIntegrations = async () => {
+    setHasValidWhatsAppIntegration(false);
+    setActiveWhatsAppIntegrationName('');
+
     if (!integrationsWhatsApp || !Array.isArray(integrationsWhatsApp) || integrationsWhatsApp.length === 0) {
-      setHasValidWhatsAppIntegration(false);
-      setActiveWhatsAppIntegrationName('');
       return;
     }
 
     try {
       for (const integration of integrationsWhatsApp) {
         const result = await dispatch(fetchWhatsAppSettings(integration.id));
+        console.log('SMS integration object:', integration); 
+        console.log(`WhatsApp Settings for integration ${integration.id}:`, result);
         if (result.status && result.data !== null) {
-          const integrationName = integration.name || integration.provider || 'Unknown WhatsApp Integration';
           setHasValidWhatsAppIntegration(true);
-          setActiveWhatsAppIntegrationName(integrationName);
+          setActiveWhatsAppIntegrationName(integration.name || integration.provider || 'Unknown WhatsApp Integration');
           break;
         }
       }
     } catch (error) {
       console.error('Error checking WhatsApp integrations:', error);
-      setHasValidWhatsAppIntegration(false);
-      setActiveWhatsAppIntegrationName('');
     }
   };
 
+  // ✅ checkAllIntegrations مع hasCheckedRef لمنع التكرار
   const checkAllIntegrations = async () => {
     setIsCheckingIntegrations(true);
     try {
@@ -338,15 +285,13 @@ const UnifiedNotifications = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    const shouldCheckIntegrations = 
-      ((smsIntegrations && Array.isArray(smsIntegrations)) || 
-       (integrationsWhatsApp && Array.isArray(integrationsWhatsApp))) && 
-      !isCheckingIntegrations;
+  const smsReady = smsIntegrations !== null && Array.isArray(smsIntegrations) && smsIntegrations.length > 0;
+  const whatsAppReady = integrationsWhatsApp !== null && Array.isArray(integrationsWhatsApp);
 
-    if (shouldCheckIntegrations) {
-      checkAllIntegrations();
-    }
-  }, [smsIntegrations, integrationsWhatsApp]);
+  if ((smsReady || whatsAppReady) && !isCheckingIntegrations && !hasValidSmsIntegration && !hasValidWhatsAppIntegration) {
+    checkAllIntegrations();
+  }
+}, [smsIntegrations, integrationsWhatsApp]);
 
   useEffect(() => {
     if (!loading && !isCheckingIntegrations && !isDataReady) {
@@ -358,126 +303,56 @@ const UnifiedNotifications = () => {
     window.location.href = '/layoutDashboard/setting/integrations-page#' + type;
     setTimeout(() => {
       const element = document.getElementById(type);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
+      if (element) element.scrollIntoView({ behavior: 'smooth' });
     }, 500);
   };
 
-  const getNotificationTypes = () => {
-    if (currentType === 'sms' || currentType === 'whatsApp') {
-      return [
-        { id: 'booked', icon: <CheckCircle className="w-5 h-5" />, label: 'Booked' },
-        { id: 'rescheduled', icon: <Calendar className="w-5 h-5" />, label: 'Rescheduled' },
-        { id: 'cancelled', icon: <X className="w-5 h-5" />, label: 'Cancelled' },
-        { id: 'completed', icon: <Check className="w-5 h-5" />, label: 'Completed' },
-        { id: 'noshow', icon: <AlertCircle className="w-5 h-5" />, label: 'No Show' },
-      ];
-    } else {
-      return [
-        { id: 'booked', icon: <CheckCircle className="w-5 h-5" />, label: 'Booked' },
-        { id: 'rescheduled', icon: <Calendar className="w-5 h-5" />, label: 'Rescheduled' },
-        { id: 'cancelled', icon: <X className="w-5 h-5" />, label: 'Cancelled' },
-        { id: 'completed', icon: <Check className="w-5 h-5" />, label: 'Completed' },
-        { id: 'noshow', icon: <AlertCircle className="w-5 h-5" />, label: 'No Show' },
-      ];
-    }
-  };
-
   const getTitle = () => {
-    switch(currentType) {
-      case 'sms':
-        return 'SMS Notifications and Reminders';
-      case 'whatsApp':
-        return 'WhatsApp Notifications and Reminders';
-      default:
-        return 'Email Notifications and Reminders';
+    switch (currentType) {
+      case 'sms': return 'SMS Notifications and Reminders';
+      case 'whatsApp': return 'WhatsApp Notifications and Reminders';
+      default: return 'Email Notifications and Reminders';
     }
   };
 
   const isContentDisabled = () => {
-    if (currentType === 'sms') {
-      return !isSmsIntegrated || loading || isCheckingIntegrations;
-    }
-    if (currentType === 'whatsApp') {
-      return !isWhatsAppIntegrated || loading || isCheckingIntegrations;
-    }
+    if (currentType === 'sms') return !isSmsIntegrated || loading || isCheckingIntegrations;
+    if (currentType === 'whatsApp') return !isWhatsAppIntegrated || loading || isCheckingIntegrations;
     return false;
   };
 
   const getMethodStyle = (method) => {
-    if (method === 'email') {
-      return {
-        icon: <Mail className="w-4 h-4" />,
-        bgColor: 'bg-blue-100',
-        textColor: 'text-blue-700',
-        borderColor: 'border-blue-200'
-      };
-    } else if (method === 'whatsApp') {
-      return {
-        icon: <MessageSquare className="w-4 h-4" />,
-        bgColor: 'bg-green-100',
-        textColor: 'text-green-700',
-        borderColor: 'border-green-200'
-      };
-    } else {
-      return {
-        icon: <MessageSquare className="w-4 h-4" />,
-        bgColor: 'bg-purple-100',
-        textColor: 'text-purple-700',
-        borderColor: 'border-purple-200'
-      };
-    }
+    if (method === 'email') return {
+      icon: <Mail className="w-4 h-4" />,
+      bgColor: 'bg-blue-100', textColor: 'text-blue-700', borderColor: 'border-blue-200'
+    };
+    if (method === 'whatsApp') return {
+      icon: <MessageSquare className="w-4 h-4" />,
+      bgColor: 'bg-green-100', textColor: 'text-green-700', borderColor: 'border-green-200'
+    };
+    return {
+      icon: <MessageSquare className="w-4 h-4" />,
+      bgColor: 'bg-purple-100', textColor: 'text-purple-700', borderColor: 'border-purple-200'
+    };
   };
-
-  // const renderEmailContent = () => (
-  //   <>
-  //     <div className="space-y-4">
-  //       <h3 className="text-lg font-medium">Email Configurations</h3>
-  //       <div className="space-y-3">
-  //         <div className="flex items-center space-x-3">
-  //           <span className="text-sm text-gray-600 w-24">Send from</span>
-  //           <span className="text-sm font-medium">
-  //             {activeTab === 'customer' ? 'Default Bookings email address' : "Super admin's email address"}
-  //           </span>
-  //         </div>
-  //         <div className="flex items-center space-x-3">
-  //           <span className="text-sm text-gray-600 w-24">Reply to</span>
-  //           <span className="text-sm font-medium">
-  //             {activeTab === 'customer' ? "Allocated staff member's email address" : "Customer's Email address"}
-  //           </span>
-  //         </div>
-  //         <div className="flex items-center space-x-3">
-  //           <span className="text-sm text-gray-600 w-24">Copy(Cc)</span>
-  //           <select className="px-3 py-2 border rounded-md text-sm">
-  //             <option>Select Copy (Cc)</option>
-  //           </select>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   </>
-  // );
 
   const renderSmsConfiguration = () => (
     <div className="space-y-4">
-      <h3 className=" font-medium flex items-center gap-2">
+      <h3 className="font-medium flex items-center gap-2">
         {!isSmsIntegrated && <span className="text-red-500">!</span>}
         SMS Configurations
         {hasValidSmsIntegration && activeSmsIntegrationName && (
-          <span className="text-xs text-green-600 font-normal">
-            (Integrated with {activeSmsIntegrationName})
-          </span>
+          <span className="text-xs text-green-600 font-normal">(Integrated with {activeSmsIntegrationName})</span>
         )}
         {(loading || isCheckingIntegrations) && (
           <span className="text-xs text-gray-500 font-normal">(Loading...)</span>
         )}
       </h3>
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3 justify-between">
-        <p className="text-sm text-yellow-800">
-          To send SMS alerts, first integrate an SMS gateway and enable it.
-        </p>
+        <p className="text-sm text-yellow-800">To send SMS alerts, first integrate an SMS gateway and enable it.</p>
         <button
           onClick={() => handleNavigateToIntegrations('sms')}
+
           disabled={loading || isCheckingIntegrations}
           className="mt-3 px-4 py-2 bg-white border border-orange-300 text-orange-700 text-sm font-medium rounded-md hover:bg-orange-50 transition-colors disabled:opacity-50"
         >
@@ -489,22 +364,18 @@ const UnifiedNotifications = () => {
 
   const renderWhatsAppConfiguration = () => (
     <div className="space-y-4">
-      <h3 className=" font-medium flex items-center gap-2">
+      <h3 className="font-medium flex items-center gap-2">
         {!isWhatsAppIntegrated && <span className="text-red-500">!</span>}
         WhatsApp Configurations
         {hasValidWhatsAppIntegration && activeWhatsAppIntegrationName && (
-          <span className="text-xs text-green-600 font-normal">
-            (Integrated with {activeWhatsAppIntegrationName})
-          </span>
+          <span className="text-xs text-green-600 font-normal">(Integrated with {activeWhatsAppIntegrationName})</span>
         )}
         {(loading || isCheckingIntegrations) && (
           <span className="text-xs text-gray-500 font-normal">(Loading...)</span>
         )}
       </h3>
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3 justify-between">
-        <p className="text-sm text-yellow-800">
-          To send WhatsApp messages, first integrate WhatsApp Business API and enable it.
-        </p>
+        <p className="text-sm text-yellow-800">To send WhatsApp messages, first integrate WhatsApp Business API and enable it.</p>
         <button
           onClick={() => handleNavigateToIntegrations('whatsapp')}
           disabled={loading || isCheckingIntegrations}
@@ -517,20 +388,15 @@ const UnifiedNotifications = () => {
   );
 
   const getAddButtonStyle = () => {
-    switch(currentType) {
-      case 'whatsApp':
-        return 'text-green-600 hover:bg-green-50';
-      case 'sms':
-        return 'text-purple-600 hover:bg-purple-50';
-      default:
-        return 'text-blue-600 hover:bg-blue-50';
+    switch (currentType) {
+      case 'whatsApp': return 'text-green-600 hover:bg-green-50';
+      case 'sms': return 'text-purple-600 hover:bg-purple-50';
+      default: return 'text-blue-600 hover:bg-blue-50';
     }
   };
 
   const getAddButtonIcon = () => {
-    if (currentType === 'whatsApp' || currentType === 'sms') {
-      return <MessageSquare className="w-4 h-4" />;
-    }
+    if (currentType === 'whatsApp' || currentType === 'sms') return <MessageSquare className="w-4 h-4" />;
     return <Mail className="w-4 h-4" />;
   };
 
@@ -538,45 +404,21 @@ const UnifiedNotifications = () => {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h2 className="text-2xl font-bold mb-6">{getTitle()}</h2>
-        
-        <div className="mb-4 text-sm text-gray-500">
-          Current type: {currentType}
-        </div>
 
         {(currentType === 'sms' || currentType === 'whatsApp') && (loading || isCheckingIntegrations) && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-700">
-              {isCheckingIntegrations 
+              {isCheckingIntegrations
                 ? `Checking ${currentType === 'whatsApp' ? 'WhatsApp' : 'SMS'} integrations...`
-                : `Loading ${currentType === 'whatsApp' ? 'WhatsApp' : 'SMS'} settings...`
-              }
+                : `Loading ${currentType === 'whatsApp' ? 'WhatsApp' : 'SMS'} settings...`}
             </p>
           </div>
         )}
 
-        {/* <div className="flex space-x-4 mb-6 border-b">
-          <button
-            className={`pb-2 px-4 ${activeTab === 'customer' ? 'border-b-2 border-orange-500 text-orange-600' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('customer')}
-          >
-            To Customer
-          </button>
-          <button
-            className={`pb-2 px-4 ${activeTab === 'recruiter' ? 'border-b-2 border-orange-500 text-orange-600' : 'text-gray-600'}`}
-            onClick={() => setActiveTab('recruiter')}
-          >
-            To {currentType === 'sms' || currentType === 'whatsApp' ? 'Tutor' : 'Recruiter'}
-          </button>
-        </div> */}
-
         <div className="space-y-6">
-       
-
           <div className="border-t pt-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className=" font-medium">
-                {currentType.toUpperCase()} Reminders
-              </h3>
+              <h3 className="font-medium">{currentType.toUpperCase()} Reminders</h3>
               {isSaving && (
                 <div className="flex items-center space-x-2 text-sm text-blue-600">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -584,7 +426,7 @@ const UnifiedNotifications = () => {
                 </div>
               )}
             </div>
-            
+
             <p className="text-sm text-gray-600 mb-4">
               Remind {activeTab === 'customer' ? 'customers' : 'users'} of their upcoming appointments via {currentType === 'whatsApp' ? 'WhatsApp' : currentType}.
             </p>
@@ -598,17 +440,14 @@ const UnifiedNotifications = () => {
                 {getCurrentReminders().map((reminder) => {
                   const methodStyle = getMethodStyle(reminder.method);
                   return (
-                    <div
-                      key={reminder.id}
-                      className={`flex items-center space-x-4 p-4 border ${methodStyle.borderColor} ${methodStyle.bgColor} rounded-lg`}
-                    >
+                    <div key={reminder.id} className={`flex items-center space-x-4 p-4 border ${methodStyle.borderColor} ${methodStyle.bgColor} rounded-lg`}>
                       <div className={`flex items-center space-x-2 ${methodStyle.textColor} font-medium`}>
                         {methodStyle.icon}
                         <span className="text-sm capitalize">
                           {reminder.method === 'whatsApp' ? 'WhatsApp' : reminder.method}
                         </span>
                       </div>
-                      
+
                       <div className="flex-1 flex items-center space-x-2">
                         <span className="text-sm text-gray-700">Before</span>
                         <div className="relative">
@@ -617,7 +456,7 @@ const UnifiedNotifications = () => {
                             value={reminder.before}
                             onChange={(e) => updateReminder(reminder.id, 'before', e.target.value)}
                             onBlur={() => handleBlurReminder(reminder.id)}
-                            className="w-20 px-3 py-2 border rounded-md "
+                            className="w-20 px-3 py-2 border rounded-md"
                             min="1"
                             disabled={isSaving && savingReminderId === reminder.id}
                           />
@@ -664,7 +503,6 @@ const UnifiedNotifications = () => {
             </button>
           </div>
 
-          {/* {currentType === 'email' && renderEmailContent()} */}
           {currentType === 'sms' && renderSmsConfiguration()}
           {currentType === 'whatsApp' && renderWhatsAppConfiguration()}
         </div>

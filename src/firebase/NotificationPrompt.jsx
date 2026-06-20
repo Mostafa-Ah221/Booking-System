@@ -37,7 +37,7 @@ const NotificationPrompt = () => {
         // أرسل الـ token للـ backend
         const accessToken = localStorage.getItem('access_token');
         await axios.post(
-          'https://backend-booking.appointroll.com/api/update-fcm-token',
+          'https://api.appointroll.com/api/update-fcm-token',
           {
             fcm_token: fcmToken,
             device_type: 'web'

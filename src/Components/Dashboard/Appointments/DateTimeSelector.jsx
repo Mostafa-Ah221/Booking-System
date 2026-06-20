@@ -566,7 +566,7 @@ console.log('isLoading:', isLoading);
 
     try {
       const response = await fetch(
-        `https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${shareLink}`
+        `https://api.appointroll.com/api/public/book/resource?interview_share_link=${shareLink}`
       );
 
       if (!response.ok) {

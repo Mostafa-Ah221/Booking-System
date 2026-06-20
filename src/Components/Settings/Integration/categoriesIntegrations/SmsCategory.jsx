@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useCallback, useRef, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSmsIntegrations, getSmsSettingsByIntegrationId } from '../../../../redux/apiCalls/smsIntegrationCallApi';
 import IntegrationCategory from './integrationCategory';
@@ -38,7 +38,23 @@ const useDebounce = (callback, delay) => {
   }, [callback, delay]);
 };
 
-const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigger }) => {
+const PLAN_LIMIT = { free: 1, basic: 3, premium: Infinity };
+
+function getPlanKey(plan) {
+  if (!plan || !Array.isArray(plan) || plan.length === 0) return 'free';
+  return (plan[0]?.name || 'free').toLowerCase();
+}
+
+function isPlanExpired(plan) {
+  if (!plan || !Array.isArray(plan) || plan.length === 0) return true;
+  const expireDate = plan[0]?.expire_date;
+  if (!expireDate) return false;
+  return new Date(expireDate) < new Date();
+}
+
+const SMS_ALLOWED_PLANS = ['premium'];
+
+const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigger, plan, onLockedClick }) => {
   const dispatch = useDispatch();
   const { integrations, loading } = useSelector(state => state.sms);
   const [integrationsWithSettings, setIntegrationsWithSettings] = useState([]);
@@ -46,6 +62,11 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
 
   const settingsCache = useRef(new Map());
   const CACHE_DURATION = 5 * 60 * 1000;
+
+  const planKey = getPlanKey(plan);
+  const expired = isPlanExpired(plan);
+  const isLocked = !SMS_ALLOWED_PLANS.includes(planKey) || expired;
+console.log({ plan, planKey, expired, isLocked });
 
   useEffect(() => {
     dispatch(fetchSmsIntegrations());
@@ -124,7 +145,6 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
     );
   };
 
-  // ✅ كل الـ useMemo لازم يكون فوق أي early return
   const integrationItems = useMemo(() =>
     integrationsWithSettings.map((item) => ({
       id: item.id,
@@ -132,8 +152,9 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
       icon: generateIcon(item.name),
       description: 'Send SMS alerts to customers and users.',
       connected: item.connected,
-      disabled: loading || isCheckingSettings
-    })), [integrationsWithSettings, loading, isCheckingSettings]
+      disabled: loading || isCheckingSettings,
+      locked: isLocked,
+    })), [integrationsWithSettings, loading, isCheckingSettings, isLocked]
   );
 
   const filteredItems = useMemo(() =>
@@ -143,7 +164,6 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
     ), [integrationItems, searchQuery]
   );
 
-  // ✅ early returns بعد كل الـ hooks
   const isLoading = loading || isCheckingSettings || integrationsWithSettings.length === 0;
   if (isLoading) return <SkeletonGrid count={integrations.length || 4} />;
   if (filteredItems.length === 0) return null;
@@ -153,6 +173,7 @@ const SmsCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigge
       category={{ title: 'SMS', items: filteredItems }}
       onConnectClick={(serviceName, integrationId) => onConnectClick(serviceName, integrationId, 'sms')}
       onDeleteClick={onDeleteClick}
+      onLockedClick={onLockedClick}
     />
   );
 };

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import UnifiedIntegrationModal from './IntegrationModal';
 import CalendarCategory from './categoriesIntegrations/CalendarCategory';
 import VideoConferencingCategory from './categoriesIntegrations/VideoConferencingCategory';
@@ -12,7 +12,7 @@ import { createOrUpdateWhatsAppSettings, getWhatsAppSettingsByIntegrationId, del
 import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import MailCategory from './categoriesIntegrations/MailCategory';
-// ✅ 1 — أضف getIwentaFullConfig
+import UpgradeRequiredModal from '../../Pricing/Upgraderequiredmodal';
 import { saveIwentaSelection, getIwentaFullConfig } from '../../../redux/apiCalls/whatsAiwntaCallapis';
 
 const IntegrationsPage = () => {
@@ -24,6 +24,10 @@ const IntegrationsPage = () => {
   const [activeSection, setActiveSection] = useState('calendar');
   const dispatch = useDispatch();
   const location = useLocation();
+
+  const plan = useSelector((state) => state.subscription?.plan);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+console.log('plan from redux:', plan);
 
   useLayoutEffect(() => {
     const sectionId = location.hash.replace("#", "") || location.state?.scrollTo;
@@ -105,7 +109,9 @@ const IntegrationsPage = () => {
   };
 
   const handleConnectClick = (serviceName, integrationId = null, type = '') => {
-    const actualType = type || getServiceType(serviceName);
+      console.log('handleConnectClick:', { serviceName, integrationId, type });
+  const actualType = type || getServiceType(serviceName);
+  console.log('actualType:', actualType);
     if (actualType === 'sms' || actualType === 'whatsapp') {
       setActiveModal(`${actualType}:${serviceName}`);
       setCurrentIntegrationId(integrationId);
@@ -187,6 +193,8 @@ const IntegrationsPage = () => {
             onConnectClick={(name, id) => handleConnectClick(name, id, 'sms')}
             onDeleteClick={handleDeleteSmsSettings}
             refreshTrigger={refreshSmsCategory}
+            plan={plan}                           
+      onLockedClick={() => setIsUpgradeModalOpen(true)}
           />
         );
       case 'whatsapp':
@@ -198,6 +206,8 @@ const IntegrationsPage = () => {
             onDeleteClick={handleDeleteWhatsAppSettings}
             refreshTrigger={refreshWhatsAppCategory}
             active={activeSection === "whatsapp"}
+            plan={plan}                                       
+      onLockedClick={() => setIsUpgradeModalOpen(true)}
           />
         );
       default:
@@ -208,6 +218,8 @@ const IntegrationsPage = () => {
             onConnectClick={(name, id) => handleConnectClick(name, id, 'sms')}
             onDeleteClick={handleDeleteSmsSettings}
             refreshTrigger={refreshSmsCategory}
+            plan={plan}                             
+           onLockedClick={() => setIsUpgradeModalOpen(true)}
           />
         );
     }
@@ -238,9 +250,13 @@ const IntegrationsPage = () => {
           getWhatsAppSettings={handleGetWhatsAppSettings}
           onSaveIwentaCredentials={handleSaveIwentaCredentials}
           onSaveIwentaSelection={handleSaveIwentaSelection}
-          onAutoLoad={handleAutoLoad}  // ✅ 3 — مرره للـ modal
+          onAutoLoad={handleAutoLoad} 
         />
       )}
+      <UpgradeRequiredModal
+  isOpen={isUpgradeModalOpen}
+  onClose={() => setIsUpgradeModalOpen(false)}
+/>
     </div>
   );
 };

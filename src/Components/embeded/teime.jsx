@@ -23,36 +23,38 @@ const TimeSelectionModal = ({
   const startDropdownRef = useRef(null);
   const endDropdownRef = useRef(null);
 
-const DEFAULT_COLORS = {
-  primary: "#ffffff-rgb(241 82 179)",
-  text_color: "#111827",
-};
+  const DEFAULT_COLORS = {
+    primary: "#ffffff-rgb(241 82 179)",
+    text_color: "#111827",
+  };
 
-let apiColors = {};
+  let apiColors = {};
+  try {
+    apiColors = themeColor?.colors ? JSON.parse(themeColor.colors) : {};
+  } catch {
+    apiColors = {};
+  }
 
-try {
-  apiColors = themeColor?.colors ? JSON.parse(themeColor.colors) : {};
-} catch {
-  apiColors = {};
-}
+  const colors =
+    themeColor?.theme === "theme2"
+      ? { ...DEFAULT_COLORS, ...apiColors }
+      : DEFAULT_COLORS;
 
+  const primary = colors.primary ?? DEFAULT_COLORS.primary;
+  const [firstColor, secondColor] =
+    primary?.includes("-") ? primary.split("-") : [primary, primary];
+  const textColor = colors.text_color;
 
-const colors =
-  themeColor?.theme === "theme2"
-    ? { ...DEFAULT_COLORS, ...apiColors }
-    : DEFAULT_COLORS;
-
-const primary = colors.primary ?? DEFAULT_COLORS.primary;
-
-const [firstColor, secondColor] =
-  primary?.includes("-")
-    ? primary.split("-")
-    : [primary, primary];
-
-
-const textColor = colors.text_color;
-
-
+  // Convert 24h "HH:MM" → "H:MM AM/PM"
+  const to12Hour = (time24) => {
+    if (!time24) return '';
+    const [hourStr, minute] = time24.split(':');
+    let hour = parseInt(hourStr, 10);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    if (hour === 0) hour = 12;
+    else if (hour > 12) hour -= 12;
+    return `${hour}:${minute} ${period}`;
+  };
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -64,19 +66,14 @@ const textColor = colors.text_color;
         setShowEndDropdown(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
     if (requireEndTime && selectedTime && setSelectedEndTime) {
       const endOptions = generateEndTimeOptions();
-      const firstAvailableEndTime = endOptions.find(time => 
-        !isTimeBooked(selectedDate, time)
-      );
+      const firstAvailableEndTime = endOptions.find(time => !isTimeBooked(selectedDate, time));
       if (firstAvailableEndTime) {
         setSelectedEndTime(firstAvailableEndTime);
       }
@@ -96,15 +93,11 @@ const textColor = colors.text_color;
         'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
         'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
       };
-      
       const parts = dateStr.trim().split(' ');
       if (parts.length !== 3) return null;
-      
       const [day, month, year] = parts;
       const monthNum = months[month];
-      
       if (!monthNum) return null;
-      
       return `${year}-${monthNum}-${day.padStart(2, '0')}`;
     } catch (error) {
       console.error('Error converting date format:', error);
@@ -128,10 +121,8 @@ const textColor = colors.text_color;
     try {
       const formattedDate = convertDateFormat(dateStr);
       if (!formattedDate || !timeStr || !timeStr.includes(':')) return false;
-      
       const now = new Date();
       const selectedDateTime = new Date(`${formattedDate}T${timeStr}:00`);
-      
       return selectedDateTime < now;
     } catch (error) {
       console.error('Error checking if time is past:', error);
@@ -140,54 +131,31 @@ const textColor = colors.text_color;
   };
 
   const isTimeUnavailable = (selectedDate, timeToCheck) => {
-    if (!selectedDate || !timeToCheck || !timeToCheck.includes(':')) {
-      return false;
-    }
-
+    if (!selectedDate || !timeToCheck || !timeToCheck.includes(':')) return false;
     const formattedSelectedDate = convertDateFormat(selectedDate);
-    if (!formattedSelectedDate) {
-      return false;
-    }
+    if (!formattedSelectedDate) return false;
 
     const isInUnavailableDateRange = unavailableDates.some(dateRange => {
       try {
-        if (!dateRange || !dateRange.from) {
-          return false;
-        }
-
+        if (!dateRange || !dateRange.from) return false;
         let fromDateStr = dateRange.from.includes(' ') ? dateRange.from.split(' ')[0] : dateRange.from;
         fromDateStr = fromDateStr.replace(/\//g, '-');
-
         let fromParts = fromDateStr.split('-');
         if (fromParts.length === 3 && parseInt(fromParts[0], 10) <= 31) {
           fromDateStr = `${fromParts[2]}-${fromParts[1]}-${fromParts[0]}`;
         }
-
         const fromDate = new Date(fromDateStr + 'T00:00:00.000Z');
         const checkDate = new Date(formattedSelectedDate + 'T00:00:00.000Z');
-
-        if (isNaN(fromDate.getTime()) || isNaN(checkDate.getTime())) {
-          return false;
-        }
-
-        if (dateRange.to === null || dateRange.to === undefined) {
-          return checkDate >= fromDate;
-        }
-
+        if (isNaN(fromDate.getTime()) || isNaN(checkDate.getTime())) return false;
+        if (dateRange.to === null || dateRange.to === undefined) return checkDate >= fromDate;
         let toDateStr = dateRange.to.includes(' ') ? dateRange.to.split(' ')[0] : dateRange.to;
         toDateStr = toDateStr.replace(/\//g, '-');
-
         let toParts = toDateStr.split('-');
         if (toParts.length === 3 && parseInt(toParts[0], 10) <= 31) {
           toDateStr = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
         }
-
         const toDate = new Date(toDateStr + 'T00:00:00.000Z');
-
-        if (isNaN(toDate.getTime())) {
-          return false;
-        }
-
+        if (isNaN(toDate.getTime())) return false;
         return checkDate >= fromDate && checkDate <= toDate;
       } catch (error) {
         console.error('Error checking unavailable date range:', error);
@@ -195,145 +163,81 @@ const textColor = colors.text_color;
       }
     });
 
-    if (!isInUnavailableDateRange) {
-      return false;
-    }
-
+    if (!isInUnavailableDateRange) return false;
     const dayId = getDayIdFromDate(selectedDate);
-    if (!dayId) {
-      return false;
-    }
-
+    if (!dayId) return false;
     const cleanTimeToCheck = timeToCheck.includes(':') ? timeToCheck.substring(0, 5) : timeToCheck;
 
     if (unavailableTimes && Array.isArray(unavailableTimes) && unavailableTimes.length > 0) {
       const dayUnavailableTimes = unavailableTimes.find(time => time.day_id === dayId);
-      
       if (dayUnavailableTimes && dayUnavailableTimes.from) {
         const fromTime = dayUnavailableTimes.from.substring(0, 5);
-        
         if (!dayUnavailableTimes.to || dayUnavailableTimes.to === null) {
-          const timeToCheckMinutes = timeToMinutes(cleanTimeToCheck);
-          const fromMinutes = timeToMinutes(fromTime);
-          return timeToCheckMinutes >= fromMinutes;
+          return timeToMinutes(cleanTimeToCheck) >= timeToMinutes(fromTime);
         }
-        
         const toTime = dayUnavailableTimes.to.substring(0, 5);
         const timeToCheckMinutes = timeToMinutes(cleanTimeToCheck);
-        const fromMinutes = timeToMinutes(fromTime);
-        const toMinutes = timeToMinutes(toTime);
-        
-        if (timeToCheckMinutes >= fromMinutes && timeToCheckMinutes <= toMinutes) {
-          return true;
-        }
+        return timeToCheckMinutes >= timeToMinutes(fromTime) && timeToCheckMinutes <= timeToMinutes(toTime);
       }
     }
-
     return false;
   };
 
   const isTimeBooked = (selectedDate, timeToCheck) => {
-    if (!selectedDate || !timeToCheck || !timeToCheck.includes(':')) {
-      return false;
-    }
-
+    if (!selectedDate || !timeToCheck || !timeToCheck.includes(':')) return false;
     const formattedSelectedDate = convertDateFormat(selectedDate);
-    if (!formattedSelectedDate) {
-      return false;
-    }
-
+    if (!formattedSelectedDate) return false;
     const cleanTimeToCheck = timeToCheck.includes(':') ? timeToCheck.substring(0, 5) : timeToCheck;
-
     for (let disabledTime of disabledTimes) {
       if (!disabledTime || !disabledTime.date || !disabledTime.time) continue;
-      
-      const disabledDate = disabledTime.date;
-      const disabledTimeStr = disabledTime.time.substring(0, 5);
-      
-      if (disabledDate === formattedSelectedDate && disabledTimeStr === cleanTimeToCheck) {
+      if (disabledTime.date === formattedSelectedDate && disabledTime.time.substring(0, 5) === cleanTimeToCheck) {
         return true;
       }
     }
-
     return false;
   };
 
   const calculateEndTime = (startTime) => {
     if (!startTime) return '';
-    
     const [hours, minutes] = startTime.split(':').map(Number);
     const startMinutes = hours * 60 + minutes;
-    
-    const durationInMinutes = durationPeriod === "hours" 
-      ? durationCycle * 60 
-      : durationCycle;
-    
+    const durationInMinutes = durationPeriod === "hours" ? durationCycle * 60 : durationCycle;
     const endMinutes = startMinutes + durationInMinutes;
     const endHours = Math.floor(endMinutes / 60) % 24;
     const endMins = endMinutes % 60;
-    
     return `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
   };
 
   const getFilteredTimes = (times) => {
-    const filtered = times.filter(timeSlot => {
+    return times.filter(timeSlot => {
       const time = typeof timeSlot === 'string' ? timeSlot : timeSlot?.time;
-      if (!time || !time.includes(':')) {
-        return false;
-      }
-      
-      const isPast = isTimePast(selectedDate, time);
-      
-      return !isPast;
+      if (!time || !time.includes(':')) return false;
+      return !isTimePast(selectedDate, time);
     });
-    
-    return filtered;
   };
 
   const groupTimesByPeriod = (times) => {
     const filteredTimes = getFilteredTimes(times);
-    
-    const morning = [];
-    const afternoon = [];
-    const evening = [];
-
+    const morning = [], afternoon = [], evening = [];
     filteredTimes.forEach(timeSlot => {
       const time = typeof timeSlot === 'string' ? timeSlot : timeSlot?.time;
-      if (!time || !time.includes(':')) {
-        return;
-      }
+      if (!time || !time.includes(':')) return;
       const hour = parseInt(time.split(':')[0]);
-      
-      if (hour < 12) {
-        morning.push(time);
-      } else if (hour < 17) {
-        afternoon.push(time);
-      } else {
-        evening.push(time);
-      }
+      if (hour < 12) morning.push(time);
+      else if (hour < 17) afternoon.push(time);
+      else evening.push(time);
     });
-
     return { morning, afternoon, evening };
   };
 
   const generateEndTimeOptions = () => {
     if (!selectedTime) return [];
-    
     const startMinutes = timeToMinutes(selectedTime);
-    const allFilteredTimes = getFilteredTimes(availableTimes);
-    
-    const endTimeOptions = allFilteredTimes
+    return getFilteredTimes(availableTimes)
       .map(timeSlot => typeof timeSlot === 'string' ? timeSlot : timeSlot?.time)
-      .filter(time => {
-        if (!time) return false;
-        const timeMinutes = timeToMinutes(time);
-        return timeMinutes > startMinutes;
-      });
-    
-    return endTimeOptions;
+      .filter(time => time && timeToMinutes(time) > startMinutes);
   };
 
-  // Don't render if not shown
   if (!show) return null;
 
   const { morning, afternoon, evening } = groupTimesByPeriod(availableTimes);
@@ -347,13 +251,12 @@ const textColor = colors.text_color;
   const hiddenUnavailableCount = availableTimes.length - filteredTimes.length;
   const endTimeOptions = generateEndTimeOptions();
 
-  // TimeSection Component
+  // Inner TimeSection Component
   const TimeSection = ({ title, times }) => {
     if (times.length === 0) return null;
-    
     return (
       <div className="mb-6">
-        <h3 
+        <h3
           className="text-sm font-semibold mb-3 p-2 rounded-lg"
           style={{ background: `${textColor}10`, color: textColor }}
         >
@@ -362,9 +265,6 @@ const textColor = colors.text_color;
         <div className="grid grid-cols-3 gap-2">
           {times.map((time) => {
             const isBooked = isTimeBooked(selectedDate, time);
-            const [hours, minutes] = time.split(':');
-            const displayTime = `${hours}:${minutes}`;
-            
             return (
               <button
                 key={time}
@@ -372,35 +272,26 @@ const textColor = colors.text_color;
                 className={`p-3 text-sm rounded-lg transition-all duration-200 ${
                   isBooked
                     ? 'cursor-not-allowed opacity-60'
-                    : selectedTime === time 
-                      ? 'font-semibold shadow-md' 
+                    : selectedTime === time
+                      ? 'font-semibold shadow-md'
                       : 'hover:shadow-sm'
                 }`}
                 style={{
-                  background: isBooked 
-                    ? '#fee2e2' 
-                    : selectedTime === time 
-                      ? secondColor 
-                      : `${textColor}10`,
-                  color: isBooked 
-                    ? '#ef4444' 
-                    : selectedTime === time 
-                      ? '#ffffff' 
-                      : textColor,
+                  background: isBooked ? '#fee2e2' : selectedTime === time ? secondColor : `${textColor}10`,
+                  color: isBooked ? '#ef4444' : selectedTime === time ? '#ffffff' : textColor,
                   border: `1px solid ${isBooked ? '#fecaca' : selectedTime === time ? firstColor : `${textColor}20`}`
                 }}
                 onClick={() => {
                   if (!isBooked) {
                     onTimeSelect(time);
-                    if (!requireEndTime) {
-                      onClose();
-                    }
+                    if (!requireEndTime) onClose();
                   }
                 }}
               >
                 <div className="flex flex-col items-center">
+                  {/* Display in 12h format */}
                   <span className={`text-sm font-medium ${isBooked ? 'line-through' : ''}`}>
-                    {displayTime}
+                    {to12Hour(time)}
                   </span>
                   {isBooked && (
                     <span className="text-[10px] mt-1 font-medium bg-red-200 px-2 py-0.5 rounded-full">
@@ -421,7 +312,7 @@ const textColor = colors.text_color;
     );
   };
 
-  // If requireEndTime is true, show dropdowns UI
+  // requireEndTime UI — dropdowns
   if (requireEndTime) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -431,10 +322,7 @@ const textColor = colors.text_color;
               <h2 className="text-lg font-semibold" style={{ color: textColor }}>
                 Select Time Range
               </h2>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-lg hover:bg-black/10 transition-colors"
-              >
+              <button onClick={onClose} className="p-2 rounded-lg hover:bg-black/10 transition-colors">
                 <X className="w-5 h-5" style={{ color: textColor }} />
               </button>
             </div>
@@ -457,45 +345,35 @@ const textColor = colors.text_color;
                 </label>
                 <div
                   className="w-full px-4 py-3 rounded-lg cursor-pointer transition-all flex items-center justify-between"
-                  style={{ 
-                    background: `${textColor}10`,
-                    border: `1px solid ${textColor}20`
-                  }}
+                  style={{ background: `${textColor}10`, border: `1px solid ${textColor}20` }}
                   onClick={() => setShowStartDropdown(!showStartDropdown)}
                 >
                   <span style={{ color: selectedTime ? textColor : `${textColor}60` }}>
-                    {selectedTime || 'Select start time'}
+                    {selectedTime ? to12Hour(selectedTime) : 'Select start time'}
                   </span>
-                  <ChevronDown 
+                  <ChevronDown
                     className={`w-5 h-5 transition-transform ${showStartDropdown ? 'rotate-180' : ''}`}
                     style={{ color: firstColor }}
                   />
                 </div>
-                
+
                 {showStartDropdown && (
-                  <div 
+                  <div
                     className="absolute left-0 right-0 mt-2 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto"
-                    style={{ 
-                      background: firstColor,
-                      border: `1px solid ${textColor}20`,
-                      top: '100%'
-                    }}
+                    style={{ background: firstColor, border: `1px solid ${textColor}20`, top: '100%' }}
                   >
                     {filteredTimes.length === 0 ? (
-                      <div className="p-4 text-center text-sm" style={{ color: `${textColor}` }}>
+                      <div className="p-4 text-center text-sm" style={{ color: textColor }}>
                         No available times
                       </div>
                     ) : (
                       filteredTimes.slice(0, -1).map(timeSlot => {
                         const time = typeof timeSlot === 'string' ? timeSlot : timeSlot?.time;
                         const isBooked = isTimeBooked(selectedDate, time);
-                        
                         return (
                           <div
                             key={time}
-                            className={`p-3 cursor-pointer border-b transition-colors ${
-                              isBooked ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
+                            className={`p-3 cursor-pointer border-b transition-colors ${isBooked ? 'opacity-50 cursor-not-allowed' : ''}`}
                             style={{
                               borderColor: `${textColor}10`,
                               background: selectedTime === time ? `${firstColor}20` : 'transparent',
@@ -505,38 +383,27 @@ const textColor = colors.text_color;
                               if (!isBooked) {
                                 onTimeSelect(time);
                                 setShowStartDropdown(false);
-                                
                                 const startMinutes = timeToMinutes(time);
                                 const nextAvailableTime = filteredTimes
-                                  .map(timeSlot => typeof timeSlot === 'string' ? timeSlot : timeSlot?.time)
-                                  .find(t => {
-                                    if (!t) return false;
-                                    const tMinutes = timeToMinutes(t);
-                                    return tMinutes > startMinutes && !isTimeBooked(selectedDate, t);
-                                  });
-                                
+                                  .map(t => typeof t === 'string' ? t : t?.time)
+                                  .find(t => t && timeToMinutes(t) > startMinutes && !isTimeBooked(selectedDate, t));
                                 if (setSelectedEndTime && nextAvailableTime) {
                                   setSelectedEndTime(nextAvailableTime);
                                 }
                               }
                             }}
                             onMouseEnter={(e) => {
-                              if (!isBooked && selectedTime !== time) {
-                                e.currentTarget.style.background = `${textColor}10`;
-                              }
+                              if (!isBooked && selectedTime !== time) e.currentTarget.style.background = `${textColor}10`;
                             }}
                             onMouseLeave={(e) => {
-                              if (!isBooked && selectedTime !== time) {
-                                e.currentTarget.style.background = 'transparent';
-                              }
+                              if (!isBooked && selectedTime !== time) e.currentTarget.style.background = 'transparent';
                             }}
                           >
                             <div className="flex items-center justify-between">
-                              <span className={selectedTime === time ? 'font-semibold' : ''}>{time}</span>
+                              {/* Display in 12h format */}
+                              <span className={selectedTime === time ? 'font-semibold' : ''}>{to12Hour(time)}</span>
                               {isBooked && (
-                                <span className="text-xs text-red-500 bg-red-100 px-2 py-1 rounded">
-                                  Booked
-                                </span>
+                                <span className="text-xs text-red-500 bg-red-100 px-2 py-1 rounded">Booked</span>
                               )}
                             </div>
                           </div>
@@ -554,47 +421,35 @@ const textColor = colors.text_color;
                   End Time
                 </label>
                 <div
-                  className={`w-full px-4 py-3 rounded-lg cursor-pointer transition-all flex items-center justify-between ${
-                    !selectedTime ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                  style={{ 
-                    background: `${textColor}10`,
-                    border: `1px solid ${textColor}20`
-                  }}
+                  className={`w-full px-4 py-3 rounded-lg cursor-pointer transition-all flex items-center justify-between ${!selectedTime ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  style={{ background: `${textColor}10`, border: `1px solid ${textColor}20` }}
                   onClick={() => selectedTime && setShowEndDropdown(!showEndDropdown)}
                 >
                   <span style={{ color: selectedEndTime ? textColor : `${textColor}60` }}>
-                    {selectedEndTime || 'Select end time'}
+                    {selectedEndTime ? to12Hour(selectedEndTime) : 'Select end time'}
                   </span>
-                  <ChevronDown 
+                  <ChevronDown
                     className={`w-5 h-5 transition-transform ${showEndDropdown ? 'rotate-180' : ''}`}
                     style={{ color: secondColor }}
                   />
                 </div>
-                
+
                 {showEndDropdown && selectedTime && (
-                  <div 
+                  <div
                     className="absolute left-0 right-0 mt-2 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto"
-                    style={{ 
-                      background: firstColor,
-                      border: `1px solid ${textColor}20`,
-                      top: '100%'
-                    }}
+                    style={{ background: firstColor, border: `1px solid ${textColor}20`, top: '100%' }}
                   >
                     {endTimeOptions.length === 0 ? (
                       <div className="p-4 text-center text-sm" style={{ color: `${textColor}60` }}>
-                        No available end times after {selectedTime}
+                        No available end times after {to12Hour(selectedTime)}
                       </div>
                     ) : (
                       endTimeOptions.map(time => {
                         const isBooked = isTimeBooked(selectedDate, time);
-                        
                         return (
                           <div
                             key={time}
-                            className={`p-3 cursor-pointer border-b transition-colors ${
-                              isBooked ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
+                            className={`p-3 cursor-pointer border-b transition-colors ${isBooked ? 'opacity-50 cursor-not-allowed' : ''}`}
                             style={{
                               borderColor: `${textColor}10`,
                               background: selectedEndTime === time ? `${firstColor}20` : 'transparent',
@@ -603,29 +458,22 @@ const textColor = colors.text_color;
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!isBooked) {
-                                if (setSelectedEndTime) {
-                                  setSelectedEndTime(time);
-                                }
+                                if (setSelectedEndTime) setSelectedEndTime(time);
                                 setShowEndDropdown(false);
                               }
                             }}
                             onMouseEnter={(e) => {
-                              if (!isBooked && selectedEndTime !== time) {
-                                e.currentTarget.style.background = `${textColor}10`;
-                              }
+                              if (!isBooked && selectedEndTime !== time) e.currentTarget.style.background = `${textColor}10`;
                             }}
                             onMouseLeave={(e) => {
-                              if (!isBooked && selectedEndTime !== time) {
-                                e.currentTarget.style.background = 'transparent';
-                              }
+                              if (!isBooked && selectedEndTime !== time) e.currentTarget.style.background = 'transparent';
                             }}
                           >
                             <div className="flex items-center justify-between">
-                              <span className={selectedEndTime === time ? 'font-semibold' : ''}>{time}</span>
+                              {/* Display in 12h format */}
+                              <span className={selectedEndTime === time ? 'font-semibold' : ''}>{to12Hour(time)}</span>
                               {isBooked && (
-                                <span className="text-xs text-red-500 bg-red-100 px-2 py-1 rounded">
-                                  Booked
-                                </span>
+                                <span className="text-xs text-red-500 bg-red-100 px-2 py-1 rounded">Booked</span>
                               )}
                             </div>
                           </div>
@@ -637,7 +485,6 @@ const textColor = colors.text_color;
               </div>
             </div>
 
-            {/* Confirm Button */}
             <div className="mt-6 pt-4" style={{ borderTop: `1px solid ${textColor}20` }}>
               <button
                 onClick={onClose}
@@ -654,19 +501,14 @@ const textColor = colors.text_color;
     );
   }
 
-  // Original popup UI for when requireEndTime is false
+  // Original popup UI
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden" style={{ background: firstColor }}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold" style={{ color: textColor }}>
-              Select Time
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg hover:bg-black/10 transition-colors"
-            >
+            <h2 className="text-lg font-semibold" style={{ color: textColor }}>Select Time</h2>
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-black/10 transition-colors">
               <X className="w-5 h-5" style={{ color: textColor }} />
             </button>
           </div>
@@ -691,20 +533,17 @@ const textColor = colors.text_color;
             <TimeSection title="Morning (6:00 AM - 12:00 PM)" times={morning} />
             <TimeSection title="Afternoon (12:00 PM - 5:00 PM)" times={afternoon} />
             <TimeSection title="Evening (5:00 PM - 11:00 PM)" times={evening} />
-            
+
             {filteredTimes.length === 0 && (
               <div className="text-center py-8" style={{ color: `${textColor}60` }}>
                 <Clock className="w-12 h-12 mx-auto mb-4" style={{ color: `${textColor}30` }} />
-                <p className="text-lg font-medium mb-2" style={{ color: textColor }}>
-                  No Available Times
-                </p>
+                <p className="text-lg font-medium mb-2" style={{ color: textColor }}>No Available Times</p>
                 <p className="text-sm">
-                  {selectedDate 
+                  {selectedDate
                     ? hiddenUnavailableCount > 0
                       ? `All available times for ${selectedDate} are currently unavailable or have passed. Please select another date.`
                       : `No available times for ${selectedDate}. Please select another date.`
-                    : 'Please select a date first to view available times.'
-                  }
+                    : 'Please select a date first to view available times.'}
                 </p>
               </div>
             )}

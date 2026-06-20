@@ -9,8 +9,24 @@ import WorkspaceModal from "./AddMenus/ModelsForAdd/NewWorkspace";
 import DeleteWorkspaceModal from "./DeleteWorkspaceModal";
 import WorkspaceList from "./WorkspaceList";
 import { usePermission } from "../hooks/usePermission";
+import UpgradeRequiredModal from "../Pricing/Upgraderequiredmodal";
 import toast from "react-hot-toast";
 import logo from '../../assets/image/Appoint Roll logo-svg.svg';
+
+// ─── Plan config ──────────────────────────────────────────────────────────────
+const PLAN_LIMIT = { free: 1, basic: 3, premium: Infinity };
+
+function getPlanKey(plan) {
+  if (!plan || !Array.isArray(plan) || plan.length === 0) return "free";
+  return (plan[0]?.name || "free").toLowerCase();
+}
+
+function isPlanExpired(plan) {
+  if (!plan || !Array.isArray(plan) || plan.length === 0) return true;
+  const expireDate = plan[0]?.expire_date;
+  if (!expireDate) return false;
+  return new Date(expireDate) < new Date();
+}
 
 export default function SideBarDashbord() {
   const location = useLocation();
@@ -24,15 +40,33 @@ export default function SideBarDashbord() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [workspaceToDelete, setWorkspaceToDelete] = useState(null);
   const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false); // ← جديد
 
-  const mySpaceRef = useRef(null);
-  const menuRef = useRef(null);
-  const toggleButtonRef = useRef(null);
+  const mySpaceRef       = useRef(null);
+  const menuRef          = useRef(null);
+  const toggleButtonRef  = useRef(null);
   const manualWorkspaceSelection = useRef(false);
   const dispatch = useDispatch();
 
   const { workspaces, workspace } = useSelector(state => state.workspace);
+  const plan = useSelector(state => state.subscription?.plan); // ← جديد
   const navigate = useNavigate();
+
+  // ── plan helpers ──────────────────────────────────────────────────────────
+  const planKey      = getPlanKey(plan);
+  const planLimit    = PLAN_LIMIT[planKey] ?? 1;
+  const expired      = isPlanExpired(plan);
+
+  const workspacesArray = Array.isArray(workspaces) ? workspaces : [];
+
+  const effectiveLimit = expired
+    ? planKey === "premium" ? PLAN_LIMIT.basic : PLAN_LIMIT.free
+    : planLimit;
+
+  // "My Space" مش بتحسب — بنحسب الـ workspaces الإضافية بس
+  const isAtWorkspaceLimit =
+    planKey !== "premium" && workspacesArray.length >= effectiveLimit;
+  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     dispatch(getWorkspace({ force: true }));
@@ -74,46 +108,47 @@ export default function SideBarDashbord() {
   }, [isEditModalOpen, isNewWorkspaceModalOpen, isDeleteModalOpen, dispatch]);
 
   useEffect(() => {
-    const currentPath = location.pathname.includes("interviews")
-      ? "interviews"
-      : location.pathname.includes("booking-pages") || location.pathname.includes("bookPage")
-      ? "bookPage"
-      : location.pathname.includes("analytics")
-      ? "analytics"
-      : location.pathname.includes("my-profile") || location.pathname.includes("profilepage")
-      ? "profilepage"
-      : location.pathname.includes("userDashboard")
-      ? "userDashboard"
-      : location.pathname.includes("WorkspaceAvailability")
-      ? "WorkspaceAvailability"
-      : location.pathname.includes("recruiter")
-      ? "recruiterPage"
-      : location.pathname === "/layoutDashboard"
-      ? "analytics"
-      : "";
-
-    setActive(currentPath);
-  }, [location.pathname]);
+  const currentPath = location.pathname.includes("interviews")
+    ? "interviews"
+    : location.pathname.includes("booking-pages") || location.pathname.includes("bookPage")
+    ? "bookPage"
+    : location.pathname.includes("analytics")
+    ? "analytics"
+    : location.pathname.includes("my-profile") || location.pathname.includes("profilepage")
+    ? "profilepage"
+    : location.pathname.includes("userDashboard")
+    ? "userDashboard"
+    : location.pathname.includes("WorkspaceAvailability")
+    ? `WorkspaceAvailability/${workspace?.id}`
+    : location.pathname.includes("recruiter")
+    ? "recruiterPage"
+    : location.pathname.includes("users")       // ✅ أضف ده
+    ? "users"
+    : location.pathname === "/layoutDashboard"
+    ? "analytics"
+    : "";
+  setActive(currentPath);
+}, [location.pathname, workspace?.id]);  // ✅ أضف workspace?.id في الـ dependencies
 
   const canViewAppointments = usePermission("view appointment");
-  const canViewInterview = usePermission("view interview");
-  const canViewClients = usePermission("view clients");
-  const canViewStaff = usePermission("view staff");
-  const canViewAnalytics = canViewAppointments || canViewInterview || canViewClients || canViewStaff;
+  const canViewInterview    = usePermission("view interview");
+  const canViewClients      = usePermission("view clients");
+  const canViewStaff        = usePermission("view staff");
+  const canViewAnalytics    = canViewAppointments || canViewInterview || canViewClients || canViewStaff;
 
   const menuItems = [
-    { name: "My Profile", icon: <User size={18} />, path: "profilepage", canShow: true },
-    { name: "Analytics", icon: <ChartBar size={18} />, path: "analytics", canShow: canViewAnalytics },
-    { name: "Appointments", icon: <Calendar size={18} />, path: "userDashboard", canShow: canViewAppointments },
-    { name: "Interviews", icon: <FileText size={18} />, path: "interviews", canShow: canViewInterview },
-    { name: "Users", icon: <Users size={18} />, path: "users", canShow: canViewStaff },
-    { name: "Booking Pages", icon: <Layout size={18} />, path: "bookPage", canShow: true },
+    { name: "My Profile",             icon: <User size={18} />,     path: "profilepage",           canShow: true },
+    { name: "Analytics",              icon: <ChartBar size={18} />, path: "analytics",             canShow: canViewAnalytics },
+    { name: "Appointments",           icon: <Calendar size={18} />, path: "userDashboard",         canShow: canViewAppointments },
+    { name: "Interviews",             icon: <FileText size={18} />, path: "interviews",            canShow: canViewInterview },
+    { name: "Users",                  icon: <Users size={18} />,    path: "users",                 canShow: canViewStaff },
+    { name: "Booking Pages",          icon: <Layout size={18} />,   path: "bookPage",              canShow: true },
     {
-      name: "Availability Workspace",
-      icon: <Clock5 size={18} />,
-      path: "WorkspaceAvailability",
-      canShow: workspace && workspace.id !== 0,
-    },
+  name: "Availability Workspace",
+  icon: <Clock5 size={18} />,
+  path: `WorkspaceAvailability/${workspace?.id}`,
+  canShow: workspace && workspace.id !== 0,
+},
   ];
 
   useEffect(() => {
@@ -140,14 +175,14 @@ export default function SideBarDashbord() {
   };
 
   const handleSelectWorkspace = (selectedWorkspace) => {
-    dispatch(workspaceAction.setWorkspace(selectedWorkspace));
-    if (selectedWorkspace.id !== 0) {
-      setActive("WorkspaceAvailability");
-      navigate("WorkspaceAvailability");
-    }
-    setIsWorkspaceOpen(false);
-    setSearchQuery('');
-  };
+  dispatch(workspaceAction.setWorkspace(selectedWorkspace));
+  if (selectedWorkspace.id !== 0) {
+    setActive("WorkspaceAvailability");
+    navigate(`WorkspaceAvailability/${selectedWorkspace.id}`);
+  }
+  setIsWorkspaceOpen(false);
+  setSearchQuery('');
+};
 
   const handleSelectMySpace = () => {
     manualWorkspaceSelection.current = true;
@@ -160,11 +195,19 @@ export default function SideBarDashbord() {
     setSearchQuery('');
   };
 
+  // ── New Workspace click — بيتحقق من الـ limit ────────────────────────────
   const handleNewWorkspaceClick = () => {
+    if (isAtWorkspaceLimit) {
+      setIsWorkspaceOpen(false);
+      setSearchQuery('');
+      setIsUpgradeModalOpen(true);
+      return;
+    }
     setIsNewWorkspaceModalOpen(true);
     setIsWorkspaceOpen(false);
     setSearchQuery('');
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const handleDeleteClick = (workspaceItem, e) => {
     e.stopPropagation();
@@ -279,7 +322,6 @@ export default function SideBarDashbord() {
                     </div>
                   )}
 
-                  {/* Workspace List with drag-and-drop */}
                   <WorkspaceList
                     filteredWorkspaces={filteredWorkspaces}
                     searchQuery={searchQuery}
@@ -295,12 +337,31 @@ export default function SideBarDashbord() {
                   />
                 </div>
 
-                {/* New Workspace */}
+                {/* ── New Workspace button ── */}
                 <div
-                  className="p-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between border-t border-gray-100"
                   onClick={handleNewWorkspaceClick}
+                  className={`p-2 flex items-center justify-between border-t border-gray-100 cursor-pointer transition-colors ${
+                    isAtWorkspaceLimit
+                      ? "hover:bg-red-50"
+                      : "hover:bg-gray-50"
+                  }`}
                 >
-                  <span className="text-sm text-gray-700">+ New Workspace</span>
+                  <span className={`text-sm ${isAtWorkspaceLimit ? "text-gray-400" : "text-gray-700"}`}>
+                    + New Workspace
+                  </span>
+                  {/* badge بيوضح الحد */}
+                  {planKey !== "premium" && (
+                    <span
+                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                      style={{
+                        background: isAtWorkspaceLimit ? "#fef2f2" : "#f0fdf4",
+                        color:      isAtWorkspaceLimit ? "#dc2626"  : "#15803d",
+                        border: `1px solid ${isAtWorkspaceLimit ? "#fecaca" : "#bbf7d0"}`,
+                      }}
+                    >
+                      {workspacesArray.length}/{effectiveLimit === Infinity ? "∞" : effectiveLimit}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -346,6 +407,12 @@ export default function SideBarDashbord() {
         onConfirm={handleConfirmDelete}
         workspaceName={workspaceToDelete?.name}
         isDeleting={isDeletingWorkspace}
+      />
+
+      {/* ── Upgrade Modal ── */}
+      <UpgradeRequiredModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
       />
     </>
   );

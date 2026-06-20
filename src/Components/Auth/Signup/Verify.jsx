@@ -67,7 +67,7 @@ const Verify = () => {
 
     try {
       const response = await axios.post(
-        'https://backend-booking.appointroll.com/api/account/verify', 
+        'https://api.appointroll.com/api/account/verify', 
         {
           email: email,
           code: values.verification_code
@@ -134,7 +134,7 @@ const Verify = () => {
 
     try {
       const response = await axios.post(
-        'https://backend-booking.appointroll.com/api/resend-verify-account',
+        'https://api.appointroll.com/api/resend-verify-account',
         {
           email: email
         }

@@ -14,9 +14,19 @@ import ColumnManagerSidebar from '../Dashboard/Appointments/ColumnManagerSidebar
 import { useConfirmationToast } from '../Dashboard/Appointments/useConfirmationToast';
 import Loader from '../Loader';
 
+const getTabDateRange = (tab) => {
+  const today = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const todayStr = fmt(today);
+  if (tab === 'upcoming') return { start_date: todayStr };
+  if (tab === 'past')     return { end_date: todayStr };
+  return {};
+};
 
 const StaffAppointments = () => {
-  const [activeTab, setActiveTab] = useState('');
+  const [activeTab, setActiveTab] = useState('upcoming');
+
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -90,7 +100,10 @@ const [searchParams, setSearchParams] = useSearchParams();
   const { showConfirmationToast } = useConfirmationToast();
   const {staff_interviews = [], staff_appointments = [],staff_workspaces = [],staff_pagination, loading = false, error, } = useSelector(state => state.staffApis || {});
 const appointmentHandled = useRef(false);
-
+const handleTabChange = (tab) => {
+  setActiveTab(tab);
+  setCurrentPage(1);
+};
 useEffect(() => {
   if (staff_workspaces.length > 0 && !initialLoadDone) {
     setInitialLoadDone(true);
@@ -114,39 +127,17 @@ useEffect(() => {
   //   dispatch(satff_FetchAppointments(queryParams));
   // }, [dispatch, currentFilters]);
 
-  useEffect(() => {
-    const queryParams = { page: currentPage };
-    
-    if (hasActiveFilters(currentFilters)) {
-      Object.assign(queryParams, buildQueryParams(currentFilters));
-    }
-    
-    dispatch(satff_FetchAppointments(queryParams));
-  }, [dispatch, currentFilters, currentPage]);
+  
 
  useEffect(() => {
-    if (staff_workspaces && staff_workspaces.length > 0) {
-      const queryParams = { page: currentPage };
-      
-      if (hasActiveFilters(currentFilters)) {
-        Object.assign(queryParams, buildQueryParams(currentFilters));
-      }
-      
-      if (selectWorkspace !== null && selectWorkspace !== undefined && selectWorkspace !== 0) {
-        queryParams.work_space_id = selectWorkspace;
-      }
-      
-      dispatch(satff_FetchAppointments(queryParams));
-      
-      if (selectWorkspace !== null && selectWorkspace !== undefined) {
-        setCurrentFilters(prev => ({
-          ...prev,
-          workspaces: selectWorkspace !== 0 ? [selectWorkspace] : []
-        }));
-      }
-    }
-  }, [selectWorkspace, dispatch, currentPage, staff_workspaces.length]);
+  const queryParams = buildQueryParams(currentFilters, activeTab, currentPage);
 
+  if (selectWorkspace !== null && selectWorkspace !== undefined && selectWorkspace !== 0) {
+    queryParams.work_space_id = selectWorkspace;
+  }
+
+  dispatch(satff_FetchAppointments(queryParams));
+}, [dispatch, currentFilters, currentPage, activeTab, selectWorkspace]);
   useEffect(() => {
     const handleClickOutside = (event) => {
       const clickedInsideDropdown = event.target.closest('.dropdown-container');
@@ -250,13 +241,8 @@ useEffect(() => {
   };
 
   const handleRescheduleSuccess = () => {
-    if (Object.keys(currentFilters).length > 0 && hasActiveFilters(currentFilters)) {
-      const queryParams = buildQueryParams(currentFilters);
-      dispatch(satff_FetchAppointments(queryParams));
-    } else {
-      dispatch(satff_FetchAppointments());
-    }
-  };
+  dispatch(satff_FetchAppointments(buildQueryParams(currentFilters, activeTab, currentPage)));
+};
 
   const hasActiveFilters = (filters) => {
     return (
@@ -267,22 +253,20 @@ useEffect(() => {
     );
   };
 
-  const buildQueryParams = (filters) => {
-    const queryParams = {};
-    if (filters.appointmentStatus && filters.appointmentStatus !== '') {
-      queryParams.status = filters.appointmentStatus;
-    }
-    if (filters.interviews && filters.interviews.length > 0) {
-      queryParams.interview_id = filters.interviews[0];
-    }
-    if (filters.workspaces && filters.workspaces.length > 0) {
-      queryParams.work_space_id = filters.workspaces[0];
-    }
-    if (filters.clients && filters.clients.length > 0) {
-      queryParams.client_id = filters.clients[0];
-    }
-    return queryParams;
-  };
+ const buildQueryParams = (filters, tab = activeTab, page = currentPage) => {
+  const queryParams = { page };
+
+  const tabRange = getTabDateRange(tab);
+  if (tabRange.start_date) queryParams.start_date = tabRange.start_date;
+  if (tabRange.end_date)   queryParams.end_date   = tabRange.end_date;
+
+  if (filters?.appointmentStatus) queryParams.status = filters.appointmentStatus;
+  if (filters?.interviews?.[0])   queryParams.interview_id = filters.interviews[0];
+  if (filters?.workspaces?.[0])   queryParams.work_space_id = filters.workspaces[0];
+  if (filters?.clients?.[0])      queryParams.client_id = filters.clients[0];
+
+  return queryParams;
+};
 
    const appointmentsArray = Array.isArray(staff_appointments) ? staff_appointments : [];
   
@@ -376,12 +360,8 @@ useEffect(() => {
           if (!result || !result.success) {
             throw new Error(result?.message || 'Failed to cancel appointment');
           }
-          if (hasActiveFilters(currentFilters)) {
-            const queryParams = buildQueryParams(currentFilters);
-            await dispatch(satff_FetchAppointments(queryParams));
-          } else {
-            await dispatch(satff_FetchAppointments());
-          }
+          await dispatch(satff_FetchAppointments(buildQueryParams(currentFilters, activeTab, currentPage)));
+
           if (selectedAppointment && selectedAppointment.id === appointment.id) {
             setIsDetailsOpen(false);
             setSelectedAppointment(null);
@@ -409,16 +389,12 @@ useEffect(() => {
     }
   };
 
-   const handleApplyFilters = (filters) => {
-    setCurrentFilters(filters);
-    setCurrentPage(1);
-    const queryParams = { page: 1 }; 
-    if (hasActiveFilters(filters)) {
-      Object.assign(queryParams, buildQueryParams(filters));
-    }
-    dispatch(satff_FetchAppointments(queryParams));
-    setIsFilterOpen(false);
-  };
+  const handleApplyFilters = (filters) => {
+  setCurrentFilters(filters);
+  setCurrentPage(1);
+  dispatch(satff_FetchAppointments(buildQueryParams(filters, activeTab, 1)));
+  setIsFilterOpen(false);
+};
 
   const handleCancelFilters = () => {
     setIsFilterOpen(false);
@@ -427,9 +403,8 @@ useEffect(() => {
   const handleClearFilters = () => {
     setCurrentFilters({});
     setCurrentPage(1);
-    dispatch(satff_FetchAppointments({ page: 1 }));
+    dispatch(satff_FetchAppointments(buildQueryParams({}, activeTab, 1)));
   };
-
 
   const handleOpenColumnManager = () => {
     setIsColumnManagerOpen(true);
@@ -810,21 +785,23 @@ useEffect(() => {
 
         <div className="border-b border-gray-200 mb-6 flex justify-between items-center">
           <nav className="flex gap-6">
-            {[
-            ].map(tab => (
-              <button
-                key={tab.key}
-                className={`py-2 px-1 -mb-px transition-all text-sm ${
-                  activeTab === tab.key 
-                    ? 'border-b-2 border-blue-600 text-blue-600 font-medium' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setActiveTab(tab.key)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+  {[
+    { key: 'upcoming', label: 'upcoming' },
+    { key: 'past',     label: 'past'     },
+  ].map(tab => (
+    <button
+      key={tab.key}
+      className={`py-2 px-1 -mb-px transition-all text-sm ${
+        activeTab === tab.key
+          ? 'border-b-2 border-blue-600 text-blue-600 font-medium'
+          : 'text-gray-500 hover:text-gray-700'
+      }`}
+      onClick={() => handleTabChange(tab.key)}
+    >
+      {tab.label}
+    </button>
+  ))}
+</nav>
           
           <div className="flex items-center gap-2">
             {hasActiveFilters(currentFilters) && (

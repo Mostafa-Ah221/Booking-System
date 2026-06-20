@@ -127,34 +127,31 @@ const refreshTimesForModal = (date) => {
     return;
   }
 
-    const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;
+  const userTimezone = selectedTimezone || WORKSPACE_TIMEZONE;
 
-    const convertedDisabledTimes = (bookingData.disabled_times || []).map(disabled => {
+  const convertedDisabledTimes = (bookingData.disabled_times || []).map(disabled => {
     try {
-        let { date: origDate, time } = disabled;
-        if (!origDate || !time) return disabled;
-
-        let dateISO = origDate;
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(origDate)) {
-            dateISO = convertDateToISO(origDate);
-        }
-        if (!dateISO) return disabled;
-
-        return {
-            date: dateISO,
-            time: time
-        };
+      let { date: origDate, time } = disabled;
+      if (!origDate || !time) return disabled;
+      let dateISO = origDate;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(origDate)) {
+        dateISO = convertDateToISO(origDate);
+      }
+      if (!dateISO) return disabled;
+      return { date: dateISO, time };
     } catch (err) {
-        return disabled;
+      return disabled;
     }
-});
+  });
+
+  const effectiveDisabled = expandDisabledTimesWithTravel(convertedDisabledTimes, bookingData,selectedType);
 
   const times = generateTimeSlots(
     bookingData.raw_available_times,
     parseInt(bookingData.duration_cycle),
     bookingData.duration_period || 'minutes',
     date,
-    convertedDisabledTimes,
+    effectiveDisabled,
     bookingData.unavailable_times || [],
     bookingData.unavailable_dates || [],
     parseInt(bookingData.rest_cycle || '0'),
@@ -165,17 +162,13 @@ const refreshTimesForModal = (date) => {
 };
 const convertDateTimeWithTimezone = (dateStr, timeStr, targetTimezone) => {
   try {
-    // 1. تحويل التاريخ لـ ISO
     const isoDate = convertDateToISO(dateStr);
     if (!isoDate) return { date: dateStr, time: timeStr };
 
-    // 2. الوقت من الباك هو UTC (مثال: 04:30:00)
     const [hours, minutes, seconds = 0] = timeStr.split(':').map(Number);
     
-    // 3. إنشاء Date object بـ UTC
-   const utcDate = new Date(`${isoDate}T${utcTime}:00Z`);
+   const utcDate = new Date(`${dateISO}T${timeStr}:00Z`);
 
-    // 4. تحويل للـ target timezone
     const formatter = new Intl.DateTimeFormat('en-GB', {
       timeZone: targetTimezone,
       year: 'numeric',
@@ -227,7 +220,47 @@ const convertDateTimeWithTimezone = (dateStr, timeStr, targetTimezone) => {
     }
   };
 
+const expandDisabledTimesWithTravel = (disabledTimes, bookingDataRef, selectedType) => {
+  const duration = parseInt(bookingDataRef?.duration_cycle) || 0;
+  const rest = parseInt(bookingDataRef?.rest_cycle || 0);
+  const travel = parseInt(bookingDataRef?.travel_time || 0);
+console.log(duration);
+console.log(rest);
+console.log(travel);
 
+  const effectiveType = selectedType || bookingDataRef?.inperson_mode || '';
+  const effectiveTravel = effectiveType === 'athome' ? travel : 0;
+
+  if (!effectiveTravel || !disabledTimes?.length) return disabledTimes || [];
+
+  const step = duration + rest; // 60
+  const totalBlock = duration + rest + effectiveTravel;
+
+  const timeToMins = (t) => {
+    const [h, m] = t.slice(0, 5).split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const expanded = [...disabledTimes];
+
+  disabledTimes.forEach(disabled => {
+    const start = timeToMins(disabled.time);
+    const end = start + totalBlock; // 18:00 + 90 = 19:30
+    let current = start + step;    // 18:00 + 60 = 19:00
+
+    while (current < end) { // 19:00 < 19:30 ✅ يدخل
+      const h = Math.floor(current / 60).toString().padStart(2, '0');
+      const m = (current % 60).toString().padStart(2, '0');
+      const exists = expanded.some(
+        d => d.date === disabled.date && d.time.startsWith(`${h}:${m}`)
+      );
+      if (!exists) expanded.push({ date: disabled.date, time: `${h}:${m}:00` });
+      current += step;
+    }
+  });
+
+  return expanded;
+};
 
   //   try {
   //     const formattedDate = convertDateToISO(dateStr);
@@ -415,11 +448,9 @@ const generateTimeSlots = (
     if (slots.length === 0) return;
 
     slots.forEach(timeStr => {
-      // ✅ تحقق من الـ past بـ local time مش UTC
-      const slotDate = new Date(`${iso}T${timeStr}:00`);
-      if (slotDate.getTime() < Date.now()) return;
+      const slotDate = new Date(`${iso}T${timeStr}:00Z`);
+if (slotDate.getTime() < Date.now()) return;
 
-      // ✅ قارن الـ disabled_times مباشرة بدون تحويل لـ UTC
       const isDisabled = disabledTimes.some(d => {
         return d.date === iso && d.time.startsWith(timeStr);
       });
@@ -527,24 +558,26 @@ useEffect(() => {
     }
   });
 
-  const times = generateTimeSlots(
-    bookingData.raw_available_times,
-    parseInt(bookingData.duration_cycle),
-    bookingData.duration_period || 'minutes',
-    selectedDate,
-    convertedDisabledTimes,
-    bookingData.unavailable_times || [],
-    bookingData.unavailable_dates || [],
-    parseInt(bookingData.rest_cycle || '0'),
-    userTimezone
-  );
+  const effectiveDisabled = expandDisabledTimesWithTravel(convertedDisabledTimes, bookingData,selectedType);
+
+const times = generateTimeSlots(
+  bookingData.raw_available_times,
+  parseInt(bookingData.duration_cycle),
+  bookingData.duration_period || 'minutes',
+  selectedDate,
+  effectiveDisabled,          // ← هنا
+  bookingData.unavailable_times || [],
+  bookingData.unavailable_dates || [],
+  parseInt(bookingData.rest_cycle || '0'),
+  userTimezone
+);
 
   setDisplayedTimes(times);
 
   setBookingData(prev => ({
     ...prev,
     available_times: times,
-    converted_disabled_times: convertedDisabledTimes,
+    converted_disabled_times: effectiveDisabled,
   }));
 
   if (times.length > 0) {
@@ -553,9 +586,21 @@ useEffect(() => {
     setSelectedTime('');
   }
 
-// ✅ شيل bookingData?.disabled_times من الـ dependencies
 }, [selectedDate, selectedTimezone, bookingData?.raw_available_times,
     bookingData?.duration_cycle, bookingData?.rest_cycle]);
+
+const isTimePast = (dateStr, timeStr) => {
+  try {
+    const formattedDate = convertDateToISO(dateStr);
+    if (!formattedDate || !timeStr || !timeStr.includes(':')) return false;
+    const now = new Date();
+    const selectedDateTime = new Date(`${formattedDate}T${timeStr}:00`);
+    return selectedDateTime < now;
+  } catch (error) {
+    return false;
+  }
+};
+
 
     const getFirstAvailableTime = (date, availableTimes, disabledTimes = [], unavailableTimes = [], unavailableDates = []) => {
     if (!date || !availableTimes || !Array.isArray(availableTimes)) {
@@ -578,8 +623,8 @@ useEffect(() => {
 const fetchInterviewData = async (interviewId) => {
   
    const url = isStaff && share_link
-    ? `https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}&from_staff=1`
-    : `https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}`;
+    ? `https://api.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}&from_staff=1`
+    : `https://api.appointroll.com/api/public/book/resource?interview_share_link=${interviewId}`;
 
   const response = await fetch(url);
   
@@ -699,7 +744,6 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
         }
       }
 
-      // ✅ استخدم الوقت كما هو بدون تحويل
       return {
         date: dateISO,
         time: time
@@ -742,8 +786,10 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
     require_end_time: interview.require_end_time,
     staff_groups: availableStaffGroups,
     has_resources: availableResources.length > 0,
-    require_staff_select: interview.require_staff_select, 
-    resources: availableResources
+    require_staff_select: interview.require_staff_select,
+    resources: availableResources,
+    travel_time: interview.travel_time || '0',
+    interview_type: interview.type,
   };
 };
 
@@ -820,7 +866,7 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
   ...(selectedResource ? { resource_id: selectedResource.id } : {})
 };
 
-      const apiEndpoint = `https://backend-booking.appointroll.com/api/public/interview/${bookingData?.id}/book`;
+      const apiEndpoint = `https://api.appointroll.com/api/public/interview/${bookingData?.id}/book`;
 
       const response = await fetch(apiEndpoint, {
         method: 'POST',
@@ -869,16 +915,6 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
       setShowBookingSummary(false);
       setFormData({ name: '', email: '', phone: '', code_phone: '', address: '' });
 
-      const newDisabledTime = {
-        date: formattedDate,
-        time: selectedTime + ':00'
-      };
-
-      setBookingData(prevData => ({
-        ...prevData,
-        disabled_times: [...prevData.disabled_times, newDisabledTime]
-      }));
-
       const alternativeTime = getFirstAvailableTime(
         selectedDate,
         bookingData.available_times,
@@ -886,6 +922,7 @@ const transformInterviewData = (interview, initialSelectedStaff = null) => {
         bookingData.unavailable_times,
         bookingData.unavailable_dates
       );
+      
       if (alternativeTime) {
         setSelectedTime(alternativeTime);
       } else {
@@ -1042,8 +1079,6 @@ let toISO = range.to
     year: 'numeric'
   }).replace(/\//g, ' ');
 
-  // ✅ أضف هنا
-  console.log('🔍 Checking date:', formattedStr);
 
   const times = generateTimeSlots(
     transformedData.raw_available_times || transformedData.available_times,
@@ -1056,9 +1091,6 @@ let toISO = range.to
     parseInt(transformedData.rest_cycle || '0'),
     selectedTimezone
   );
-
-  // ✅ أضف هنا
-  console.log('⏰ Times for', formattedStr, ':', times);
   
   if (times && times.length > 0) {
     firstAvailableDate = formattedStr;
@@ -1088,11 +1120,6 @@ let toISO = range.to
         } else {
           setNoAvailability(true);
         }
-console.log('🗓 firstAvailableDate:', firstAvailableDate);
-console.log('⏰ firstAvailableTimes:', firstAvailableTimes);
-console.log('🌍 selectedTimezone:', selectedTimezone);
-console.log('📅 available_dates:', transformedData.available_dates);
-console.log('🕐 raw_available_times:', transformedData.raw_available_times);
       } else {
         setNoAvailability(true);
       }
@@ -1387,7 +1414,6 @@ useEffect(() => {
   const checkForUpdates = async () => {
     const now = Date.now();
     
-    // ✅ امنع الـ fetch إلا لو مر دقيقة
     if (now - lastFetchTimeRef.current < FETCH_COOLDOWN) {
       return;
     }
@@ -1409,7 +1435,6 @@ useEffect(() => {
         )
       );
 
-      // ✅ Update فقط لو في تغيير فعلي
       if (currentDisabledTimesStr !== newDisabledTimesStr) {
         setBookingData(prev => ({
           ...prev,
@@ -1449,10 +1474,8 @@ useEffect(() => {
     }
   };
 
-  // ✅ نادي الـ check مرة واحدة عند mount
   checkForUpdates();
 
-  // ✅ واستخدم interval بس لو User لسه شغال على الصفحة
   const intervalId = setInterval(checkForUpdates, FETCH_COOLDOWN);
 
   return () => clearInterval(intervalId);

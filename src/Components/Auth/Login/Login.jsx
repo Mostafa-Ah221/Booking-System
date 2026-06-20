@@ -47,8 +47,8 @@ const Login = () => {
       }
       
       const apiEndpoint = userType === 'customer' 
-        ? "https://backend-booking.appointroll.com/api/login"
-        : "https://backend-booking.appointroll.com/api/staff/login";
+        ? "https://api.appointroll.com/api/login"
+        : "https://api.appointroll.com/api/staff/login";
 
       const response = await axios.post(
         apiEndpoint,

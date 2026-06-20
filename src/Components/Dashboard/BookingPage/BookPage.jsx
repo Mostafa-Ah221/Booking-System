@@ -78,11 +78,8 @@ const handleWorkspaceSettingsClick = useCallback((ws, e) => {
   e.preventDefault();
   e.stopPropagation();
   
-  // Set the selected workspace in Redux
   dispatch(workspaceAction.setWorkspace(ws));
-  
-  // Navigate to WorkspaceAvailability (same as sidebar)
-  navigate('/layoutDashboard/WorkspaceAvailability');
+  navigate(`/layoutDashboard/WorkspaceAvailability/${ws.id}`);
 }, [dispatch, navigate]);
 
   const handleShareClick = useCallback((interview, e) => {

@@ -79,7 +79,6 @@ export function addStaff(staffData) {
             dispatch(staffAction.setLoading(true));
             dispatch(staffAction.clearError());
 
-            console.log("Sending FormData to API:");
             for (let [key, value] of staffData.entries()) {
                 console.log(`${key}: ${value}`);
             }
@@ -96,9 +95,7 @@ export function addStaff(staffData) {
             
             if (response?.data?.status) {
                 const newStaff = response.data.data;
-                
                 dispatch(staffAction.addStaffToList(newStaff));
-                
                 toast.success(response.data.message, {
                     position: "top-center",
                     duration: 5000,
@@ -111,21 +108,19 @@ export function addStaff(staffData) {
                         fontWeight: "500",
                     },
                 });
-
                 dispatch(staffAction.setLoading(false));
                 return { success: true, data: response.data };
             } else {
                 dispatch(staffAction.setLoading(false));
-                return { success: false, error: { response: { data: { errors: { general: "Unexpected response format" } } } } };
+                // ✅ رجّع الـ data الحقيقية عشان نقدر نقرأ الـ message
+                return { success: false, data: response.data };
             }
         } catch (error) {
             const serverErrors = error?.response?.data?.errors || {};
             console.error("Error creating Staff:", error);
             console.error("Server errors:", serverErrors);
-            
             dispatch(staffAction.setLoading(false));
             dispatch(staffAction.setError(serverErrors));
-            
             return { success: false, error };
         }
     };
@@ -493,7 +488,6 @@ export function deleteStaff(staffId) {
             
             if (response.data.status) {
                 dispatch(staffAction.removeStaffFromList(staffId));
-                
                 toast.success(response?.data?.message, {
                     position: 'top-center',         
                     duration: 5000,
@@ -506,13 +500,10 @@ export function deleteStaff(staffId) {
                         fontWeight: '500',
                     },
                 });
-                
                 dispatch(staffAction.setLoading(false));
-                return {
-                    success: true,
-                    message: response?.data.message
-                };
+                return { success: true, message: response?.data.message };
             }
+
         } catch (error) {
             console.error("Error delete staff:", error);
             dispatch(staffAction.setLoading(false));
@@ -520,10 +511,21 @@ export function deleteStaff(staffId) {
             const errorMessage = error.response?.data?.message || "Failed to delete staff";
             dispatch(staffAction.setError(errorMessage));
             
-            return {
-                success: false,
-                message: errorMessage
-            };
+            toast.error(errorMessage, {
+                position: 'top-center',
+                duration: 5000,
+                icon: '❌',
+                style: {
+                    borderRadius: '8px',
+                    background: '#333',
+                    color: '#fff',
+                    padding: '12px 16px',
+                    fontWeight: '500',
+                    fontSize: '14px',
+                },
+            });
+
+            return { success: false, message: errorMessage };
         }
     }
 }

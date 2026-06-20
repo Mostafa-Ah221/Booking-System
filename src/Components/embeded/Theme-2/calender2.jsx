@@ -582,20 +582,34 @@ const convertDateTimeWithTimezone = (dateStr, timeStr, fromTimezone, toTimezone)
   };
 
   const handleMonthSelect = (monthIndex) => {
-    // Create date in local timezone to match calendar display
-    const newDate = new Date(selectedYear, monthIndex, 15); // Use middle of month to avoid timezone edge cases
-    const dayOfWeek = newDate.getDay();
-    const monday = new Date(newDate);
-    monday.setDate(newDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-  
-    setCurrentWeekStart(monday);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  if (
+    selectedYear < currentYear ||
+    (selectedYear === currentYear && monthIndex < currentMonth)
+  ) {
     setShowMonthPicker(false);
-  };
+    return;
+  }
+
+  const newDate = new Date(selectedYear, monthIndex, 15);
+  const dayOfWeek = newDate.getDay();
+  const monday = new Date(newDate);
+  monday.setDate(newDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+  setCurrentWeekStart(monday);
+  setShowMonthPicker(false);
+};
 
   const handleYearChange = (direction) => {
-    setSelectedYear(prev => direction === 'next' ? prev + 1 : prev - 1);
-  };
-
+  const now = new Date();
+  if (direction === 'prev') {
+    if (selectedYear <= now.getFullYear()) return;
+  }
+  setSelectedYear(prev => direction === 'next' ? prev + 1 : prev - 1);
+};
  const getVisibleDays = () => {
   const allWeekDays = getDaysInWeek();
   return allWeekDays.slice(0, visibleDaysCount);
@@ -784,7 +798,7 @@ useEffect(() => {
           {showMonthPicker && (
             <div 
               ref={popupRef}
-              className="absolute top-full left-0 sm:left-auto right-0 sm:right-auto mt-2 bg-white rounded-lg shadow-xl z-50 p-4 sm:p-6 w-full sm:w-80 max-w-sm"
+              className="absolute -top-[83%] left-0 sm:left-auto right-0 sm:right-auto mt-2 bg-white rounded-lg shadow-xl z-50 p-4 sm:p-6 w-full sm:w-80 max-w-sm"
               style={{ border: '1px solid #e5e7eb' }}
             >
               {/* Year Navigation */}
@@ -807,26 +821,39 @@ useEffect(() => {
               {/* Months Grid */}
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {monthAbbreviations.map((month, index) => {
-                  const isCurrentMonth = index === new Date().getMonth() && selectedYear === new Date().getFullYear();
-                  const isViewingMonth = index === currentMonth && selectedYear === currentYear;
-                  
+                  const now = new Date();
+                  const isPastMonth =
+                    selectedYear < now.getFullYear() ||
+                    (selectedYear === now.getFullYear() && index < now.getMonth());
+
+                  const isCurrentMonth =
+                    index === now.getMonth() && selectedYear === now.getFullYear();
+                  const isViewingMonth =
+                    index === currentMonth && selectedYear === currentYear;
+
                   return (
                     <button
                       key={month}
-                      onClick={() => handleMonthSelect(index)}
+                      onClick={() => !isPastMonth && handleMonthSelect(index)}
+                      disabled={isPastMonth}
                       className="py-2 sm:py-3 px-2 rounded text-xs sm:text-sm font-medium transition-all"
                       style={{
-                        backgroundColor: isViewingMonth 
-                          ?  '#000000'
-                          : isCurrentMonth 
+                        backgroundColor: isViewingMonth
+                          ? '#000000'
+                          : isCurrentMonth
                           ? 'rgba(0,0,0,0.1)'
                           : 'transparent',
-                        color: isViewingMonth 
-                          ?  '#ffffff'
-                          :  '#000000',
-                        border: isCurrentMonth && !isViewingMonth
-                          ? `1px solid ${firstColor || '#000000'}`
-                          : '1px solid transparent'
+                        color: isViewingMonth
+                          ? '#ffffff'
+                          : isPastMonth
+                          ? '#9ca3af'  // رمادي للشهور المنتهية
+                          : '#000000',
+                        border:
+                          isCurrentMonth && !isViewingMonth
+                            ? `1px solid ${firstColor || '#000000'}`
+                            : '1px solid transparent',
+                        cursor: isPastMonth ? 'not-allowed' : 'pointer',
+                        opacity: isPastMonth ? 0.4 : 1,
                       }}
                     >
                       {month}
@@ -883,7 +910,6 @@ useEffect(() => {
           {visibleDays.map((date, idx) => {
             const dateStr = formatDateString(date);
             // ═══════════════════════════════════════════════════════════════════
-            // استخدم الكاش بدل استدعاء isDateAvailable مباشرة
             // ═══════════════════════════════════════════════════════════════════
             const isAvailable = availableDatesCache.get(dateStr) ?? false;
             const isSelected = selectedDate === dateStr;
@@ -894,40 +920,70 @@ useEffect(() => {
               <button
                 key={idx}
                 disabled={!isAvailable}
-                className={`p-2 sm:p-3 text-center transition-all text-xs sm:text-sm`}
+                className={`text-center transition-all`}
                 style={{
+                  padding: "7px 0px 6px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "2px",
                   background: isSelected
-                    ? secondColor
-                    : isAvailable
-                    ? `${secondColor}20`
-                    : isToday
-                    ? "rgba(0,0,0,0.10)"
-                    : isInUnavailableRange
-                    ? "rgba(0,0,0,0.07)"
-                    : `${secondColor}20`,
+                    ? `${secondColor}30`
+                    : "transparent",
                   border: isSelected
                     ? `2px solid ${firstColor}`
-                    : isToday
-                    ? `1px solid ${firstColor}`
-                    : isInUnavailableRange
-                    ? `1px solid ${firstColor}55`
-                    : !isAvailable
-                    ? "1px solid transparent"
-                    : `1px solid ${firstColor}77`,
-                  color: isSelected
-                    ? firstColor
-                    : !isAvailable
-                    ? textColor
-                    : textColor,
+                    : isAvailable
+                    ? `1.5px solid ${firstColor}90`
+                    : `0.5px solid ${firstColor}18`,
+                  borderRadius: "10px",
+                  opacity: !isAvailable && !isToday ? 0.35 : 1,
                   cursor: !isAvailable ? "not-allowed" : "pointer",
-                  boxShadow: isSelected ? `0 0 6px ${firstColor}60` : "none",
+                  boxShadow: isSelected ? `0 0 0 3px ${firstColor}22` : "none",
+                  color: isSelected ? firstColor : isAvailable ? textColor : textColor,
                 }}
                 onClick={() => isAvailable && onDateSelect(dateStr)}
               >
-                <div className="font-semibold">{date.getDate()}</div>
-                <div className="text-[10px] sm:text-xs uppercase mt-1">
+                <div
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 500,
+                    letterSpacing: "0.04em",
+                    color: isSelected
+                      ? firstColor
+                      : isAvailable
+                      ? firstColor
+                      : "inherit",
+                    opacity: isAvailable || isSelected ? 1 : 0.5,
+                  }}
+                >
                   {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][date.getDay()]}
                 </div>
+
+                <div
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    lineHeight: 1.1,
+                    color: isSelected ? firstColor : "inherit",
+                  }}
+                >
+                  {date.getDate()}
+                </div>
+
+                <div
+                  style={{
+                    width: isAvailable || isSelected ? "6px" : "4px",
+                    height: isAvailable || isSelected ? "6px" : "4px",
+                    borderRadius: "50%",
+                    marginTop: "4px",
+                    background: isSelected
+                      ? firstColor
+                      : isAvailable
+                      ? `${firstColor}90`
+                      : `${firstColor}25`,
+                    transition: "all 0.2s",
+                  }}
+                />
               </button>
             );
           })}

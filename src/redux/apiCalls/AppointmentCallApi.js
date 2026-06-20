@@ -86,7 +86,7 @@ export function getAppointmentByIdPublic(id) {
     dispatch(appointmentActions.setLoading(true));
     try {
       const response = await axios.get(
-        `https://backend-booking.appointroll.com/api/appointments/${id}`,
+        `https://api.appointroll.com/api/appointments/${id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -125,7 +125,7 @@ export function getAppointmentByTokenPublic(token) {
     dispatch(appointmentActions.setLoading(true));
     try {
       const response = await axios.get(
-        `https://backend-booking.appointroll.com/api/appointments/token/${token}`,
+        `https://api.appointroll.com/api/appointments/token/${token}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -367,7 +367,7 @@ export function statusAppointment(id, data) {
   return async (dispatch) => {
     try {
       const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/appointments/${id}/status`,
+        `https://api.appointroll.com/api/appointments/${id}/status`,
         data
       );
       

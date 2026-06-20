@@ -15,6 +15,7 @@ const ThemeHeaderSection = ({
   selectedLayout,
   userType,
   dispatch,
+  // ✅ checkPlanBeforeSave مش محتاجه تاني — الـ interceptor في ThemePanel بيتولى الموضوع
 }) => {
 
   const handleHeaderChange = (field, value) => {
@@ -45,11 +46,8 @@ const ThemeHeaderSection = ({
       formData.append('remove_photo', '1');
     }
 
-    if (userType === "staff") {
-      await dispatch(updateThemeStaff(formData));
-    } else {
-      await dispatch(updateTheme(formData));
-    }
+    if (userType === "staff") await dispatch(updateThemeStaff(formData));
+    else await dispatch(updateTheme(formData));
 
     if (logoDeleted) setLogoDeleted(false);
   };
@@ -62,11 +60,8 @@ const ThemeHeaderSection = ({
     formData.append('photo', '');
     formData.append('remove_photo', '1');
 
-    if (userType === "staff") {
-      await dispatch(updateThemeStaff(formData));
-    } else {
-      await dispatch(updateTheme(formData));
-    }
+    if (userType === "staff") await dispatch(updateThemeStaff(formData));
+    else await dispatch(updateTheme(formData));
 
     handleHeaderChange('logo', null);
     setLogoDeleted(true);
@@ -84,7 +79,6 @@ const ThemeHeaderSection = ({
 
       {openSection === 'header' && (
         <div className="p-4 bg-gray-50">
-          {/* Title */}
           <div>
             <div className='flex justify-between mb-1'>
               <label className="block text-sm font-medium">Title</label>
@@ -104,7 +98,6 @@ const ThemeHeaderSection = ({
             />
           </div>
 
-          {/* Logo */}
           <div>
             <div className='flex justify-between mb-1'>
               <label className="block text-sm font-medium">Logo</label>

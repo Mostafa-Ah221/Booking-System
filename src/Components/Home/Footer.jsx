@@ -1,5 +1,5 @@
 import { Instagram, Linkedin, Twitter, Youtube } from 'lucide-react';
-import { FaXTwitter } from 'react-icons/fa6';
+import { FaFacebookF, FaXTwitter } from 'react-icons/fa6';
 
 const Footer = () => {
   const bottomLinks = [
@@ -69,32 +69,90 @@ const Footer = () => {
               <div className="flex items-center gap-1 bg-white rounded-full px-4 py-3 shadow-sm border border-gray-200">
                 <span className="text-xs text-gray-500 mr-3 font-medium">Follow Us</span>
                 <a 
-                  href="#" 
+                  href="https://www.facebook.com/appointrolls" 
+                  target="_blank"
+                  className="group p-2 rounded-full hover:bg-blue-800 transition-all duration-300 hover:scale-110 hover:shadow-md"
+                  aria-label="Facebook"
+                >
+                  <FaFacebookF className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors duration-300" />
+                </a>
+                <a 
+                  href="https://www.instagram.com/appointrolls"
+                   target="_blank" 
                   className="group p-2 rounded-full hover:bg-gradient-to-br hover:from-purple-500 hover:to-pink-500 transition-all duration-300 hover:scale-110 hover:shadow-md"
                   aria-label="Instagram"
                 >
                   <Instagram className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors duration-300" />
                 </a>
                 <a 
-                  href="#" 
+                  href="https://www.linkedin.com/company/appointrolls" 
+                   target="_blank"
                   className="group p-2 rounded-full hover:bg-blue-600 transition-all duration-300 hover:scale-110 hover:shadow-md"
                   aria-label="LinkedIn"
                 >
                   <Linkedin className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors duration-300" />
                 </a>
                 <a 
-                  href="#" 
+                  href="https://x.com/appointrolls" 
+                   target="_blank"
                   className="group p-2 rounded-full hover:bg-gray-900 transition-all duration-300 hover:scale-110 hover:shadow-md"
                   aria-label="Twitter"
                 >
                   <FaXTwitter className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors duration-300" />
                 </a>
                 <a 
-                  href="#" 
+                  href="https://www.youtube.com/@appointrolls" 
+                   target="_blank"
                   className="group p-2 rounded-full hover:bg-red-600 transition-all duration-300 hover:scale-110 hover:shadow-md"
                   aria-label="YouTube"
                 >
                   <Youtube className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors duration-300" />
+                </a>
+                <a 
+                  href="https://alllinks.one/appointroll"
+                  target="_blank"
+                  className="group p-2 rounded-full hover:bg-green-600 transition-all duration-300 hover:scale-110 hover:shadow-md"
+                  aria-label="All Links"
+                >
+                  <svg
+                    viewBox="0 0 114.07 111.12"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors duration-300"
+                    fill="currentColor"
+                  >
+                    <g>
+                      <rect width="12.69" height="12.69" x="89.04" y="88.86" />
+                      <rect width="12.69" height="12.69" x="89.04" y="76.17" />
+                      <rect width="12.69" height="12.69" x="89.04" y="63.49" />
+                      <rect width="12.69" height="12.69" x="89.04" y="50.8" />
+                      <rect width="12.69" height="12.69" x="89.04" y="38.12" />
+                      <polygon points="89.04 25.43 101.73 25.43 89.04 12.74" />
+
+                      <rect width="12.69" height="12.69" x="63.67" y="88.86" />
+                      <rect width="12.69" height="12.69" x="63.67" y="76.17" />
+                      <rect width="12.69" height="12.69" x="63.67" y="63.49" />
+                      <rect width="12.69" height="12.69" x="63.67" y="50.8" />
+                      <rect width="12.69" height="12.69" x="63.67" y="38.12" />
+                      <rect width="12.69" height="12.69" x="63.67" y="25.43" />
+                      <rect width="12.69" height="12.69" x="63.67" y="12.74" />
+
+                      <rect width="12.69" height="12.69" x="38.3" y="88.86" />
+                      <rect width="12.69" height="12.69" x="38.3" y="76.17" />
+                      <rect width="12.69" height="12.69" x="38.3" y="63.49" />
+                      <rect width="12.69" height="12.69" x="38.3" y="50.8" />
+                      <rect width="12.69" height="12.69" x="38.3" y="38.12" />
+                      <rect width="12.69" height="12.69" x="38.3" y="25.43" />
+                      <rect width="12.69" height="12.69" x="38.3" y="12.74" />
+
+                      <rect width="12.69" height="12.69" x="12.93" y="88.86" />
+                      <rect width="12.69" height="12.69" x="12.93" y="76.17" />
+                      <rect width="12.69" height="12.69" x="12.93" y="63.49" />
+                      <rect width="12.69" height="12.69" x="12.93" y="50.8" />
+                      <rect width="12.69" height="12.69" x="12.93" y="38.12" />
+                      <rect width="12.69" height="12.69" x="12.93" y="25.43" />
+                      <rect width="12.69" height="12.69" x="12.93" y="12.74" />
+                    </g>
+                  </svg>
                 </a>
               </div>
             </div>

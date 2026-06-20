@@ -85,7 +85,7 @@ const handleOpenApp = () => {
   const getRegisterData = async (token) => {
     try {
       const response = await fetch(
-        `https://backend-booking.appointroll.com/api/staff/register/${token}`,
+        `https://api.appointroll.com/api/staff/register/${token}`,
         {
           method: 'GET',
           headers: {
@@ -176,8 +176,8 @@ const handleOpenApp = () => {
 
       // Use different API endpoint based on registration type
       const apiUrl = isStaffRegistration
-        ? `https://backend-booking.appointroll.com/api/staff/register/${token}`
-        : "https://backend-booking.appointroll.com/api/register";
+        ? `https://api.appointroll.com/api/staff/register/${token}`
+        : "https://api.appointroll.com/api/register";
 
       const response = await axios.post(apiUrl, formData, {
         headers: {

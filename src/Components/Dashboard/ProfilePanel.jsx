@@ -43,8 +43,8 @@ const ProfilePanel = ({ isOpen, onClose }) => {
 
     const logoutUrl =
       userType === "staff"
-        ? "https://backend-booking.appointroll.com/api/staff/logout"
-        : "https://backend-booking.appointroll.com/api/customer/logout";
+        ? "https://api.appointroll.com/api/staff/logout"
+        : "https://api.appointroll.com/api/customer/logout";
 
     try {
       if (token) {
@@ -93,7 +93,7 @@ const ProfilePanel = ({ isOpen, onClose }) => {
     try {
       const Token = localStorage.getItem("access_token");
 
-      const response = await fetch('https://backend-booking.appointroll.com/api/delete-account', {
+      const response = await fetch('https://api.appointroll.com/api/delete-account', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

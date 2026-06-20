@@ -11,7 +11,7 @@ export function verifyCode(appointmentId, Datacode) {
             dispatch(customerAction.setLoading(true));
             
             const response = await axios.patch(
-                `https://backend-booking.appointroll.com/api/appointments/verify-code/${appointmentId}`,
+                `https://api.appointroll.com/api/appointments/verify-code/${appointmentId}`,
                 { 
                     code: Datacode.code,
                 

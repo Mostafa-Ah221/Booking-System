@@ -27,24 +27,21 @@ export default function VerifyForm() {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-
   useEffect(() => {
   if (!appointmentId) return;
-  
+  Cookies.remove(`verified_${appointmentId}`);
   const lastSent = Cookies.get(`last_code_sent_${appointmentId}`);
-  
+
   if (!lastSent) {
-  
-    handleGetCode(); 
+    handleGetCode();
   } else {
-    
     const expiryTime = parseInt(lastSent, 10) + 60 * 1000;
     const timeLeft = Math.floor((expiryTime - Date.now()) / 1000);
-    
+
     if (timeLeft > 0) {
       setCountdown(timeLeft);
     } else {
-      handleGetCode(); 
+      handleGetCode();
     }
   }
 }, [appointmentId]);
@@ -92,35 +89,39 @@ console.log(appointmentId);
     }
   };
 
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+const handleVerify = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    try {
-      const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/appointments/verify-code/${appointmentId}`,
-        { code: code.join("") }
-      );
+  try {
+    const response = await axios.post(
+      `https://api.appointroll.com/api/appointments/verify-code/${appointmentId}`,
+      { code: code.join("") }
+    );
 
-      if (response.data.message === 422) {
-        throw new Error(response.data.message );
-      }
-
-      if (response.data.message === 200) {
-        Cookies.set(`verified_${appointmentId}`, "true", { expires: 1 }); 
-        setIsSuccess(true);
-
-        setTimeout(() => {
-          navigate(`/manage?app_id=${appointmentId}`);
-        }, 1000);
-      }
-    } catch (err) {
-      setError(err.response.data.errors.code[0]);
-    } finally {
-      setLoading(false);
+    if (response.data.message === 200) {
+      Cookies.set(`verified_${appointmentId}`, "true", { expires: 1 });
+      setIsSuccess(true);
+      setTimeout(() => {
+        navigate(`/manage?app_id=${appointmentId}`);
+      }, 1000);
+    } else {
+      const errorMsg = response.data?.data?.message || "Something went wrong.";
+      toast.error(errorMsg);
+      setError(errorMsg);
     }
-  };
+  } catch (err) {
+    const errorMsg =
+      err.response?.data?.data?.message ||
+      err.response?.data?.message ||
+      "Something went wrong.";
+    toast.error(errorMsg);
+    setError(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
 const handleGetCode = async () => {
   setResendLoading(true);
@@ -129,7 +130,7 @@ const handleGetCode = async () => {
 
   try {
     const response = await axios.get(
-      `https://backend-booking.appointroll.com/api/appointments/verify/${appointmentId}`
+      `https://api.appointroll.com/api/appointments/verify/${appointmentId}`
     );
 
 

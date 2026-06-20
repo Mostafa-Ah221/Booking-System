@@ -143,14 +143,15 @@ const FooterSection = () => (
         </a>
       )}
     </div>
-    <p className='text-xs text-center' style={{color:textColor}}>Powered by Appoint Roll</p>
+    {!footer?.removeBrand && (
+  <p className='text-xs text-center' style={{color:textColor}}>Powered by Appoint Roll</p>
+)}
   </div>
 );
 
   if (layout === 'sleek') {
     return (
       <div className="flex flex-col md:flex-row h-full">
-        {/* Left Sidebar - Full width on mobile, 1/4 on desktop */}
         <div 
           className="w-full md:w-1/4 text-white p-4 md:p-8"
           style={{ backgroundColor: secondaryColor, borderRight: `1px solid #100f0f14` }}
@@ -259,7 +260,7 @@ const FooterSection = () => (
                       <button
                         key={day}
                         onClick={() => setSelectedDate(day)}
-                        className="py-1 md:py-2 rounded-full text-xs md:text-sm hover:bg-gray-100"
+                        className="py-1 md:py-2 rounded-full text-xs md:text-sm hover:bg-gray-100 "
                         style={selectedDate === day ? { 
                           backgroundColor: primaryColor,
                           color: textColor

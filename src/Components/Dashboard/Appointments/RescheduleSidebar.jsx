@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useState, useEffect, useRef } from 'react';
+import { useDispatch } from 'react-redux';
 import { X } from 'lucide-react';
 import { createAppointment } from '../../../redux/apiCalls/AppointmentCallApi';
 import DateTimeSelector from './DataTimeSections/DateTimeSelector';
-import Select from 'react-select';
 import TimezoneSelect from 'react-timezone-select';
 import toast from "react-hot-toast";
 
@@ -33,23 +32,19 @@ const RescheduleSidebar = ({
   const [error, setError] = useState(null);
   const [isInterviewsLoading, setIsInterviewsLoading] = useState(false);
 
-  const dispatch = useDispatch();
-  console.log(appointment);
+  const submitButtonRef = useRef(null);
+  const isTimezoneMenuOpenRef = useRef(false);
 
+  const dispatch = useDispatch();
   const WORKSPACE_TIMEZONE = 'UTC';
-  console.log(clientData);
 
   const isRescheduleMode = mode === 'reschedule' && appointment;
   const isScheduleMode = mode === 'schedule' && clientData;
 
-  const getTitle = () => {
-    return isRescheduleMode ? 'Reschedule Appointment' : 'Schedule New Appointment';
-  };
+  const getTitle = () => isRescheduleMode ? 'Reschedule Appointment' : 'Schedule New Appointment';
 
   const getButtonText = () => {
-    if (isProcessing) {
-      return isRescheduleMode ? 'Rescheduling...' : 'Scheduling...';
-    }
+    if (isProcessing) return isRescheduleMode ? 'Rescheduling...' : 'Scheduling...';
     return isRescheduleMode ? 'Reschedule Appointment' : 'Schedule Appointment';
   };
 
@@ -68,9 +63,9 @@ const RescheduleSidebar = ({
       }
 
       if (isRescheduleMode && appointment?.interview_id) {
-        const currentInterview = interviews.find((interview) => {
-          return interview.id.toString() === appointment.interview_id.toString();
-        });
+        const currentInterview = interviews.find((interview) =>
+          interview.id.toString() === appointment.interview_id.toString()
+        );
         if (currentInterview) {
           setSelectedInterview(currentInterview);
         } else if (interviews?.length > 0) {
@@ -84,22 +79,6 @@ const RescheduleSidebar = ({
     }
   }, [isOpen, appointment, interviews, mode, clientData, isRescheduleMode, isInterviewsLoading, dispatch]);
 
-  // ✅ التعديل: Enter listener على مستوى الـ Sidebar كله
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e) => {
-      if (e.key === "Enter" && !isProcessing) {
-        // تجنب التفعيل لو المستخدم داخل dropdown مفتوح
-        if (showInterviewDropdown) return;
-        handleSubmit();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isProcessing, showInterviewDropdown, selectedDate, selectedTime, selectedInterview, selectedTimeZone]);
-
   const handleInterviewSelect = (interview) => {
     setSelectedInterview(interview);
     setSelectedDate(null);
@@ -107,8 +86,6 @@ const RescheduleSidebar = ({
     setShowInterviewDropdown(false);
     setError(null);
   };
-
-  console.log(appointment);
 
   const handleSubmit = async () => {
     if (!selectedDate || !selectedTime || !selectedInterview || !selectedTimeZone) {
@@ -120,7 +97,9 @@ const RescheduleSidebar = ({
     setError(null);
 
     const formattedDate = selectedDate.toLocaleDateString('en-CA');
-    const formattedTime = selectedTime;
+    const formattedTime = selectedTime?.split(':').length === 2 
+      ? `${selectedTime}:00` 
+      : selectedTime;
 
     try {
       let result;
@@ -132,7 +111,6 @@ const RescheduleSidebar = ({
           end_time: selectedInterview?.type === "resource" ? endTime : null,
           time_zone: selectedTimeZone,
         };
-        console.log(rescheduleData);
         result = await dispatch(rescheduleAppointment(appointment.id, rescheduleData));
       } else if (isScheduleMode) {
         const scheduleData = {
@@ -148,7 +126,6 @@ const RescheduleSidebar = ({
 
       if (result && result.success) {
         onClose();
-        
         if (isRescheduleMode && onRescheduleSuccess) {
           onRescheduleSuccess();
         } else if (isScheduleMode && onScheduleSuccess) {
@@ -178,6 +155,25 @@ const RescheduleSidebar = ({
     }
   };
 
+  // ✅ handler مركزي على الـ container
+  const handleContainerKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    if (isTimezoneMenuOpenRef.current) return;
+    if (isProcessing) return;
+    if (e.target.tagName === "BUTTON") return;
+
+    // ✅ input عادي مش timezone → اتركه
+    if (
+      e.target.tagName === "INPUT" &&
+      !e.target.closest?.('.react-timezone-select')
+    ) return;
+
+    if (!selectedDate || !selectedTime || !selectedInterview || !selectedTimeZone) return;
+
+    e.preventDefault();
+    handleSubmit();
+  };
+
   if (!isOpen) return null;
 
   const currentClient = isRescheduleMode ? appointment : clientData;
@@ -189,7 +185,11 @@ const RescheduleSidebar = ({
         onClick={onClose}
       />
       
-      <div className="fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
+      {/* ✅ onKeyDown هنا بدل document.addEventListener */}
+      <div
+        className="fixed right-0 top-0 h-full w-full md:w-2/3 lg:w-1/2 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out"
+        onKeyDown={handleContainerKeyDown}
+      >
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-lg font-semibold">{getTitle()}</h2>
           <button
@@ -219,7 +219,6 @@ const RescheduleSidebar = ({
               </div>
             )}
 
-            {/* Select Interview */}
             <div className="mb-6">
               <h3 className="text-sm font-medium text-gray-700 mb-3">Select Interview</h3>
               <div className="relative">
@@ -277,13 +276,14 @@ const RescheduleSidebar = ({
               </div>
             </div>
 
-            {/* Time Zone */}
             <div className="mb-6">
               <h3 className="text-sm font-medium text-gray-700 mb-3">Select Time Zone</h3>
               <div className="border border-gray-300 rounded-lg">
                 <TimezoneSelect
                   value={selectedTimeZone}
                   onChange={(timezone) => setSelectedTimeZone(timezone?.value || null)}
+                  onMenuOpen={() => { isTimezoneMenuOpenRef.current = true; }}
+                  onMenuClose={() => { isTimezoneMenuOpenRef.current = false; }}
                   className="react-timezone-select w-full"
                   classNamePrefix="select"
                   styles={{
@@ -347,6 +347,7 @@ const RescheduleSidebar = ({
 
           <div className="p-6 border-t bg-white sticky bottom-0">
             <button
+              ref={submitButtonRef}
               onClick={handleSubmit}
               disabled={!selectedDate || !selectedTime || !selectedInterview || !selectedTimeZone || isProcessing}
               className={`w-full py-3 rounded-lg font-medium transition-colors ${

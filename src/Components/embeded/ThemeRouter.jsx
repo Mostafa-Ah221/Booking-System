@@ -21,13 +21,13 @@ console.log(id);
       let apiUrl = '';
       
       if (id) {
-        apiUrl = `https://backend-booking.appointroll.com/api/public/book/resource?interview_share_link=${id}`;
+        apiUrl = `https://api.appointroll.com/api/public/book/resource?interview_share_link=${id}`;
       } else if (idSpace) {
-        apiUrl = `https://backend-booking.appointroll.com/api/public/book/resource?workspace_share_link=${idSpace}`;
+        apiUrl = `https://api.appointroll.com/api/public/book/resource?workspace_share_link=${idSpace}`;
       } else if (idAdmin) {
-        apiUrl = `https://backend-booking.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`;
+        apiUrl = `https://api.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`;
       } else if (idCustomer) {
-        apiUrl = `https://backend-booking.appointroll.com/api/public/book/resource?staff_share_link=${idCustomer}`;
+        apiUrl = `https://api.appointroll.com/api/public/book/resource?staff_share_link=${idCustomer}`;
       } else {
         setTheme(null);
         setLoading(false);

@@ -45,6 +45,7 @@
     "react-select": "^5.10.2",
     "react-select-timezone": "^1.0.0",
     "react-timezone-select": "^3.2.8",
+    "recharts": "^3.8.1",
     "world-currencies": "^0.0.11",
     "yup": "^1.6.1"
   },

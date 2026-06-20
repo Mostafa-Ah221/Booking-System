@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Edit, User, Save, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Edit, User, Save, X, Trash2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateStaff } from '../../../../../redux/apiCalls/StaffCallApi';
 import { useParams } from 'react-router-dom';
@@ -7,7 +7,6 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { IoIosCamera } from 'react-icons/io';
-import { CgProfile } from 'react-icons/cg';
 import { usePermission } from '../../../../hooks/usePermission';
 import ImageUploadCrop from '../../../../Dashboard/InterviewsPages/InterViewPage/ImageUploadCrop';
 
@@ -17,12 +16,12 @@ export default function StaffProfile({ staff: staffResponse }) {
   const { id } = useParams();
   const canEditStaff = usePermission("edit staff");
   
-  // Extract actual staff data from response
   const staff = staffResponse?.staff || staffResponse;
 
   const [isEditing, setIsEditing] = useState(false);
   const [isImageUploadOpen, setIsImageUploadOpen] = useState(false);
   const [displayImage, setDisplayImage] = useState(staff?.photo || null);
+  const [removePhoto, setRemovePhoto] = useState(false); // ✅ NEW
   const [phoneError, setPhoneError] = useState("");
 
   const [formData, setFormData] = useState({
@@ -40,7 +39,6 @@ export default function StaffProfile({ staff: staffResponse }) {
 
   const [errors, setErrors] = useState({});
 
-  // Function to get phone value for PhoneInput
   const getPhoneValue = () => {
     if (formData.code_phone && formData.phone) {
       return formData.code_phone.replace('+', '') + formData.phone;
@@ -50,17 +48,9 @@ export default function StaffProfile({ staff: staffResponse }) {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-    // Clear error when typing
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
@@ -74,7 +64,6 @@ export default function StaffProfile({ staff: staffResponse }) {
       code_phone: `+${dialCode}`,
     }));
 
-    // Validate phone number
     if (!phoneOnly || phoneOnly.trim().length === 0) {
       setPhoneError("Please enter a valid phone number");
       return;
@@ -91,18 +80,22 @@ export default function StaffProfile({ staff: staffResponse }) {
   };
 
   const handleImageUpdate = (imageFile) => {
-    setFormData(prev => ({
-      ...prev,
-      photo: imageFile
-    }));
+    setFormData(prev => ({ ...prev, photo: imageFile }));
     setDisplayImage(URL.createObjectURL(imageFile));
+    setRemovePhoto(false); // ✅ if user picks new photo, cancel remove
     setIsImageUploadOpen(false);
   };
 
   const handleImageClick = () => {
-    if (isEditing) {
-      setIsImageUploadOpen(true);
-    }
+    if (isEditing) setIsImageUploadOpen(true);
+  };
+
+  // ✅ NEW: handle remove photo
+  const handleRemovePhoto = (e) => {
+    e.stopPropagation();
+    setDisplayImage(null);
+    setRemovePhoto(true);
+    setFormData(prev => ({ ...prev, photo: null }));
   };
 
   const handleEditClick = () => {
@@ -120,6 +113,7 @@ export default function StaffProfile({ staff: staffResponse }) {
       new_password_confirmation: ''
     });
     setDisplayImage(staff?.photo || null);
+    setRemovePhoto(false); // ✅ reset on edit start
     setPhoneError("");
   };
 
@@ -127,7 +121,6 @@ export default function StaffProfile({ staff: staffResponse }) {
     setIsEditing(false);
     setErrors({});
     setPhoneError("");
-    // Reset to original values
     setFormData({
       name: staff?.name || '',
       email: staff?.email || '',
@@ -141,26 +134,21 @@ export default function StaffProfile({ staff: staffResponse }) {
       new_password_confirmation: ''
     });
     setDisplayImage(staff?.photo || null);
+    setRemovePhoto(false); // ✅ reset on cancel
   };
 
   const handleSaveClick = async () => {
     setErrors({});
 
-    // Validate phone
-    if (phoneError) {
-      return;
-    }
+    if (phoneError) return;
 
-    // Validate new password confirmation
     if (formData.new_password && formData.new_password !== formData.new_password_confirmation) {
       setErrors({ new_password_confirmation: 'Passwords do not match' });
       return;
     }
 
-    // Create FormData for file upload
     const submissionData = new FormData();
     
-    // Add all non-empty fields to FormData
     if (formData.name) submissionData.append('name', formData.name);
     if (formData.email) submissionData.append('email', formData.email);
     if (formData.code_phone) submissionData.append('code_phone', formData.code_phone);
@@ -168,9 +156,13 @@ export default function StaffProfile({ staff: staffResponse }) {
     submissionData.append('status', formData.status);
     submissionData.append('over_time', formData.over_time);
     
-    // Handle photo upload - only if it's a new File object
     if (formData.photo instanceof File) {
       submissionData.append('photo', formData.photo);
+    }
+
+    // ✅ append remove_photo if user clicked Remove
+    if (removePhoto) {
+      submissionData.append('remove_photo', 1);
     }
     
     if (formData.password) submissionData.append('password', formData.password);
@@ -179,16 +171,11 @@ export default function StaffProfile({ staff: staffResponse }) {
       submissionData.append('new_password_confirmation', formData.new_password_confirmation);
     }
 
-    // Debug: Print FormData contents
-    console.log("FormData contents:");
-    for (let [key, value] of submissionData.entries()) {
-      console.log(`${key}: ${value}`);
-    }
-
     const result = await dispatch(updateStaff(id, submissionData));
 
     if (result.success) {
       setIsEditing(false);
+      setRemovePhoto(false); // ✅ reset after save
       setFormData(prev => ({
         ...prev,
         password: '',
@@ -196,15 +183,11 @@ export default function StaffProfile({ staff: staffResponse }) {
         new_password_confirmation: ''
       }));
     } else {
-      if (result.errors) {
-        setErrors(result.errors);
-      }
+      if (result.errors) setErrors(result.errors);
     }
   };
 
-  const getErrorMessage = (field) => {
-    return errors[field] || '';
-  };
+  const getErrorMessage = (field) => errors[field] || '';
 
   const renderProfileImage = () => {
     if (loading && !displayImage) {
@@ -222,9 +205,7 @@ export default function StaffProfile({ staff: staffResponse }) {
             className='w-full h-full rounded-full object-cover' 
             src={displayImage} 
             alt="Profile"
-            onError={(e) => {
-              setDisplayImage(null);
-            }}
+            onError={() => setDisplayImage(null)}
           />
           {isEditing && (
             <span className='w-full h-full absolute top-0 left-0 flex justify-center items-center group'>
@@ -250,7 +231,6 @@ export default function StaffProfile({ staff: staffResponse }) {
     );
   };
 
-  // If no staff data after extraction
   if (!staff) {
     return (
       <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
@@ -265,20 +245,35 @@ export default function StaffProfile({ staff: staffResponse }) {
       <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-6">
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
-            {/* Avatar */}
-            <div
-              className={`relative w-14 h-14 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 ${
-                isEditing ? 'cursor-pointer hover:opacity-80' : ''
-              }`}
-              onClick={handleImageClick}
-            >
-              {renderProfileImage()}
+            {/* ✅ Avatar with Remove button */}
+            <div className="relative flex-shrink-0">
+              <div
+                className={`relative w-14 h-14 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden ${
+                  isEditing ? 'cursor-pointer hover:opacity-80' : ''
+                }`}
+                onClick={handleImageClick}
+              >
+                {renderProfileImage()}
+              </div>
+
+              {/* ✅ Remove button - only show when editing AND there's a photo */}
+              {isEditing && displayImage && (
+                <button
+                  onClick={handleRemovePhoto}
+                  type="button"
+                  className="absolute -top-3 -right-3 flex items-center gap-1 bg-white border border-red-200 hover:border-red-400 hover:bg-red-50 rounded-full px-2 py-1 shadow-sm transition-all duration-200 z-10 group"
+                  title="Remove photo"
+                >
+                  <Trash2 size={10} className="text-red-400 group-hover:text-red-500 transition-colors duration-200" />
+                  <span className="text-xs text-red-400 group-hover:text-red-500 font-medium transition-colors duration-200 leading-none">Remove</span>
+                </button>
+              )}
             </div>
 
             {/* Name, Email, Role */}
             <div className="flex-1 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-1">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900  truncate max-w-[200px]">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate max-w-[200px]">
                   {staff?.name}
                 </h2>
                 <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2 sm:px-3 py-1 rounded-full w-fit">
@@ -376,7 +371,7 @@ export default function StaffProfile({ staff: staffResponse }) {
             )}
           </div>
 
-          {/* Phone Number with PhoneInput */}
+          {/* Phone */}
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">Phone Number</label>
             {isEditing ? (
@@ -460,10 +455,9 @@ export default function StaffProfile({ staff: staffResponse }) {
             )}
           </div>
 
-          {/* Password Fields - Only show when editing */}
+          {/* Password Fields */}
           {isEditing && (
             <>
-              {/* Current Password */}
               <div className="lg:col-span-2">
                 <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">
                   Current Password <span className="text-xs text-gray-400">(Required only when changing password)</span>
@@ -484,7 +478,6 @@ export default function StaffProfile({ staff: staffResponse }) {
                 )}
               </div>
 
-              {/* New Password */}
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">New Password</label>
                 <input
@@ -501,7 +494,6 @@ export default function StaffProfile({ staff: staffResponse }) {
                 )}
               </div>
 
-              {/* Confirm New Password */}
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-500 mb-2">Confirm New Password</label>
                 <input
@@ -522,7 +514,6 @@ export default function StaffProfile({ staff: staffResponse }) {
         </div>
       </div>
 
-      {/* ImageUploadCrop Component */}
       <ImageUploadCrop
         isOpen={isImageUploadOpen}
         onClose={() => setIsImageUploadOpen(false)}

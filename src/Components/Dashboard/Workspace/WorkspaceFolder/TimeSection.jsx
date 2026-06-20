@@ -43,6 +43,17 @@ const TimeSection = ({
     7: 'Saturday',
   };
 
+  // Convert 24h "HH:MM" → "H:MM AM/PM"
+  const to12Hour = (time24) => {
+    if (!time24) return '';
+    const [hourStr, minute] = time24.split(':');
+    let hour = parseInt(hourStr, 10);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    if (hour === 0) hour = 12;
+    else if (hour > 12) hour -= 12;
+    return `${hour}:${minute} ${period}`;
+  };
+
   useEffect(() => {
     if (workspace) {
       const timezoneValue = availabilityMode === 'available' 
@@ -120,7 +131,7 @@ const TimeSection = ({
         .map(day => ({
           day_id: day.day_id,
           times: day.timeSlots.map(slot => ({
-            from: slot.from,
+            from: slot.from,  // still stored as 24h internally
             to: slot.to,
           }))
         }));
@@ -152,6 +163,7 @@ const TimeSection = ({
     }
   };
 
+  // Returns 24h strings internally; display is handled by to12Hour()
   const generateTimeOptions = (isToField = false, fromTime = null) => {
     const options = [];
     
@@ -291,6 +303,7 @@ const TimeSection = ({
     const currentDay = weekDays.find(day => day.day_id === dayId);
     const currentSlot = currentDay?.timeSlots[slotIndex];
     
+    // timeOptions are 24h strings internally
     const timeOptions = field === 'to' 
       ? generateTimeOptions(true, currentSlot?.from)
       : generateTimeOptions(false);
@@ -320,7 +333,7 @@ const TimeSection = ({
       : 'top-full mt-1';
 
     return (
-      <div ref={containerRef} className="relative w-full sm:w-20">
+      <div ref={containerRef} className="relative w-full sm:w-28">
         <button 
           ref={buttonRef}
           onClick={handleToggle}
@@ -329,14 +342,15 @@ const TimeSection = ({
           }`}
           disabled={isTimeSectionDisabled || isSaving}
         >
-          <span className="text-xs sm:text-sm">{value}</span>
+          {/* Display in 12h format */}
+          <span className="text-xs sm:text-sm">{to12Hour(value)}</span>
           <ChevronDown size={14} className={`sm:w-4 sm:h-4 transition-transform duration-200 ${selectedTimeDropdown === dropdownId ? 'transform rotate-180' : ''}`} />
         </button>
         
         {selectedTimeDropdown === dropdownId && !isTimeSectionDisabled && !isSaving && (
           <div 
             className={`absolute z-30 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto ${menuPositionClass}`}
-            style={{ minWidth: '80px' }}
+            style={{ minWidth: '110px' }}
           >
             {timeOptions.length > 0 ? (
               timeOptions.map((option, idx) => (
@@ -344,11 +358,12 @@ const TimeSection = ({
                   key={idx} 
                   className="px-2 sm:px-3 py-2 text-xs sm:text-sm hover:bg-gray-100 cursor-pointer transition-colors duration-150"
                   onClick={() => {
+                    // Save internally as 24h, display as 12h
                     handleTimeChange(dayId, slotIndex, field, option);
                     handleTimeDropdownToggle(null);
                   }}
                 >
-                  {option}
+                  {to12Hour(option)}
                 </div>
               ))
             ) : (

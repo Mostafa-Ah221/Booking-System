@@ -12,119 +12,112 @@ import { usePermission } from '../../hooks/usePermission';
 import { Calendar, ChevronDown, FileText, User, Users, Filter, X } from 'lucide-react';
 import axiosInstance from '../../pages/axiosInstance';
 
+// ─── retry helper: لا retry على 429 ────────────────────────────────────────
+const safeRetry = (failureCount, error) => {
+    if (error?.response?.status === 429) return false;
+    return failureCount < 1;
+};
+
+const STALE_TIME = 10 * 60 * 1000;  // 10 دقايق
+const GC_TIME    = 15 * 60 * 1000;  // 15 دقيقة
+
 export default function Analytics() {
     const canViewAppointment = usePermission("view appointment");
-    const canViewInterview = usePermission("view interview");
-    const canViewStaff = usePermission("view staff");
-    const canViewClients = usePermission("view clients");
+    const canViewInterview   = usePermission("view interview");
+    const canViewStaff       = usePermission("view staff");
+    const canViewClients     = usePermission("view clients");
 
     const [activeTab, setActiveTab] = useState('appointments');
 
     useEffect(() => {
-        if (canViewAppointment !== undefined || canViewInterview !== undefined || 
-            canViewStaff !== undefined || canViewClients !== undefined) {
-            
-            if (canViewAppointment) {
-                setActiveTab('appointments');
-            } else if (canViewInterview) {
-                setActiveTab('interviews');
-            } else if (canViewStaff) {
-                 setActiveTab('recruiters');
-            } else if (canViewClients) {
-                setActiveTab('customers');
-            }
+        if (
+            canViewAppointment !== undefined ||
+            canViewInterview   !== undefined ||
+            canViewStaff       !== undefined ||
+            canViewClients     !== undefined
+        ) {
+            if      (canViewAppointment) setActiveTab('appointments');
+            else if (canViewInterview)   setActiveTab('interviews');
+            else if (canViewStaff)       setActiveTab('recruiters');
+            else if (canViewClients)     setActiveTab('customers');
         }
     }, [canViewAppointment, canViewInterview, canViewStaff, canViewClients]);
 
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen]             = useState(false);
     const [showAppointmentFilters, setShowAppointmentFilters] = useState(false);
     const dropdownRef = useRef(null);
-
     const [dateError, setDateError] = useState('');
 
     const [filters, setFilters] = useState({
-        appointments: {
-            start_date: '',
-            end_date: ''
-        },
-        interviews: {
-            start_price_interval: '',
-            end_price_interval: ''
-        },
-        recruiters: {
-            start_date: '',
-            end_date: ''
-        },
-        customers: {
-            start_date: '',
-            end_date: ''
-        }
+        appointments: { start_date: '', end_date: '' },
+        interviews:   { start_price_interval: '', end_price_interval: '' },
+        recruiters:   { start_date: '', end_date: '' },
+        customers:    { start_date: '', end_date: '' },
     });
 
     const [localAppointmentFilters, setLocalAppointmentFilters] = useState(filters.appointments);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
                 setIsDropdownOpen(false);
             }
         };
-
         document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Helper function لبناء query string
+    // ─── query string builder ────────────────────────────────────────────────
     const buildQueryString = (params) => {
-        const searchParams = new URLSearchParams();
-        Object.entries(params).forEach(([key, value]) => {
-            if (value && value.toString().trim() !== '') {
-                searchParams.append(key, value);
-            }
+        const sp = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => {
+            if (v && v.toString().trim() !== '') sp.append(k, v);
         });
-        const queryString = searchParams.toString();
-        return queryString ? `?${queryString}` : '';
+        const qs = sp.toString();
+        return qs ? `?${qs}` : '';
     };
 
+    // ─── fetch functions ─────────────────────────────────────────────────────
     const fetchAppointmentAnalytics = async () => {
-        const queryString = buildQueryString(filters.appointments);
-        const response = await axiosInstance.get(`/analytics/dashboard/appointments${queryString}`);
-        return response.data;
+        const qs = buildQueryString(filters.appointments);
+        const res = await axiosInstance.get(`/analytics/dashboard/appointments${qs}`);
+        return res.data;
     };
 
     const fetchInterviewAnalytics = async () => {
-        const queryString = buildQueryString(filters.interviews);
-        const response = await axiosInstance.get(`/analytics/dashboard/interviews${queryString}`);
-        return response.data;
+        const qs = buildQueryString(filters.interviews);
+        const res = await axiosInstance.get(`/analytics/dashboard/interviews${qs}`);
+        return res.data;
     };
 
     const fetchRecruiterAnalytics = async () => {
-        const queryString = buildQueryString(filters.recruiters);
-        const response = await axiosInstance.get(`/analytics/dashboard/recruiters${queryString}`);
-        return response.data;
+        const qs = buildQueryString(filters.recruiters);
+        const res = await axiosInstance.get(`/analytics/dashboard/recruiters${qs}`);
+        return res.data;
     };
 
     const fetchClientsAnalytics = async () => {
-        const queryString = buildQueryString(filters.customers);
-        const response = await axiosInstance.get(`/analytics/dashboard/clients${queryString}`);
-        return response.data;
+        const qs = buildQueryString(filters.customers);
+        const res = await axiosInstance.get(`/analytics/dashboard/clients${qs}`);
+        return res.data;
     };
 
+    // ─── queries (بدون refetchInterval + retry آمن) ──────────────────────────
     const {
         data: appointmentsData,
         isLoading: appointmentsLoading,
         isError: appointmentsError,
         error: appointmentsErrorDetails,
-        refetch: refetchAppointments
+        refetch: refetchAppointments,
     } = useQuery({
-        queryKey: ['analytics-appointments', filters.appointments],
-        queryFn: fetchAppointmentAnalytics,
-        enabled: Boolean(canViewAppointment),
-        refetchInterval: canViewAppointment ? 5 * 60 * 1000 : false,
-        staleTime: 2 * 60 * 1000,
-        retry: 3,
+        queryKey:      ['analytics-appointments', filters.appointments],
+        queryFn:       fetchAppointmentAnalytics,
+        enabled:       Boolean(canViewAppointment),
+        refetchInterval: false,
+        staleTime:     STALE_TIME,
+        gcTime:        GC_TIME,
+        retry:         safeRetry,
+        retryDelay:    3000,
     });
 
     const {
@@ -132,14 +125,16 @@ export default function Analytics() {
         isLoading: interviewsLoading,
         isError: interviewsError,
         error: interviewsErrorDetails,
-        refetch: refetchInterviews
+        refetch: refetchInterviews,
     } = useQuery({
-        queryKey: ['analytics-interviews', filters.interviews],
-        queryFn: fetchInterviewAnalytics,
-        enabled: Boolean(canViewInterview),
-        refetchInterval: canViewInterview ? 5 * 60 * 1000 : false,
-        staleTime: 2 * 60 * 1000,
-        retry: 3,
+        queryKey:      ['analytics-interviews', filters.interviews],
+        queryFn:       fetchInterviewAnalytics,
+        enabled:       Boolean(canViewInterview),
+        refetchInterval: false,
+        staleTime:     STALE_TIME,
+        gcTime:        GC_TIME,
+        retry:         safeRetry,
+        retryDelay:    3000,
     });
 
     const {
@@ -147,14 +142,16 @@ export default function Analytics() {
         isLoading: recruitersLoading,
         isError: recruitersError,
         error: recruitersErrorDetails,
-        refetch: refetchRecruiters
+        refetch: refetchRecruiters,
     } = useQuery({
-        queryKey: ['analytics-recruiters', filters.recruiters],
-        queryFn: fetchRecruiterAnalytics,
-        enabled: Boolean(canViewStaff),
-        refetchInterval: canViewStaff ? 5 * 60 * 1000 : false,
-        staleTime: 2 * 60 * 1000,
-        retry: 3,
+        queryKey:      ['analytics-recruiters', filters.recruiters],
+        queryFn:       fetchRecruiterAnalytics,
+        enabled:       Boolean(canViewStaff),
+        refetchInterval: false,
+        staleTime:     STALE_TIME,
+        gcTime:        GC_TIME,
+        retry:         safeRetry,
+        retryDelay:    3000,
     });
 
     const {
@@ -162,146 +159,101 @@ export default function Analytics() {
         isLoading: clientsLoading,
         isError: clientsError,
         error: clientsErrorDetails,
-        refetch: refetchClients
+        refetch: refetchClients,
     } = useQuery({
-        queryKey: ['analytics-clients', filters.customers],
-        queryFn: fetchClientsAnalytics,
-        enabled: Boolean(canViewClients), 
-        refetchInterval: canViewClients ? 5 * 60 * 1000 : false,
-        staleTime: 2 * 60 * 1000,
-        retry: 3,
+        queryKey:      ['analytics-clients', filters.customers],
+        queryFn:       fetchClientsAnalytics,
+        enabled:       Boolean(canViewClients),
+        refetchInterval: false,
+        staleTime:     STALE_TIME,
+        gcTime:        GC_TIME,
+        retry:         safeRetry,
+        retryDelay:    3000,
     });
 
+    // ─── helpers ─────────────────────────────────────────────────────────────
     const analyticsData = {
         appointments: appointmentsData,
-        interviews: interviewsData,
-        recruiters: recruitersData,
-        customers: clientsData
+        interviews:   interviewsData,
+        recruiters:   recruitersData,
+        customers:    clientsData,
     };
 
-    const getActiveData = () => {
-        switch(activeTab) {
-            case 'appointments':
-                return analyticsData.appointments;
-            case 'interviews':
-                return analyticsData.interviews;
-            case 'recruiters': 
-                return analyticsData.recruiters;
-            case 'customers':
-                return analyticsData.customers;
-            default:
-                return analyticsData.appointments;
-        }
-    };
+    const getActiveData = () => analyticsData[activeTab] ?? analyticsData.appointments;
 
     const updateFilters = (tabId, newFilters) => {
-        setFilters(prevFilters => ({
-            ...prevFilters,
-            [tabId]: {
-                ...prevFilters[tabId],
-                ...newFilters
-            }
-        }));
+        setFilters(prev => ({ ...prev, [tabId]: { ...prev[tabId], ...newFilters } }));
     };
 
-    const getActiveFilters = () => {
-        return filters[activeTab] || {};
-    };
+    const getActiveFilters = () => filters[activeTab] || {};
 
     const handleAppointmentFilterChange = (key, value) => {
-        setDateError(''); 
-        setLocalAppointmentFilters(prev => ({
-            ...prev,
-            [key]: value
-        }));
+        setDateError('');
+        setLocalAppointmentFilters(prev => ({ ...prev, [key]: value }));
     };
 
     const applyAppointmentFilters = () => {
         setDateError('');
-        
         if (localAppointmentFilters.start_date && localAppointmentFilters.end_date) {
-            const startDate = new Date(localAppointmentFilters.start_date);
-            const endDate = new Date(localAppointmentFilters.end_date);
-            
-            if (endDate < startDate) {
+            if (new Date(localAppointmentFilters.end_date) < new Date(localAppointmentFilters.start_date)) {
                 setDateError('Start date cannot be after end date');
-                return; 
+                return;
             }
         }
-        
         updateFilters('appointments', localAppointmentFilters);
         setShowAppointmentFilters(false);
     };
 
     const clearAppointmentFilters = () => {
-        setDateError(''); 
-        const clearedFilters = {
-            start_date: '',
-            end_date: ''
-        };
-        setLocalAppointmentFilters(clearedFilters);
-        updateFilters('appointments', clearedFilters);
+        setDateError('');
+        const cleared = { start_date: '', end_date: '' };
+        setLocalAppointmentFilters(cleared);
+        updateFilters('appointments', cleared);
     };
 
     const hasActiveAppointmentFilters = filters.appointments.start_date || filters.appointments.end_date;
 
     const tabs = [
-    canViewAppointment && { id: 'appointments', label: 'Appointments', icon: <Calendar size={18} /> },
-    canViewInterview && { id: 'interviews', label: 'Interviews', icon: <FileText size={18} />},
-    canViewStaff && { id: 'recruiters', label: 'Recruiter', icon: <Users size={18} /> },
-    canViewClients && { id: 'customers', label: 'Clients', icon: <User size={18} /> }
-].filter(Boolean);
+        canViewAppointment && { id: 'appointments', label: 'Appointments', icon: <Calendar size={18} /> },
+        canViewInterview   && { id: 'interviews',   label: 'Interviews',   icon: <FileText size={18} /> },
+        canViewStaff       && { id: 'recruiters',   label: 'Recruiter',    icon: <Users size={18} /> },
+        canViewClients     && { id: 'customers',    label: 'Clients',      icon: <User size={18} /> },
+    ].filter(Boolean);
 
     const handleTabChange = (tabId) => {
         setActiveTab(tabId);
         setIsDropdownOpen(false);
     };
-    
+
     const currentTab = tabs.find(tab => tab.id === activeTab);
 
-    const isLoading = (
+    const isLoading =
         (canViewAppointment && appointmentsLoading) ||
-        (canViewInterview && interviewsLoading) ||
-        (canViewStaff && recruitersLoading) ||
-        (canViewClients && clientsLoading)
-    );
-
-    const isError = (
-        (canViewAppointment && appointmentsError) ||
-        (canViewInterview && interviewsError) ||
-        (canViewStaff && recruitersError) ||
-        (canViewClients && clientsError)
-    );
-
-    const errors = [
-        canViewAppointment && appointmentsError && appointmentsErrorDetails,
-        canViewInterview && interviewsError && interviewsErrorDetails,
-        canViewStaff && recruitersError && recruitersErrorDetails,
-        canViewClients && clientsError && clientsErrorDetails
-    ].filter(Boolean);
+        (canViewInterview   && interviewsLoading)   ||
+        (canViewStaff       && recruitersLoading)   ||
+        (canViewClients     && clientsLoading);
 
     const refetchAll = () => {
         if (canViewAppointment) refetchAppointments();
-        if (canViewInterview) refetchInterviews();
-        if (canViewStaff) refetchRecruiters();
-        if (canViewClients) refetchClients();
+        if (canViewInterview)   refetchInterviews();
+        if (canViewStaff)       refetchRecruiters();
+        if (canViewClients)     refetchClients();
     };
 
     if (isLoading) {
         return (
             <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-                <div className="text-lg"> 
-                    <Loader/>
-                </div>
+                <Loader />
             </div>
         );
     }
 
+    // ─── render content ───────────────────────────────────────────────────────
     const renderActiveContent = () => {
-        const activeData = getActiveData();
+        const activeData    = getActiveData();
         const activeFilters = getActiveFilters();
 
-        switch(activeTab) {
+        switch (activeTab) {
             case 'appointments':
                 if (!canViewAppointment) return null;
                 return (
@@ -328,7 +280,6 @@ export default function Analytics() {
 
                             {showAppointmentFilters && (
                                 <div className="mt-4 pt-4 border-t border-gray-200">
-                                    {/* ✅ عرض رسالة الخطأ */}
                                     {dateError && (
                                         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                                             <div className="flex items-center">
@@ -339,12 +290,9 @@ export default function Analytics() {
                                             </div>
                                         </div>
                                     )}
-                                    
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Start Date
-                                            </label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                                             <input
                                                 type="date"
                                                 value={localAppointmentFilters.start_date || ''}
@@ -353,9 +301,7 @@ export default function Analytics() {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                End Date
-                                            </label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
                                             <input
                                                 type="date"
                                                 value={localAppointmentFilters.end_date || ''}
@@ -383,63 +329,64 @@ export default function Analytics() {
                             )}
                         </div>
 
-                       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-    <h3 className="text-lg font-semibold text-gray-900 mb-6">Appointment Statistics</h3>
-    <StatisticsCards data={activeData} />
-  </div>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-6">Appointment Statistics</h3>
+                            <StatisticsCards data={activeData} />
+                        </div>
 
-  {/* Charts Section */}
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-    <ChartsSection data={activeData} />
-  </div>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <ChartsSection data={activeData} />
+                        </div>
 
-  {/* Pie Chart + Calendar Side by Side */}
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <Chart2 data={activeData} />
-    </div>
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <CalendarAnalytics data={activeData} />
-    </div>
-  </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                <Chart2 data={activeData} />
+                            </div>
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                <CalendarAnalytics data={activeData} />
+                            </div>
+                        </div>
 
-  {/* Table */}
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-x-auto">
-    <AppointmentTable 
-      data={activeData} 
-      filters={activeFilters}
-      onFiltersChange={(newFilters) => updateFilters('appointments', newFilters)}
-    />
-  </div>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-x-auto">
+                            <AppointmentTable
+                                data={activeData}
+                                filters={activeFilters}
+                                onFiltersChange={(newFilters) => updateFilters('appointments', newFilters)}
+                            />
+                        </div>
                     </>
                 );
+
             case 'interviews':
                 if (!canViewInterview) return null;
                 return (
-                    <InterviewsContent 
-                        data={activeData} 
+                    <InterviewsContent
+                        data={activeData}
                         filters={activeFilters}
                         onFiltersChange={(newFilters) => updateFilters('interviews', newFilters)}
                     />
                 );
-           case 'recruiters': 
+
+            case 'recruiters':
                 if (!canViewStaff) return null;
                 return (
-                    <RecruitersContent 
-                        data={activeData} 
+                    <RecruitersContent
+                        data={activeData}
                         filters={activeFilters}
                         onFiltersChange={(newFilters) => updateFilters('recruiters', newFilters)}
                     />
                 );
+
             case 'customers':
                 if (!canViewClients) return null;
                 return (
-                    <ClientsContent 
-                        data={activeData} 
+                    <ClientsContent
+                        data={activeData}
                         filters={activeFilters}
                         onFiltersChange={(newFilters) => updateFilters('customers', newFilters)}
                     />
                 );
+
             default:
                 return null;
         }
@@ -449,8 +396,8 @@ export default function Analytics() {
         <div className="p-6 bg-gray-50 min-h-screen max-w-[27rem] md:max-w-[49rem] lg:max-w-full">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h1 className="text-2xl md:text-xl font-bold text-gray-900">Analytics Dashboard</h1>
-                
-                {/* Desktop Tabs - Hidden on mobile */}
+
+                {/* Desktop Tabs */}
                 <div className="hidden sm:flex bg-white rounded-lg shadow-sm border border-gray-200 p-1">
                     {tabs.map((tab) => (
                         <button
@@ -468,7 +415,7 @@ export default function Analytics() {
                     ))}
                 </div>
 
-                {/* Mobile Dropdown - Hidden on desktop */}
+                {/* Mobile Dropdown */}
                 <div className="sm:hidden relative" ref={dropdownRef}>
                     <button
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -478,13 +425,9 @@ export default function Analytics() {
                             {currentTab?.icon}
                             <span className="font-medium">{currentTab?.label}</span>
                         </div>
-                        <ChevronDown
-                            className={`w-4 h-4 transition-transform duration-200 ${
-                                isDropdownOpen ? 'rotate-180' : ''
-                            }`}
-                        />
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
-                    
+
                     {isDropdownOpen && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
                             {tabs.map((tab) => (
@@ -492,15 +435,15 @@ export default function Analytics() {
                                     key={tab.id}
                                     onClick={() => handleTabChange(tab.id)}
                                     className={`w-full flex items-center space-x-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-200 ${
-                                        activeTab === tab.id 
-                                            ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500' 
+                                        activeTab === tab.id
+                                            ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
                                             : 'text-gray-700'
                                     }`}
                                 >
                                     {tab.icon}
                                     <span className="font-medium">{tab.label}</span>
                                     {activeTab === tab.id && (
-                                        <div className="ml-auto w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <div className="ml-auto w-2 h-2 bg-blue-500 rounded-full" />
                                     )}
                                 </button>
                             ))}
@@ -508,7 +451,7 @@ export default function Analytics() {
                     )}
                 </div>
             </div>
-            
+
             {renderActiveContent()}
         </div>
     );

@@ -1,9 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchWhatsAppIntegrations, getWhatsAppSettingsByIntegrationId } from '../../../../redux/apiCalls/whatsAppCallApi';
 import IntegrationCategory from './integrationCategory';
 
-// ✅ Skeleton Card
 const SkeletonCard = () => (
   <div className="border border-gray-200 rounded-lg p-4 flex flex-col shadow-sm">
     <div className="flex justify-between items-center w-full">
@@ -18,7 +17,6 @@ const SkeletonCard = () => (
   </div>
 );
 
-// ✅ Skeleton Grid
 const SkeletonGrid = ({ count = 6 }) => (
   <div>
     <h2 className="text-sm font-medium text-gray-800 pb-2 my-7 relative 
@@ -32,7 +30,21 @@ const SkeletonGrid = ({ count = 6 }) => (
   </div>
 );
 
-const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigger, active }) => {
+function getPlanKey(plan) {
+  if (!plan || !Array.isArray(plan) || plan.length === 0) return 'free';
+  return (plan[0]?.name || 'free').toLowerCase();
+}
+
+function isPlanExpired(plan) {
+  if (!plan || !Array.isArray(plan) || plan.length === 0) return true;
+  const expireDate = plan[0]?.expire_date;
+  if (!expireDate) return false;
+  return new Date(expireDate) < new Date();
+}
+
+const WHATSAPP_ALLOWED_PLANS = ['premium'];
+
+const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshTrigger, active, plan, onLockedClick }) => {
   const dispatch = useDispatch();
   const { integrationsWhatsApp, loading } = useSelector(state => state.whatsApp);
   const [integrationsWithSettings, setIntegrationsWithSettings] = useState([]);
@@ -41,6 +53,10 @@ const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshT
   const lastRefreshTrigger = useRef(0);
   const isInitialized = useRef(false);
   const abortControllerRef = useRef(null);
+
+  const planKey = getPlanKey(plan);
+  const expired = isPlanExpired(plan);
+  const isLocked = !WHATSAPP_ALLOWED_PLANS.includes(planKey) || expired;
 
   useEffect(() => {
     if (!active || isInitialized.current) return;
@@ -83,7 +99,7 @@ const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshT
 
       setIntegrationsWithSettings(results);
     } catch (error) {
-      console.error("Error in checkIntegrationsSettings:", error);
+      console.error('Error in checkIntegrationsSettings:', error);
     } finally {
       setIsCheckingSettings(false);
     }
@@ -120,26 +136,29 @@ const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshT
     );
   }, []);
 
-  // ✅ عرض Skeleton لو لسه بيحمل
-  const isLoading = loading || isCheckingSettings || (active && integrationsWithSettings.length === 0);
-  if (isLoading) {
-    return <SkeletonGrid count={integrationsWhatsApp.length || 6} />;
-  }
-
-  const integrationItems = integrationsWithSettings.map((item) => ({
-    id: item.id,
-    name: item.name,
-    icon: generateIcon(item.name),
-    description: 'Send WhatsApp alerts to customers and users.',
-    connected: item.connected,
-    disabled: loading || isCheckingSettings
-  }));
-
-  const filteredItems = integrationItems.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchQuery.toLowerCase())
+  // ✅ كل الـ useMemo فوق أي early return
+  const integrationItems = useMemo(() =>
+    integrationsWithSettings.map((item) => ({
+      id: item.id,
+      name: item.name,
+      icon: generateIcon(item.name),
+      description: 'Send WhatsApp alerts to customers and users.',
+      connected: item.connected,
+      disabled: loading || isCheckingSettings,
+      locked: isLocked,
+    })), [integrationsWithSettings, loading, isCheckingSettings, isLocked, generateIcon]
   );
 
+  const filteredItems = useMemo(() =>
+    integrationItems.filter(item =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase())
+    ), [integrationItems, searchQuery]
+  );
+
+  // ✅ early returns بعد كل الـ hooks
+  const isLoading = loading || isCheckingSettings || (active && integrationsWithSettings.length === 0);
+  if (isLoading) return <SkeletonGrid count={integrationsWhatsApp.length || 6} />;
   if (filteredItems.length === 0) return null;
 
   return (
@@ -147,6 +166,7 @@ const WhatsAppCategory = ({ searchQuery, onConnectClick, onDeleteClick, refreshT
       category={{ title: 'WhatsApp', items: filteredItems }}
       onConnectClick={(serviceName, integrationId) => onConnectClick(serviceName, integrationId, 'whatsapp')}
       onDeleteClick={onDeleteClick}
+      onLockedClick={onLockedClick}
     />
   );
 };

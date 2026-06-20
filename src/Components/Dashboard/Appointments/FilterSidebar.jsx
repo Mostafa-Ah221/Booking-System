@@ -53,14 +53,12 @@ const FilterSidebar = ({
     }
   }, [currentFilters]);
 
-  // ✅ Enter listener — يشتغل Apply إلا لو المستخدم داخل search input
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
       if (e.key !== 'Enter') return;
 
-      // لو الـ focus على search input → متعملش Apply
       const tag = document.activeElement?.tagName;
       const type = document.activeElement?.type;
       if (tag === 'INPUT' && type === 'text') return;
@@ -83,12 +81,13 @@ const FilterSidebar = ({
 
   // ── Formatted lists ─────────────────────────────────────────────────────────
   const formattedInterviews = Array.isArray(interviews)
-    ? interviews.map(i => ({
-        id: i.id,
-        name: i.name || i.title || 'Untitled Interview',
-        initial: (i.name || i.title || 'UI').substring(0, 2).toUpperCase(),
-      }))
-    : [];
+  ? interviews.map(i => ({
+      id: i.id,
+      name: i.name || i.title || 'Untitled Interview',
+      initial: (i.name || i.title || 'UI').substring(0, 2).toUpperCase(),
+      workspace: i.workspace || i.workspace_name || null, // ← هنا
+    }))
+  : [];
 
   const formattedWorkspaces = Array.isArray(workspaces)
     ? workspaces.map(w => ({
@@ -338,7 +337,7 @@ const FilterSidebar = ({
                     </div>
                     <div className="max-h-48 overflow-y-auto border-t border-gray-200">
                       {filteredInterviews.length > 0 ? filteredInterviews.map(interview => (
-                        <div key={interview.id} className="flex items-center p-3 hover:bg-gray-50">
+                        <div key={interview.id} className="flex items-center px-3 py-1.5 hover:bg-gray-50">
                           <input
                             type="checkbox"
                             id={`interview-${interview.id}`}
@@ -352,6 +351,9 @@ const FilterSidebar = ({
                             </div>
                             <label htmlFor={`interview-${interview.id}`} className="text-sm text-gray-700 cursor-pointer truncate max-w-[150px]">
                               {interview.name}
+                              {interview.workspace && (
+                                <span className="block text-[11px] text-gray-400 font-normal">{interview.workspace}</span>
+                              )}
                             </label>
                           </div>
                         </div>

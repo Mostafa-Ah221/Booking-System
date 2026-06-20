@@ -14,7 +14,7 @@ const TimeSelectionSection2 = ({
   selectedEndTime = '',
   setSelectedEndTime,
   themeColor,
-   workspaceTimezone = 'Africa/Cairo',  
+  workspaceTimezone = 'Africa/Cairo',  
   userTimezone = 'Africa/Cairo',
 }) => {
   const [activeSelection, setActiveSelection] = useState('start');
@@ -26,32 +26,39 @@ const TimeSelectionSection2 = ({
   const [firstColor, secondColor] = primary.split("-");
   const textColor = colors?.text_color || "#ffffff";
 
- 
- 
   const timeToMinutes = (t) => (t ? +t.split(':')[0] * 60 + +t.split(':')[1] : 0);
 
+  // Convert 24h "HH:MM" → "H:MM AM/PM"
+  const to12Hour = (time24) => {
+    if (!time24) return '';
+    const [hourStr, minute] = time24.split(':');
+    let hour = parseInt(hourStr, 10);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    if (hour === 0) hour = 12;
+    else if (hour > 12) hour -= 12;
+    return `${hour}:${minute} ${period}`;
+  };
 
-
-useEffect(() => {
-  if (!selectedDate) {
-    onTimeSelect('');
-    return;
-  }
-
-  const timer = setTimeout(() => {
-    const filtered = availableTimes
-      .map(t => typeof t === 'string' ? t : t?.time)
-      .filter(Boolean);
-
-    if (filtered.length > 0) {
-      onTimeSelect(filtered[0]);
-    } else {
+  useEffect(() => {
+    if (!selectedDate) {
       onTimeSelect('');
+      return;
     }
-  }, 50);
 
-  return () => clearTimeout(timer);
-}, [selectedDate, availableTimes]);
+    const timer = setTimeout(() => {
+      const filtered = availableTimes
+        .map(t => typeof t === 'string' ? t : t?.time)
+        .filter(Boolean);
+
+      if (filtered.length > 0) {
+        onTimeSelect(filtered[0]);
+      } else {
+        onTimeSelect('');
+      }
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [selectedDate, availableTimes]);
 
   useEffect(() => {
     if (firstTimeButtonRef.current && selectedDate) {
@@ -60,6 +67,7 @@ useEffect(() => {
       }, 150);
     }
   }, [selectedDate]);
+
   const convertDateFormat = (d) => {
     const months = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
     const [day, mon, year] = d.split(' ');
@@ -87,11 +95,9 @@ useEffect(() => {
   };
 
   const getFilteredTimes = () => {
-    const filtered = availableTimes
+    return availableTimes
       .map(t => typeof t === 'string' ? t : t?.time)
       .filter(t => t && !isTimeBooked(selectedDate, t));
-    
-    return filtered;
   };
 
   const generateEndOptions = () => {
@@ -102,7 +108,7 @@ useEffect(() => {
   const filteredTimes = getFilteredTimes();
   const endTimeOptions = generateEndOptions();
 
-  // Group times
+  // Group times by period (using raw 24h values for logic)
   const groups = { morning: [], afternoon: [], evening: [] };
   filteredTimes.forEach(t => {
     const h = +t.split(':')[0];
@@ -146,11 +152,9 @@ useEffect(() => {
               </span>
               <span 
                 className="font-bold px-2 sm:px-3 md:px-4 py-0.5 sm:py-1 rounded-lg text-sm sm:text-base md:text-lg"
-                style={{ 
-                  color: selectedTime ? textColor : '#ffffff80'
-                }}
+                style={{ color: selectedTime ? textColor : '#ffffff80' }}
               >
-                {selectedTime || '--:--'}
+                {selectedTime ? to12Hour(selectedTime) : '--:--'}
               </span>
             </div>
 
@@ -167,11 +171,9 @@ useEffect(() => {
               </span>
               <span 
                 className="font-bold px-2 sm:px-3 md:px-4 py-0.5 sm:py-1 rounded-lg text-sm sm:text-base md:text-lg"
-                style={{ 
-                  color: selectedEndTime ? textColor : '#ffffff80'
-                }}
+                style={{ color: selectedEndTime ? textColor : '#ffffff80' }}
               >
-                {selectedEndTime || '--:--'}
+                {selectedEndTime ? to12Hour(selectedEndTime) : '--:--'}
               </span>
             </div>
           </div>
@@ -230,7 +232,7 @@ useEffect(() => {
                           onTimeSelect(time);
                         }
                       }}
-                      className={`py-2  px-4 sm:px-5 md:px-6 text-xs sm:text-sm md:text-base transition-all border rounded
+                      className={`py-2 px-4 sm:px-5 md:px-6 sm:text-sm  transition-all border rounded
                         ${booked ? 'bg-gray-700/30 text-gray-500 line-through border-gray-600/20 cursor-not-allowed' : 'hover:scale-105'}
                         ${isSelected ? 'shadow-lg scale-105' : 'shadow-sm hover:shadow-md'}
                       `}
@@ -238,12 +240,12 @@ useEffect(() => {
                         backgroundColor: isSelected ? secondColor : '',
                         color: isSelected ? firstColor : booked ? secondColor : textColor,
                         borderColor: isSelected ? secondColor : secondColor,
-                        minWidth: '80px',        
-                        textAlign: 'center',  
+                        minWidth: '90px',
+                        textAlign: 'center',
                       }}
-
                     >
-                      {time}
+                      {/* Display in 12h format */}
+                      {to12Hour(time)}
                     </button>
                   );
                 })}

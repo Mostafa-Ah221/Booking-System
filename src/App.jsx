@@ -93,6 +93,10 @@ import AppointmentBooking_3 from './Components/embeded/Theme-3/AppointmentBookin
 import InterviewLayut_Staff from './Components/Staff_Dashboard/Staff_Interview_Pages/InterviewLayut_Staff';
 import InterviewDetails_Staff from './Components/Staff_Dashboard/Staff_Interview_Pages/InterviewDetails_Staff';
 import StaffNotifictions from './Components/Staff_Dashboard/StaffNotifictions/StaffNotifictions';
+import UpgradePage from './Components/Pricing/Upgrademodal';
+import PaymentResultPage from './Components/Pricing/PaymentResultPage';
+import InterviewFormGuard from './Components/Dashboard/CreateNewInterview/InterviewFormGuard';
+import Subscription_Invoices from './Components/Settings/Subscription/Subscription_Invoices';
 
 const router = createBrowserRouter([
   { path: "/verifyNotification", element: <VerifyForm /> },
@@ -148,7 +152,7 @@ const router = createBrowserRouter([
         path: "InterFormOne",
         element: (
           <PermissionRoute permission="create interview">
-            <InterviewFormOne />
+            <InterviewFormGuard />  
           </PermissionRoute>
         )
       }
@@ -166,7 +170,7 @@ const router = createBrowserRouter([
       { path: "bookPage", element: <BookPage /> },
       { path: "profilepage", element: <ProtectedRoute><ProfilePage /></ProtectedRoute> },
       { path: "analytics", element: <Analytics /> },
-      { path: "WorkspaceAvailability", element: <WorkspaceDetails /> },
+      { path: "WorkspaceAvailability/:id", element: <WorkspaceDetails /> },
       
       { path: "users", element: (<PermissionRoute permission="view staff"><Recruiters /></PermissionRoute>) },
 
@@ -175,6 +179,15 @@ const router = createBrowserRouter([
   },
 
   // ========== Settings (خارج layoutDashboard) ==========
+  {
+  path: "/upgrade",
+  element: <ProtectedRoute><UpgradePage /></ProtectedRoute>,
+},
+  {
+  path: "/subscription/payment-result",
+  element: <ProtectedRoute><PaymentResultPage /></ProtectedRoute>,
+},
+
   {
     path: "/layoutDashboard/setting",
     element: <ProtectedRoute><SettingsLayout /></ProtectedRoute>,
@@ -193,6 +206,7 @@ const router = createBrowserRouter([
       { path: "custom-labels", element: <CustomLabels /> },
       { path: "roles-permissions", element: (<PermissionRoute permission="view roles"><RolesPermissions /></PermissionRoute>) },
       { path: "reports", element: <Reports /> },
+      { path: "subscription-invoices", element: <Subscription_Invoices /> },
       {
         path: "clients",
         element: (

@@ -90,22 +90,24 @@ const PROVIDER_CONFIGS = {
 };
 
 const findProviderConfig = (providerName, expectedType) => {
-  const exactMatch = PROVIDER_CONFIGS[providerName];
-  if (exactMatch && (!expectedType || exactMatch.type === expectedType))
-    return { key: providerName, config: exactMatch };
+  // ✅ case-insensitive exact match أولاً
+  const exactMatch = Object.keys(PROVIDER_CONFIGS).find(
+    k => k.toLowerCase() === providerName?.toLowerCase()
+  );
+  if (exactMatch) {
+    const config = PROVIDER_CONFIGS[exactMatch];
+    if (!expectedType || config.type === expectedType)
+      return { key: exactMatch, config };
+  }
 
-  const pool   = expectedType
+  const pool = expectedType
     ? Object.keys(PROVIDER_CONFIGS).filter((k) => PROVIDER_CONFIGS[k].type === expectedType)
     : Object.keys(PROVIDER_CONFIGS);
   const sorted = pool.sort((a, b) => b.length - a.length);
 
-  for (const k of sorted)
-    if (k.toLowerCase() === providerName.toLowerCase())
-      return { key: k, config: PROVIDER_CONFIGS[k] };
-
   for (const k of sorted) {
     const nk = k.toLowerCase().replace(/\s+/g, '');
-    const ns = providerName.toLowerCase().replace(/\s+/g, '');
+    const ns = providerName?.toLowerCase().replace(/\s+/g, '');
     if (nk.includes(ns) || ns.includes(nk))
       return { key: k, config: PROVIDER_CONFIGS[k] };
   }

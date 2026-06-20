@@ -4,28 +4,49 @@ import { fetchProfileData, StaffFetchProfileData } from '../../../redux/apiCalls
 import { useDispatch, useSelector } from 'react-redux';
 import { FiEdit2 } from "react-icons/fi";
 
-const ShareBookingModal = ({ 
-  isOpen, 
-  onClose, 
-  shareLink, 
+// ─── Plan helpers ─────────────────────────────────────────────────────────────
+function getPlanKey(plan) {
+  if (!plan || !Array.isArray(plan) || plan.length === 0) return "free";
+  return (plan[0]?.name || "free").toLowerCase();
+}
+
+function isPlanExpired(plan) {
+  if (!plan || !Array.isArray(plan) || plan.length === 0) return true;
+  const expireDate = plan[0]?.expire_date;
+  if (!expireDate) return false;
+  return new Date(expireDate) < new Date();
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+const ShareBookingModal = ({
+  isOpen,
+  onClose,
+  shareLink,
   profile,
   onUpdateLink,
   loading = false,
-  canShowEdit = true 
+  canShowEdit = true,
 }) => {
-  const [activeTab, setActiveTab] = useState('shareLink');
-  const [editMode, setEditMode] = useState(false);
+  const [activeTab,    setActiveTab]    = useState('shareLink');
+  const [editMode,     setEditMode]     = useState(false);
   const [newShareLink, setNewShareLink] = useState('');
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [copiedEmbed, setCopiedEmbed] = useState(false);
-  const [orgBase, setOrgBase] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [copiedLink,   setCopiedLink]   = useState(false);
+  const [copiedEmbed,  setCopiedEmbed]  = useState(false);
+  const [orgBase,      setOrgBase]      = useState('');
+  const [isSaving,     setIsSaving]     = useState(false);
+
   const userType = localStorage.getItem("userType");
   const dispatch = useDispatch();
-  const { profile: profileData, staffProfile } = useSelector(state => state.profileData);
-console.log(profile);
 
-  // === Extract orgBase safely (string only) ===
+  const { profile: profileData, staffProfile } = useSelector((s) => s.profileData);
+  const plan       = useSelector((s) => s.subscription?.plan);
+  const planKey    = getPlanKey(plan);
+  const expired    = isPlanExpired(plan);
+
+  // Premium فقط يقدر يعدل الـ share link
+  const canEditShareLink = !expired && planKey === "premium";
+
+  // ── Extract orgBase ───────────────────────────────────────────────────────
   useEffect(() => {
     let base = '';
     if (profileData?.user?.share_link) {
@@ -35,11 +56,10 @@ console.log(profile);
       const link = staffProfile.user.customer_share_link;
       base = typeof link === 'string' ? link : (link?.slug || link?.customer_share_link || '');
     }
-
     setOrgBase(base);
   }, [profileData, staffProfile]);
-  
-  // Reset edit mode when modal opens/closes
+
+  // ── Reset on open/close ───────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
       setEditMode(false);
@@ -50,16 +70,24 @@ console.log(profile);
     }
   }, [isOpen]);
 
-  // === Safely extract shareLink as string ===
-  const shareLinkString = shareLink 
+  // ── Fetch profile ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (userType === 'staff') {
+      dispatch(StaffFetchProfileData());
+    } else {
+      dispatch(fetchProfileData());
+    }
+  }, [dispatch, userType]);
+
+  // ── Derived strings ───────────────────────────────────────────────────────
+  const shareLinkString = shareLink
     ? (typeof shareLink === 'string' ? shareLink : (shareLink?.slug || shareLink?.id || ''))
     : '';
 
-  const orgBaseString = orgBase 
+  const orgBaseString = orgBase
     ? (typeof orgBase === 'string' ? orgBase : (orgBase?.slug || ''))
     : '';
 
-  // === Final URLs ===
   const bookingLink = shareLinkString
     ? `${window.location.origin}/${orgBaseString}/${shareLinkString}`
     : orgBaseString
@@ -72,7 +100,7 @@ console.log(profile);
       ? `<embed src="${window.location.origin}/${orgBaseString}" width="100%" height="600px" />`
       : '';
 
-  // === Copy Handlers ===
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCopyLink = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -87,7 +115,6 @@ console.log(profile);
     setTimeout(() => setCopiedEmbed(false), 2000);
   };
 
-  // === Generate Random Link ===
   const handleGenerateRandom = async () => {
     if (onUpdateLink) {
       await onUpdateLink(null, profile?.id);
@@ -95,16 +122,6 @@ console.log(profile);
     }
   };
 
-  // === Fetch Profile on Mount ===
-  useEffect(() => {
-    if (userType === 'staff') {
-      dispatch(StaffFetchProfileData());
-    } else {
-      dispatch(fetchProfileData());
-    }
-  }, [dispatch, userType]);
-
-  // === Save New Link ===
   const handleSave = async () => {
     if (newShareLink.trim() && onUpdateLink) {
       setIsSaving(true);
@@ -125,16 +142,16 @@ console.log(profile);
   };
 
   if (!isOpen) return null;
-  
+
   return (
     <>
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40" onClick={onClose} />
-      
+
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-lg shadow-xl z-50">
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b">
           <h2 className="text-lg font-semibold text-gray-900">Share Booking Link</h2>
-          <button 
+          <button
             onClick={onClose}
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
           >
@@ -147,11 +164,7 @@ console.log(profile);
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-purple-200 rounded-full flex items-center justify-center overflow-hidden">
               {profile?.photo && typeof profile.photo === 'string' && profile.photo.trim() ? (
-                <img 
-                  src={profile.photo} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover"
-                />
+                <img src={profile.photo} alt="Profile" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-purple-700 font-semibold text-lg">
                   {profile?.name?.substring(0, 2).toUpperCase() || 'TE'}
@@ -159,26 +172,24 @@ console.log(profile);
               )}
             </div>
             <div>
-              <div className="font-medium text-gray-900 truncate  max-w-[150px]">
+              <div className="font-medium text-gray-900 truncate max-w-[150px]">
                 {profile?.name || 'User Name'}
               </div>
-
-              {/* Show duration/type only if at least one exists */}
-              {profile?.duration || profile?.type ? (
+              {(profile?.duration || profile?.type) && (
                 <div className="text-gray-500 text-sm">
                   {[
                     profile?.duration ? `${profile.duration} mins` : null,
-                    profile?.type ? profile.type : null
+                    profile?.type     ? profile.type               : null,
                   ].filter(Boolean).join(' | ')}
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
 
           {/* Link Section */}
           <div className="mb-6">
             {editMode ? (
-              // Edit Mode
+              // ── Edit Mode ──────────────────────────────────────────────────
               <div className="space-y-3">
                 <div className="relative">
                   {!(shareLinkString?.includes('service') || shareLinkString?.includes('w')) && (
@@ -186,7 +197,6 @@ console.log(profile);
                       @
                     </span>
                   )}
-
                   <input
                     type="text"
                     value={newShareLink}
@@ -222,17 +232,26 @@ console.log(profile);
                 </div>
               </div>
             ) : (
-              // View Mode
+              // ── View Mode ──────────────────────────────────────────────────
               <div className="flex items-center gap-2">
                 <div className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-md text-sm text-gray-700 overflow-hidden overflow-ellipsis whitespace-nowrap">
                   {bookingLink || 'No booking link available'}
                 </div>
-                
+
+                {/* Edit button — visible only when canShowEdit, locked for Free/Basic */}
                 {(shareLinkString || orgBaseString) && canShowEdit && (
                   <button
-                    onClick={() => setEditMode(true)}
-                    className="p-2.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors"
-                    title="Edit link"
+                    onClick={() => canEditShareLink && setEditMode(true)}
+                    className={`p-2.5 rounded-md transition-colors ${
+                      canEditShareLink
+                        ? 'text-gray-500 hover:bg-gray-100 cursor-pointer'
+                        : 'text-gray-300 cursor-not-allowed'
+                    }`}
+                    title={
+                      canEditShareLink
+                        ? 'Edit link'
+                        : 'Upgrade to Premium to edit your share link'
+                    }
                   >
                     <FiEdit2 className="w-4 h-4" />
                   </button>
@@ -255,12 +274,21 @@ console.log(profile);
             )}
           </div>
 
+          {/* Plan badge — shown for Free/Basic */}
+          {!canEditShareLink && (
+            <div className="mb-4 px-3 py-2 bg-purple-50 border border-purple-200 rounded-md">
+              <p className="text-xs text-purple-700">
+                ✦ Editing the share link is available on the <strong>Premium</strong> plan.
+              </p>
+            </div>
+          )}
+
           {/* Tabs */}
           <div className="border-b mb-4">
             <button
               className={`px-4 py-2 text-sm ${
-                activeTab === 'shareLink' 
-                  ? 'border-b-2 border-purple-600 text-gray-900 font-medium' 
+                activeTab === 'shareLink'
+                  ? 'border-b-2 border-purple-600 text-gray-900 font-medium'
                   : 'text-gray-500'
               }`}
               onClick={() => setActiveTab('shareLink')}
@@ -269,8 +297,8 @@ console.log(profile);
             </button>
             <button
               className={`px-4 py-2 text-sm ml-4 ${
-                activeTab === 'embedWidget' 
-                  ? 'border-b-2 border-purple-600 text-gray-900 font-medium' 
+                activeTab === 'embedWidget'
+                  ? 'border-b-2 border-purple-600 text-gray-900 font-medium'
                   : 'text-gray-500'
               }`}
               onClick={() => setActiveTab('embedWidget')}
@@ -279,7 +307,7 @@ console.log(profile);
             </button>
           </div>
 
-          {/* Embed Tab Content */}
+          {/* Embed Tab */}
           {activeTab === 'embedWidget' && (
             <div>
               <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-4 max-h-48 overflow-auto">
@@ -292,7 +320,7 @@ console.log(profile);
                 disabled={!embedCode}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ml-auto ${
                   !embedCode
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     : copiedEmbed
                       ? 'bg-green-600 text-white'
                       : 'bg-purple-600 hover:bg-purple-700 text-white'

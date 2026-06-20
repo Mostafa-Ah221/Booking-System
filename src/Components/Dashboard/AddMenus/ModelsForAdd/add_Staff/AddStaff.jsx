@@ -6,6 +6,15 @@ import { addStaff, inviteStaff, getStaff } from "../../../../../redux/apiCalls/S
 import { ToggleSwitch, InviteStaffForm, AddStaffForm } from "./StaffForm";
 import ImageUploadCrop from "../../../InterviewsPages/InterViewPage/ImageUploadCrop";
 
+/* ====================== HELPER ====================== */
+const flattenErrors = (errors) =>
+  Object.fromEntries(
+    Object.entries(errors).map(([key, val]) => [
+      key,
+      Array.isArray(val) ? val[0] : val,
+    ])
+  );
+
 const StaffModal = ({ isOpen, onClose }) => {
   /* ======================  STATE  ====================== */
   const [activeTab, setActiveTab] = useState("add");
@@ -119,38 +128,49 @@ const StaffModal = ({ isOpen, onClose }) => {
         clearForm();
         onClose();
       } else if (result.error?.response?.data?.errors) {
-        setErrors(result.error.response.data.errors);
+        setErrors(flattenErrors(result.error.response.data.errors));
+      } else if (result.data?.message) {
+        setErrors({ general: result.data.message });
       }
     } catch (e) {
-      if (e?.response?.data?.errors) setErrors(e.response.data.errors);
+      if (e?.response?.data?.errors) {
+        setErrors(flattenErrors(e.response.data.errors));
+      }
     }
   };
 
-  const handleAddStaff = async () => {
-    try {
-      const formDataToSend = new FormData();
-      Object.keys(formData).forEach((key) => {
-        if (formData[key] !== null && formData[key] !== "") {
-          formDataToSend.append(key, formData[key]);
-        }
-      });
-      const result = await dispatch(addStaff(formDataToSend));
-      if (result.success) {
-        dispatch(getStaff());
-        clearForm();
-        onClose();
-      } else if (result.error?.response?.data?.errors) {
-        setErrors(result.error.response.data.errors);
+const handleAddStaff = async () => {
+  try {
+    const formDataToSend = new FormData();
+    Object.keys(formData).forEach((key) => {
+      if (formData[key] !== null && formData[key] !== "") {
+        formDataToSend.append(key, formData[key]);
       }
-    } catch (e) {
-      if (e?.response?.data?.errors) setErrors(e.response.data.errors);
-    }
-  };
+    });
+    const result = await dispatch(addStaff(formDataToSend));
 
+    if (result.success) {
+      dispatch(getStaff());
+      clearForm();
+      onClose();
+    } else if (result.error?.response?.data?.errors) {
+      // ✅ validation errors زي email already taken
+      setErrors(flattenErrors(result.error.response.data.errors));
+    } else if (result.error?.response?.data?.message) {
+      // ✅ 403 errors زي "Recruiter limit reached"
+      setErrors({ general: result.error.response.data.message });
+    }
+  } catch (e) {
+    if (e?.response?.data?.errors) {
+      setErrors(flattenErrors(e.response.data.errors));
+    } else if (e?.response?.data?.message) {
+      setErrors({ general: e.response.data.message });
+    }
+  }
+};
   const handleSubmit = () =>
     activeTab === "invite" ? handleInviteStaff() : handleAddStaff();
 
-  // ✅ التعديل: handleKeyDown لتفعيل الإرسال عند ضغط Enter
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !loading) {
       handleSubmit();
@@ -212,6 +232,14 @@ const StaffModal = ({ isOpen, onClose }) => {
 
           {/* Body */}
           <div className="px-8 py-6 overflow-y-auto flex-1" ref={contentRef}>
+            {/* ✅ General Error Banner */}
+            {errors.general && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-medium flex items-center gap-2">
+                <X className="w-4 h-4 flex-shrink-0" />
+                {errors.general}
+              </div>
+            )}
+
             {activeTab === "invite" ? (
               <InviteStaffForm
                 formData={formData}

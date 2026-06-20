@@ -218,7 +218,7 @@ const endTime = appointment.end_time || (appointment.time ? getEndTime(appointme
               </div>
               <div className="flex gap-2">
                 {/* Approval Section */}
-                {appointment?.approve_status === "0" && appointment?.approve_interview_status === true && canControlAppointment && appointment?.status !== 'passed' &&  appointment?.status !== 'cancelled' && (
+                {appointment?.approve_status === "0" && appointment?.approve_interview_status === true && canControlAppointment && appointment?.status !== 'passed' &&  appointment?.status !== 'cancelled' && approveStatus !== 'approved' && (
                   <div className="relative" ref={dropdownRef}>
                     <button
                       className="border border-gray-300 px-3 py-1 rounded flex items-center gap-1 text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -263,7 +263,7 @@ const endTime = appointment.end_time || (appointment.time ? getEndTime(appointme
                               onChange={() => handleApproveReject(false)}
                               disabled={isProcessing}
                             />
-                            <span className="text-xs text-red-600 font-medium">Reject</span>
+                            <span className="text-xs text-yellow-600 font-medium">Pending</span>
                           </label>
                         </div>
                       </div>

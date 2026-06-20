@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Search, Settings, Grid, Layers, Package, Lock } from 'lucide-react';
+import { ArrowLeft, Search, Settings, Grid, Layers, Package, Lock, CreditCard  } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { navigateToPath } from '../../redux/slices/navigationSlice';
@@ -88,7 +88,14 @@ const AdminCenter = () => {
         // {title:'Privacy and Security',path:"privacy-and-security"}, 
         {title:'Export', path:"export-data"}
       ]
-    }
+    },
+    {
+  title: 'Billing & Plans',
+  icon: <CreditCard className="w-5 h-5 text-indigo-600" />,
+  items: [
+    { title: 'Subscription invoices', path: "subscription-invoices" }
+  ]
+}
   ];
 
   // Get all items for search without affecting display
@@ -127,7 +134,7 @@ const AdminCenter = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-3 flex justify-between items-center mt-2 pt-4 px-4">
+      <div className="max-w-7xl mx-auto mb-3 flex justify-between items-center mt-1 pt-4 px-4">
         <div className="flex items-center gap-3">
           <Link to='/layoutDashboard' className="hover:bg-gray-100 p-1 rounded-full flex gap-1 items-center">
             <ArrowLeft className="w-5 h-5" />

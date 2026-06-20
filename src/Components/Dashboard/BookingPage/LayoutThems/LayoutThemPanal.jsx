@@ -42,6 +42,7 @@ const [footer, setFooter] = useState({
   visiblePhone: true,
   email: '', 
   visibleEmail: true,
+  removeBrand: true,
 });
 const [pageTexts, setPageTexts] = useState({
   work_space_text: '',

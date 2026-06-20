@@ -1,7 +1,7 @@
 import axios from "axios";
 import { analyticsActions } from "../slices/analyticsSlice";
 
-const BASE_URL = "https://backend-booking.appointroll.com/api/analytics/dashboard";
+const BASE_URL = "https://api.appointroll.com/api/analytics/dashboard";
 
 export function fetchAppointments() {
   return async (dispatch) => {

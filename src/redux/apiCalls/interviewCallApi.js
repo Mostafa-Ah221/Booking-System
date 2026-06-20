@@ -75,35 +75,25 @@ export function fetchInterviews({ work_space_id = 0, staff_id = null,type=null, 
 
 export function fetchAllInterviews({ force = false } = {}) {
   return async (dispatch, getState) => {
-    const { allInterviews, loading } = getState().interview;
-
-    if (loading) {
-      return;
-    }
+    const { allInterviews } = getState().interview;
 
     if (!force && allInterviews !== null) {
       return;
     }
 
     try {
-      dispatch(interviewAction.setLoading(true));
-
       const response = await axiosInstance.get('/interview/index');
 
       if (response.data.status) {
         dispatch(
           interviewAction.setAllInterviews(response?.data?.data?.interviews || [])
         );
-        dispatch(interviewAction.setError(null));
       } else {
         dispatch(interviewAction.setAllInterviews([]));
-        dispatch(interviewAction.setError(response.data.message));
       }
     } catch (err) {
       console.error("Failed to fetch all interviews:", err);
       dispatch(interviewAction.setAllInterviews([]));
-    } finally {
-      dispatch(interviewAction.setLoading(false));
     }
   };
 }
@@ -871,6 +861,41 @@ export function duplicateInterview(id, workspaceId) {
       };
     } finally {
       dispatch(interviewAction.setLoading(false));
+    }
+  };
+}
+
+export function reorderInterviews(interviews) {
+  return async (dispatch) => {
+    try {
+      const response = await axiosInstance.post(`/interview/reorder`, {
+        interviews
+      });
+
+      if (response.data.status) {
+        // update local state بالترتيب الجديد
+        dispatch(interviewAction.reorderInterviews(interviews));
+
+        return { success: true };
+      } else {
+        throw new Error(response.data.message);
+      }
+    } catch (error) {
+      console.error("Error reordering interviews:", error);
+
+      toast.error(error.response?.data?.message || "Failed to reorder interviews", {
+        position: "top-center",
+        duration: 5000,
+        style: {
+          borderRadius: "8px",
+          background: "#c00",
+          color: "#fff",
+          padding: "12px 16px",
+          fontWeight: "500",
+        },
+      });
+
+      return { success: false };
     }
   };
 }

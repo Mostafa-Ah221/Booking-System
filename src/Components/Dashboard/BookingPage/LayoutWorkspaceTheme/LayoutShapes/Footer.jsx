@@ -122,7 +122,9 @@ const Footer = ({ themeData }) => {
           </a>
         )}
       </div>
-      <p className='text-xs ' style={{ color: themeData.textColor }}>Powered by Appoint Roll</p>
+     {!themeData.removeBrand && (
+        <p className='text-xs' style={{ color: themeData.textColor }}>Powered by Appoint Roll</p>
+      )}
     </div>
   );
 };

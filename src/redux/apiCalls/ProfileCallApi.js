@@ -79,6 +79,8 @@ export const StaffFetchProfileData = () => {
 };
 
 export const updateProfileData = (profileData) => {
+
+  
     return async (dispatch) => {
         dispatch(profileActions.setLoading(true));
         try {
@@ -96,27 +98,28 @@ export const updateProfileData = (profileData) => {
                 dispatch(profileActions.setError(null));
                 dispatch(profileActions.setLoading(false));
                 toast.success("The personal data has been updated successfully");
+                return { success: true }; // ✅ أضف ده
             }
             
         } catch (error) {
-    dispatch(profileActions.setError(error.response?.data?.errors));
-    dispatch(profileActions.setLoading(false));
+            dispatch(profileActions.setError(error.response?.data?.errors));
+            dispatch(profileActions.setLoading(false));
 
-    if (error.response?.data?.errors) {
-        const errors = error.response.data.errors;
+            if (error.response?.data?.errors) {
+                const errors = error.response.data.errors;
+                Object.keys(errors).forEach((key) => {
+                    errors[key].forEach((msg) => {
+                        toast.error(msg); 
+                    });
+                });
+            } else {
+                toast.error(error.response?.data?.message || "Something went wrong");
+            }
 
-        Object.keys(errors).forEach((key) => {
-            errors[key].forEach((msg) => {
-                toast.error(msg); 
-            });
-        });
-    } else {
-        toast.error(error.response?.data?.message || "Something went wrong");
-    }
-}
-
+            return { success: false }; // ✅ أضف ده
+        }
     };
-};
+}
 
 export const StaffUpdateProfileData = (profileData) => {
     return async (dispatch) => {

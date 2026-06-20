@@ -30,6 +30,7 @@ const InterviewFormOne = () => {
     rest_cycle: '',
     status: 'free',
     price: '',
+    travel_time: '',
     payment_details: '',
     currency: '',
     mode: '',
@@ -64,43 +65,48 @@ const InterviewFormOne = () => {
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    let newValue = type === 'checkbox' ? checked : value;
+ const handleInputChange = (e) => {
+  const { name, value, type, checked } = e.target;
+  let newValue = type === 'checkbox' ? checked : value;
 
-    if (['duration_cycle', 'rest_cycle', 'price', 'max_clients'].includes(name)) {
-      if (value === '') {
-        newValue = '';
-      } else if (value.startsWith('-')) {
-        return;
-      }
+  if (['duration_cycle', 'rest_cycle', 'price', 'max_clients', 'travel_time'].includes(name)) {
+    if (value === '') {
+      newValue = '';
+    } else if (value.startsWith('-')) {
+      return;
+    } else if (['duration_cycle', 'rest_cycle', 'max_clients', 'travel_time'].includes(name) && !Number.isInteger(Number(value))) {
+      return;
     }
+  }
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: newValue,
-      // Reset sub-fields when mode changes
-      ...(name === 'mode' && ['online', 'online/inperson', 'phone'].includes(value)
-        ? { inperson_mode: '', location: '' }
-        : {}),
-      ...(name === 'mode' && ['inperson', 'online/inperson', 'phone'].includes(value)
-        ? { meeting_link: '' }
-        : {}),
-      // Reset extra_modes when leaving online/inperson
-      ...(name === 'mode' && value !== 'online/inperson'
-        ? { extra_modes: [] }
-        : {}),
-      ...(name === 'inperson_mode' && value !== 'inhouse' ? { location: '' } : {}),
-    }));
+  setFormData(prev => ({
+    ...prev,
+    [name]: newValue,
+    // Reset sub-fields when mode changes
+    ...(name === 'mode' && ['online', 'online/inperson', 'phone'].includes(value)
+      ? { inperson_mode: '', location: '' }
+      : {}),
+    ...(name === 'mode' && ['inperson', 'online/inperson', 'phone'].includes(value)
+      ? { meeting_link: '' }
+      : {}),
+    // Reset extra_modes + travel_time when leaving online/inperson
+    ...(name === 'mode' && value !== 'online/inperson'
+      ? { extra_modes: [], travel_time: '' }
+      : {}),
+    // Reset location when inperson_mode leaves inhouse
+    ...(name === 'inperson_mode' && value !== 'inhouse' ? { location: '' } : {}),
+    // Reset travel_time when inperson_mode leaves athome
+    ...(name === 'inperson_mode' && value !== 'athome' ? { travel_time: '' } : {}),
+  }));
 
-    if (name === 'work_space_id' && value) {
-      dispatch(getAvailableStaffForWorkspace(value));
-    }
+  if (name === 'work_space_id' && value) {
+    dispatch(getAvailableStaffForWorkspace(value));
+  }
 
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
-    }
-  };
+  if (errors[name]) {
+    setErrors(prev => ({ ...prev, [name]: undefined }));
+  }
+};
 
   // Toggle a value inside the extra_modes array
   const handleExtraModeChange = (value) => {
@@ -226,7 +232,6 @@ const InterviewFormOne = () => {
       delete dataToSend.payment_details;
     }
 
-    console.log('Data to send:', dataToSend);
 
     try {
       const result = await dispatch(createInterview(dataToSend));

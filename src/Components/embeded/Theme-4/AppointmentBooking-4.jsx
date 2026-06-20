@@ -10,6 +10,7 @@ import { Mail, Phone, Facebook, Instagram, Linkedin } from 'lucide-react';
 import BookingSummarySidebar2 from '../Theme-2/BookingSummarySidebar2';
 import CalendarSection4 from './CalendarSection4';
 import { FaXTwitter } from 'react-icons/fa6';
+import NoAppointments from '../NoAppointments';
 
 const AppointmentBooking_4 = () => {
   const { id, idAdmin, idCustomer, idSpace } = useParams();
@@ -82,15 +83,16 @@ const AppointmentBooking_4 = () => {
     setSelectedDate, setSelectedTime, setSelectedTimezone, setFormData,
     handleScheduleAppointment, isTimeDisabled,
     selectedType, setSelectedType,
-    totalPrice, numberOfSlots, selectedEndTime, setSelectedEndTime
+    totalPrice, numberOfSlots, selectedEndTime, setSelectedEndTime,noAvailability,
+    loading
   } = useBookingLogic(
     bookingId, navigate, isInterviewMode,
     selectedInterview?.id, idCustomer || idSpace || idAdmin,
     !!idCustomer, setTheme, theme,
-    selectedInterview
+    selectedInterview,
+    
   );
 
-  // ── Timezone auto-detection (زي AppointmentBooking_3) ─────────────────────
   useEffect(() => {
     if (selectedTimezone) return;
     let detected = null;
@@ -156,6 +158,20 @@ const AppointmentBooking_4 = () => {
         disabled: true,
       });
     }
+    if (
+  bookingData?.interview_type === 'collective-booking' &&
+  (availableStaffGroups?.length ?? 0) === 0 &&
+  !selectedStaffGroup
+) {
+  list.push({
+    step: counter++,
+    label: 'Staff Group',
+    icon: PiUsersThreeLight,
+    value: '__unavailable__',
+    key: 'staff_group_unavailable',
+    disabled: true,
+  });
+}
     if (availableResources?.length > 0) {
       list.push({ step: counter++, label: 'Resource', icon: Package, value: selectedResource?.name, key: 'resource' });
     }
@@ -180,12 +196,15 @@ const AppointmentBooking_4 = () => {
     availableStaff, availableStaffGroups, selectedStaff, selectedStaffGroup,
     availableResources, selectedResource,
     bookingData?.mode, bookingData?.extra_modes,
-    selectedType, selectedDate, selectedTime
+    selectedType, selectedDate, selectedTime,bookingData?.interview_type,
   ]);
 
 const hasUnavailableStaff = bookingData?.require_staff_select && 
   availableStaff?.length === 0 && 
   !availableStaffGroups?.length;
+  const hasUnavailableStaffGroup = 
+  bookingData?.interview_type === 'collective-booking' &&
+  (availableStaffGroups?.length ?? 0) === 0;
   const hasAnySocial =
     (theme?.show_email === "1" && theme?.footer_email) ||
     (theme?.show_phone === "1" && theme?.footer_phone) ||
@@ -212,7 +231,15 @@ const hasUnavailableStaff = bookingData?.require_staff_select &&
     if (availableStaffGroups?.length === 1 && !selectedStaffGroup) { setSelectedStaffGroup(availableStaffGroups[0]); setSelectedDate(null); setSelectedTime(null); }
     if (availableResources?.length === 1 && !selectedResource) { setSelectedResource(availableResources[0]); setSelectedDate(null); setSelectedTime(null); }
   }, [availableStaff, availableStaffGroups, availableResources]);
-
+useEffect(() => {
+  if (!selectedType && bookingData) {
+    if (bookingData.extra_modes && bookingData.extra_modes.length === 1) {
+      setSelectedType(bookingData.extra_modes[0]);
+    } else if (!bookingData.extra_modes?.length && bookingData.inperson_mode) {
+      setSelectedType(bookingData.inperson_mode);
+    }
+  }
+}, [bookingData?.extra_modes, bookingData?.inperson_mode]);
   useEffect(() => {
     if (bookingData?.mode === 'online/inperson' && bookingData?.extra_modes?.length === 1 && !selectedType) {
       setSelectedType(bookingData.extra_modes[0]);
@@ -233,7 +260,7 @@ const hasUnavailableStaff = bookingData?.require_staff_select &&
   const fetchWorkspaces = async () => {
     setWorkspacesLoading(true);
     try {
-      const res = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
+      const res = await fetch(`https://api.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
       const data = await res.json();
       if (data.data?.workspaces) {
         if (data.data?.theme && !theme) setTheme(data.data.theme);
@@ -252,8 +279,8 @@ const hasUnavailableStaff = bookingData?.require_staff_select &&
     setInterviewsLoading(true);
     try {
       const url = mode === 'customer'
-        ? `https://backend-booking.appointroll.com/api/public/book/resource?staff_share_link=${resourceId}`
-        : `https://backend-booking.appointroll.com/api/public/book/resource?workspace_share_link=${resourceId}`;
+        ? `https://api.appointroll.com/api/public/book/resource?staff_share_link=${resourceId}`
+        : `https://api.appointroll.com/api/public/book/resource?workspace_share_link=${resourceId}`;
       const res = await fetch(url);
       const data = await res.json();
       let interviewsData = [];
@@ -330,7 +357,9 @@ const hasUnavailableStaff = bookingData?.require_staff_select &&
   const Icon = step.icon;
   const hasValue = !!step.value;
   const isDisabled = step.disabled;
-
+if (!loading && noAvailability && bookingData) {
+  return <NoAppointments themeColor={theme} />;
+}
   return (
     <div
       key={step.key}
@@ -362,12 +391,13 @@ const hasUnavailableStaff = bookingData?.require_staff_select &&
               opacity: isDisabled ? 1 : hasValue ? 1 : 0.5 
             }}>
               {isDisabled 
-                ? 'No staff available — contact provider' 
-                : step.value || `Select ${step.label}`}
+              ? (step.key === 'staff_group_unavailable' 
+                  ? 'No staff group available — contact provider'
+                  : 'No staff available — contact provider')
+              : step.value || `Select ${step.label}`}
             </p>
           </div>
         </div>
-        {/* بدون سهم لو disabled */}
         {!isDisabled && (
           isExpanded
             ? <ChevronUp className="w-4 h-4 flex-shrink-0 ml-2" style={{ color: textColor, opacity: 0.7 }} />
@@ -557,7 +587,8 @@ const hasUnavailableStaff = bookingData?.require_staff_select &&
         </div>
 
         {/* Date & Time */}
-          {dateTimeStep && !hasUnavailableStaff && (
+          {dateTimeStep && !hasUnavailableStaff && !hasUnavailableStaffGroup && (
+
             <div
               className="mb-6 rounded-xl overflow-hidden"
               style={{
@@ -635,7 +666,8 @@ const hasUnavailableStaff = bookingData?.require_staff_select &&
           )}
 
         {/* Your Info */}
-        {selectedDate && selectedTime && infoStep && !hasUnavailableStaff && (
+        {selectedDate && selectedTime && infoStep && !hasUnavailableStaff && !hasUnavailableStaffGroup && (
+
 
           <div className="mb-6">
             <BookingSummarySidebar2
@@ -696,7 +728,12 @@ const hasUnavailableStaff = bookingData?.require_staff_select &&
             </div>
           </div>
         )}
-        <p className="text-xs" style={{ opacity: 0.5 }}>Powered by Appoint Roll</p>
+        {theme?.remove_brand !== "1" && (
+  <p className="text-xs" style={{ opacity: 0.5 }}>
+    Powered by Appoint Roll
+  </p>
+)}
+        
       </div>
     </div>
   );

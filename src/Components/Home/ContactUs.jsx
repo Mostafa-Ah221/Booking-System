@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Mail, Phone, MapPin, Send, Clock, CheckCircle, User, MessageSquare } from 'lucide-react';
+import { sendContactMail } from '../../redux/apiCalls/publicCallApi';
 
 export default function ContactUs() {
   const [formData, setFormData] = useState({
@@ -11,7 +12,9 @@ export default function ContactUs() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [errors, setErrors] = useState({});
+const [successMessage, setSuccessMessage] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -20,7 +23,9 @@ export default function ContactUs() {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
-
+useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
   const validateForm = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = 'Name is required';
@@ -31,26 +36,41 @@ export default function ContactUs() {
     }
     if (!formData.subject.trim()) newErrors.subject = 'Subject is required';
     if (!formData.message.trim()) newErrors.message = 'Message is required';
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setSubmitSuccess(true);
-      setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
-      
-      setTimeout(() => setSubmitSuccess(false), 5000);
-    }, 1500);
-  };
+  setIsSubmitting(true);
+  setSubmitError('');
+  setSuccessMessage('');
+
+  try {
+    const res = await sendContactMail({
+      name:    formData.name,
+      email:   formData.email,
+      phone:   formData.phone ? Number(formData.phone) : undefined,
+      subject: formData.subject,
+      message: formData.message,
+    });
+
+    setSuccessMessage(res.message || 'Message sent successfully!');
+    setSubmitSuccess(true);
+    setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+    setTimeout(() => setSubmitSuccess(false), 5000);
+
+  } catch (err) {
+    console.error('Error sending message:', err);
+    setSubmitError(
+      err?.response?.data?.message || 'Something went wrong. Please try again.'
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -61,7 +81,7 @@ export default function ContactUs() {
               Get in Touch
             </h1>
             <p className="text-base sm:text-lg text-gray-600 leading-relaxed">
-              Have questions about our booking system? We'd love to hear from you. 
+              Have questions about our booking system? We'd love to hear from you.
               Send us a message and we'll respond as soon as possible.
             </p>
           </div>
@@ -70,13 +90,13 @@ export default function ContactUs() {
 
       <div className="container mx-auto px-4 py-8 sm:py-12 lg:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 max-w-7xl mx-auto">
-          
+
+          {/* Contact Info */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-shadow duration-300">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
                 Contact Information
               </h2>
-              
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -142,6 +162,7 @@ export default function ContactUs() {
             </div>
           </div>
 
+          {/* Form */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 lg:p-10">
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
@@ -152,22 +173,27 @@ export default function ContactUs() {
               </p>
 
               {submitSuccess && (
-                <div className="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
-                  <div className="flex items-center">
-                    <CheckCircle className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
-                    <p className="text-green-700 font-medium">
-                      Message sent successfully! We'll get back to you soon.
-                    </p>
-                  </div>
+              <div className="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
+                <div className="flex items-center">
+                  <CheckCircle className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                  <p className="text-green-700 font-medium">
+                    {successMessage}
+                  </p>
+                </div>
+              </div>
+            )}
+
+              {/* Error */}
+              {submitError && (
+                <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
+                  <p className="text-red-700 font-medium">{submitError}</p>
                 </div>
               )}
 
               <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Full Name *
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name *</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <User className="h-5 w-5 text-gray-400" />
@@ -183,15 +209,11 @@ export default function ContactUs() {
                         placeholder="John Doe"
                       />
                     </div>
-                    {errors.name && (
-                      <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-                    )}
+                    {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Email Address *
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address *</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Mail className="h-5 w-5 text-gray-400" />
@@ -207,17 +229,13 @@ export default function ContactUs() {
                         placeholder="john@example.com"
                       />
                     </div>
-                    {errors.email && (
-                      <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                    )}
+                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Phone Number (Optional)
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number (Optional)</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Phone className="h-5 w-5 text-gray-400" />
@@ -234,9 +252,7 @@ export default function ContactUs() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Subject *
-                    </label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Subject *</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <MessageSquare className="h-5 w-5 text-gray-400" />
@@ -252,16 +268,12 @@ export default function ContactUs() {
                         placeholder="How can we help?"
                       />
                     </div>
-                    {errors.subject && (
-                      <p className="mt-1 text-sm text-red-600">{errors.subject}</p>
-                    )}
+                    {errors.subject && <p className="mt-1 text-sm text-red-600">{errors.subject}</p>}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Message *
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Message *</label>
                   <textarea
                     name="message"
                     value={formData.message}
@@ -272,9 +284,7 @@ export default function ContactUs() {
                     }`}
                     placeholder="Tell us more about your inquiry..."
                   />
-                  {errors.message && (
-                    <p className="mt-1 text-sm text-red-600">{errors.message}</p>
-                  )}
+                  {errors.message && <p className="mt-1 text-sm text-red-600">{errors.message}</p>}
                 </div>
 
                 <button
@@ -305,8 +315,6 @@ export default function ContactUs() {
             </div>
           </div>
         </div>
-
-
       </div>
     </div>
   );

@@ -83,7 +83,7 @@ const ResetPassword = () => {
         password: formData.password,
         password_confirmation: formData.password_confirmation
       };
-      const endPoint=from?.userType === 'customer' ? "https://backend-booking.appointroll.com/api/reset-password" : "https://backend-booking.appointroll.com/api/staff/reset-password";
+      const endPoint=from?.userType === 'customer' ? "https://api.appointroll.com/api/reset-password" : "https://api.appointroll.com/api/staff/reset-password";
       const response = await fetch(endPoint, {
         method: "POST",
         headers: {

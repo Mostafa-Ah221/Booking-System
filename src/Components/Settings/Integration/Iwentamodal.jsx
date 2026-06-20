@@ -5,15 +5,55 @@ import axiosInstance from '../../pages/axiosInstance';
 
 const IWNTA_BASE_URL = 'https://iwnta.com/api/v1';
 
+// ─────────────────────────────────────────────
+//  API helpers
+// ─────────────────────────────────────────────
+
+/** جيب phone numbers فقط */
+const fetchPhoneNumbers = async (accessToken) => {
+  const headers = { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' };
+  const res = await axios.get(`${IWNTA_BASE_URL}/phone-numbers`, { headers });
+  const ok  = res.data?.status === 'success' || res.data?.status === true;
+  return ok ? (res.data?.data || []) : [];
+};
+
+/** جيب templates لـ phone معين */
+const fetchTemplatesForPhone = async (accessToken, phoneId) => {
+  const headers = { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' };
+  const res = await axios.get(`${IWNTA_BASE_URL}/templates?phone_id=${phoneId}`, { headers });
+  const ok  = res.data?.status === 'success' || res.data?.status === true;
+  const raw = ok ? (res.data?.data || []) : [];
+
+  return raw.map((t) => {
+    const bodyComponent   = t.components?.find((c) => c.type === 'BODY');
+    const headerComponent = t.components?.find((c) => c.type === 'HEADER');
+    const bodyText        = bodyComponent?.text  || '';
+    const headerText      = headerComponent?.text || '';
+    return {
+      id:              t.id,
+      name:            t.name,
+      language:        t.language,
+      category:        t.category,
+      type:            t.type,
+      body:            bodyText,
+      header:          headerText,
+      variables_count: (bodyText.match(/\{\{\d+\}\}/g) || []).length,
+      components:      t.components,
+    };
+  });
+};
+
+// ─────────────────────────────────────────────
+//  Shared UI atoms
+// ─────────────────────────────────────────────
+
 const ModalWrapper = ({ title, children, onClose, wide = false }) => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
     <div className={`bg-white rounded-xl shadow-lg relative w-full flex flex-col ${wide ? 'max-w-2xl' : 'max-w-md'} max-h-[90vh]`}>
-      {/* Header ثابت */}
       <div className="flex items-center justify-between p-6 border-b shrink-0">
         <h2 className="text-lg font-bold text-gray-800">{title}</h2>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
       </div>
-      {/* Content قابل للسكرول */}
       <div className="p-6 overflow-y-auto">{children}</div>
     </div>
   </div>
@@ -61,48 +101,8 @@ const SelectableCard = ({ selected, onClick, children }) => (
   </div>
 );
 
-const fetchPhoneAndTemplates = async (accessToken) => {
-  const headers = {
-    Authorization:  `Bearer ${accessToken}`,
-    'Accept':        'application/json',
-    'Content-Type':  'application/json',
-  };
-
-  const [phoneRes, templatesRes] = await Promise.all([
-    axios.get(`${IWNTA_BASE_URL}/phone-numbers`, { headers }),
-    axios.get(`${IWNTA_BASE_URL}/templates`,     { headers }),
-  ]);
-
-  const phoneOk     = phoneRes.data?.status     === 'success' || phoneRes.data?.status     === true;
-  const templatesOk = templatesRes.data?.status === 'success' || templatesRes.data?.status === true;
-
-  const phone_numbers = phoneOk ? (phoneRes.data?.data || []) : [];
-
-  const rawTemplates = templatesOk ? (templatesRes.data?.data || []) : [];
-  const templates = rawTemplates.map((t) => {
-  const bodyComponent   = t.components?.find((c) => c.type === 'BODY');
-  const headerComponent = t.components?.find((c) => c.type === 'HEADER'); // ← أضف دا
-  const bodyText        = bodyComponent?.text || '';
-  const headerText      = headerComponent?.text || '';                    // ← أضف دا
-  const variablesCount  = (bodyText.match(/\{\{\d+\}\}/g) || []).length;
-  return {
-    id:              t.id,
-    name:            t.name,
-    language:        t.language,
-    category:        t.category,
-    type:            t.type,
-    body:            bodyText,
-    header:          headerText, // ← دلوقتي بيتعرّف صح
-    variables_count: variablesCount,
-    components:      t.components,
-  };
-});
-
-  return { phone_numbers, templates };
-};
-
 // ─────────────────────────────────────────────
-//  Step 1 — Credentials (unchanged)
+//  Step 1 — Credentials
 // ─────────────────────────────────────────────
 const Step1Credentials = ({ integrationId, onSuccess, onClose, getWhatsAppSettings, onSaveCredentials }) => {
   const [formData, setFormData]                   = useState({ client_id: '', client_secret: '' });
@@ -128,52 +128,45 @@ const Step1Credentials = ({ integrationId, onSuccess, onClose, getWhatsAppSettin
     loadExisting();
   }, [integrationId, getWhatsAppSettings]);
 
- const handleConnect = async () => {
-  if (!formData.client_id || !formData.client_secret) {
-    setError('Please fill in both Client ID and Client Secret.');
-    return;
-  }
-  setError('');
-  setIsLoading(true);
-  try {
-    const authRes = await axios.post(`${IWNTA_BASE_URL}/auth/token`, {
-      client_id:     formData.client_id,
-      client_secret: formData.client_secret,
-    });
-
-    console.log('✅ Auth Response:', authRes.data);
-
-    const freshToken = authRes.data?.access_token || authRes.data?.data?.access_token || null;
-
-    console.log('✅ Fresh Token:', freshToken);
-
-    if (!freshToken) { setError('Authentication failed. Please check your credentials.'); return; }
-
-    console.log('✅ Saving credentials...');
-    await onSaveCredentials({
-      integration_id: integrationId,
-      status: 1,
-      data: {
+  const handleConnect = async () => {
+    if (!formData.client_id || !formData.client_secret) {
+      setError('Please fill in both Client ID and Client Secret.');
+      return;
+    }
+    setError('');
+    setIsLoading(true);
+    try {
+      // 1. احصل على access_token
+      const authRes = await axios.post(`${IWNTA_BASE_URL}/auth/token`, {
         client_id:     formData.client_id,
         client_secret: formData.client_secret,
-        access_token:  freshToken,
-      },
-    });
-    console.log('✅ Credentials saved!');
+      });
+      const freshToken = authRes.data?.access_token || authRes.data?.data?.access_token || null;
+      if (!freshToken) { setError('Authentication failed. Please check your credentials.'); return; }
 
-    const { phone_numbers, templates } = await fetchPhoneAndTemplates(freshToken);
-    console.log('✅ phone_numbers:', phone_numbers, 'templates:', templates);
+      // 2. احفظ credentials
+      await onSaveCredentials({
+        integration_id: integrationId,
+        status: 1,
+        data: {
+          client_id:     formData.client_id,
+          client_secret: formData.client_secret,
+          access_token:  freshToken,
+        },
+      });
 
-    onSuccess({ phone_numbers, templates, access_token: freshToken });
+      // 3. جيب phone numbers فقط (بدون templates)
+      const phone_numbers = await fetchPhoneNumbers(freshToken);
 
-  } catch (err) {
-    console.error('❌ Error:', err);
-    const msg = err?.response?.data?.message || err?.response?.data?.error || 'An unexpected error occurred.';
-    setError(msg);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      onSuccess({ phone_numbers, access_token: freshToken });
+
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || 'An unexpected error occurred.';
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoadingExisting) return <LoadingSpinner text="Loading existing settings..." />;
 
@@ -181,7 +174,7 @@ const Step1Credentials = ({ integrationId, onSuccess, onClose, getWhatsAppSettin
     <div className="space-y-4">
       <p className="text-sm text-gray-500">
         Enter your <span className="font-semibold text-gray-700">IWNTA</span> API credentials
-        to connect and load your phone numbers and templates.
+        to connect and load your phone numbers.
       </p>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
@@ -226,8 +219,6 @@ const Step1Credentials = ({ integrationId, onSuccess, onClose, getWhatsAppSettin
 // ─────────────────────────────────────────────
 //  Step 2 — Selection
 // ─────────────────────────────────────────────
-
-// ✅ التعديل الوحيد — الـ trigger keys الجديدة
 const STATUSES = [
   { key: 'appointment_created',     label: 'Appointment Created',     color: 'bg-green-100 text-green-700'   },
   { key: 'appointment_cancelled',   label: 'Appointment Cancelled',   color: 'bg-red-100 text-red-700'       },
@@ -235,11 +226,12 @@ const STATUSES = [
   { key: 'appointment_reminder',    label: 'Appointment Reminder',    color: 'bg-blue-100 text-blue-700'     },
 ];
 
-const Step2Selection = ({ integrationId, phoneNumbers, templates, onSave, onBack, onClose, savedSettings }) => {
-  // ✅ لو فيه savedSettings، عبّي بيها الـ state من أول
+const Step2Selection = ({ integrationId, phoneNumbers, accessToken, onSave, onBack, onClose, savedSettings }) => {
   const [selectedPhoneId, setSelectedPhoneId] = useState(
     savedSettings?._phone_number_id || ''
   );
+  const [templates, setTemplates]               = useState([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
 
   const [statusTemplates, setStatusTemplates] = useState({
     appointment_created:     savedSettings?.appointment_created     || '',
@@ -252,6 +244,53 @@ const Step2Selection = ({ integrationId, phoneNumbers, templates, onSave, onBack
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError]       = useState('');
 
+  // ✅ لما المستخدم يختار phone → جيب templates
+  const handlePhoneSelect = async (phoneId) => {
+    setSelectedPhoneId(phoneId);
+    setTemplates([]);
+    // امسح الاختيارات القديمة
+    setStatusTemplates({
+      appointment_created:     '',
+      appointment_cancelled:   '',
+      appointment_rescheduled: '',
+      appointment_reminder:    '',
+    });
+    setFilters({ category: '', language: '', type: '' });
+
+    if (!phoneId) return;
+    setTemplatesLoading(true);
+    try {
+      const fetched = await fetchTemplatesForPhone(accessToken, phoneId);
+      setTemplates(fetched);
+    } catch (e) {
+      console.error('Failed to fetch templates:', e);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  // ✅ لو فيه savedSettings → حمّل templates للـ phone المحفوظ (مع الإبقاء على statusTemplates)
+  useEffect(() => {
+    const savedPhoneId = savedSettings?._phone_number_id;
+    if (!savedPhoneId) return;
+
+    setSelectedPhoneId(savedPhoneId);
+    setTemplatesLoading(true);
+    fetchTemplatesForPhone(accessToken, savedPhoneId)
+      .then((fetched) => {
+        setTemplates(fetched);
+        // استرجع الاختيارات المحفوظة بعد ما الـ templates اتحملت
+        setStatusTemplates({
+          appointment_created:     savedSettings?.appointment_created     || '',
+          appointment_cancelled:   savedSettings?.appointment_cancelled   || '',
+          appointment_rescheduled: savedSettings?.appointment_rescheduled || '',
+          appointment_reminder:    savedSettings?.appointment_reminder    || '',
+        });
+      })
+      .catch((e) => console.error('Failed to fetch saved templates:', e))
+      .finally(() => setTemplatesLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const categories = [...new Set(templates.map((t) => t.category))];
   const languages  = [...new Set(templates.map((t) => t.language))];
   const types      = [...new Set(templates.map((t) => t.type))];
@@ -263,9 +302,11 @@ const Step2Selection = ({ integrationId, phoneNumbers, templates, onSave, onBack
     return true;
   });
 
+  const getSelectedTemplate = (templateId) =>
+    templates.find((t) => String(t.id) === String(templateId)) || null;
+
   const hasActiveFilters = filters.category || filters.language || filters.type;
 
-  // ✅ نفس handleSave القديم — بس الـ keys اتغيرت
   const handleSave = async () => {
     if (!selectedPhoneId) { setError('Please select a phone number.'); return; }
     if (!STATUSES.every((s) => statusTemplates[s.key])) {
@@ -286,7 +327,7 @@ const Step2Selection = ({ integrationId, phoneNumbers, templates, onSave, onBack
             appointment_rescheduled: String(statusTemplates.appointment_rescheduled),
             appointment_reminder:    String(statusTemplates.appointment_reminder),
           },
-          templates: templates,
+          templates,
         },
       });
     } finally {
@@ -311,8 +352,8 @@ const Step2Selection = ({ integrationId, phoneNumbers, templates, onSave, onBack
             {phoneNumbers.map((phone) => (
               <SelectableCard
                 key={phone.id}
-                selected={selectedPhoneId === phone.id}
-                onClick={() => setSelectedPhoneId(phone.id)}
+                selected={String(selectedPhoneId) === String(phone.id)}
+                onClick={() => handlePhoneSelect(phone.id)}
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -339,83 +380,107 @@ const Step2Selection = ({ integrationId, phoneNumbers, templates, onSave, onBack
           Status-based Templates <span className="text-red-500">*</span>
         </h3>
 
-        {/* Filter Bar */}
-        <div className="flex gap-2 mb-3 flex-wrap items-center p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-          {[
-            { key: 'category', label: 'All Categories', options: categories },
-            { key: 'language', label: 'All Languages',  options: languages  },
-            { key: 'type',     label: 'All Types',      options: types      },
-          ].map(({ key, label, options }) => (
-            <select
-              key={key}
-              className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
-              value={filters[key]}
-              onChange={(e) => setFilters((p) => ({ ...p, [key]: e.target.value }))}
-            >
-              <option value="">{label}</option>
-              {options.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-          ))}
-          {hasActiveFilters && (
-            <button
-              onClick={() => setFilters({ category: '', language: '', type: '' })}
-              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5 border border-gray-200 rounded-lg bg-white"
-            >
-              Reset
-            </button>
-          )}
-          <span className="text-xs text-gray-400 ml-auto">
-            {filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''}
-          </span>
-        </div>
+        {/* حالات العرض الثلاث */}
+        {!selectedPhoneId ? (
+          <div className="text-sm text-gray-400 border border-dashed border-gray-300 rounded-lg p-4 text-center">
+            Select a phone number first to load templates
+          </div>
+        ) : templatesLoading ? (
+          <div className="flex justify-center items-center py-6">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mr-2" />
+            <span className="text-sm text-gray-500">Loading templates...</span>
+          </div>
+        ) : (
+          <>
+            {/* Filter Bar */}
+            <div className="flex gap-2 mb-3 flex-wrap items-center p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+              {[
+                { key: 'category', label: 'All Categories', options: categories },
+                { key: 'language', label: 'All Languages',  options: languages  },
+                { key: 'type',     label: 'All Types',      options: types      },
+              ].map(({ key, label, options }) => (
+                <select
+                  key={key}
+                  className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+                  value={filters[key]}
+                  onChange={(e) => setFilters((p) => ({ ...p, [key]: e.target.value }))}
+                >
+                  <option value="">{label}</option>
+                  {options.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ))}
+              {hasActiveFilters && (
+                <button
+                  onClick={() => setFilters({ category: '', language: '', type: '' })}
+                  className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5 border border-gray-200 rounded-lg bg-white"
+                >
+                  Reset
+                </button>
+              )}
+              <span className="text-xs text-gray-400 ml-auto">
+                {filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''}
+              </span>
+            </div>
 
-        {/* Trigger → Template rows */}
-        <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
-          {STATUSES.map(({ key, label, color }) => (
-            <div key={key} className="p-3">
-              <div className="flex items-center gap-3">
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 text-center ${color}`}
-                  style={{ minWidth: '155px' }}>
-                  {label}
-                </span>
-                <div className="flex-1 relative">
-                  <select
-                    className={`w-full text-sm rounded-lg p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white appearance-none transition-colors ${
-                      statusTemplates[key]
-                        ? 'border-2 border-green-500 text-gray-800'
-                        : 'border border-gray-300 text-gray-500'
-                    }`}
-                    value={statusTemplates[key]}
-                    onChange={(e) => setStatusTemplates((p) => ({ ...p, [key]: e.target.value }))}
-                  >
-                    <option value="">Choose Template</option>
-                    {filteredTemplates.map((t) => (
-                     <option key={t.id} value={t.id}>
-                        {t.header || t.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
+            {/* Trigger → Template rows */}
+            <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+              {STATUSES.map(({ key, label, color }) => (
+                <div key={key} className="p-3">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 text-center ${color}`}
+                      style={{ minWidth: '155px' }}
+                    >
+                      {label}
+                    </span>
+                    <div className="flex-1 relative">
+                      <select
+                        className={`w-full text-sm rounded-lg p-2 pr-8 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white appearance-none transition-colors ${
+                          statusTemplates[key]
+                            ? 'border-2 border-green-500 text-gray-800'
+                            : 'border border-gray-300 text-gray-500'
+                        }`}
+                        value={statusTemplates[key]}
+                        onChange={(e) => setStatusTemplates((p) => ({ ...p, [key]: e.target.value }))}
+                      >
+                        <option value="">Choose Template</option>
+                        {filteredTemplates.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M6 9l6 6 6-6" />
+                        </svg>
+                      </div>
+                      {statusTemplates[key] && (() => {
+                        const tpl = getSelectedTemplate(statusTemplates[key]);
+                        if (!tpl) return null;
+                        return (
+                          <div className="mt-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600 space-y-1">
+                            {tpl.header && <p className="font-semibold text-gray-800">{tpl.header}</p>}
+                            {tpl.body   && <p className="text-gray-500 line-clamp-3 leading-relaxed">{tpl.body}</p>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    {statusTemplates[key] && (
+                      <button
+                        onClick={() => setStatusTemplates((p) => ({ ...p, [key]: '' }))}
+                        className="text-gray-300 hover:text-gray-500 shrink-0 transition-colors"
+                        title="Clear"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
-                {statusTemplates[key] && (
-                  <button
-                    onClick={() => setStatusTemplates((p) => ({ ...p, [key]: '' }))}
-                    className="text-gray-300 hover:text-gray-500 shrink-0 transition-colors"
-                    title="Clear"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
       {error && (
@@ -445,11 +510,11 @@ const Step2Selection = ({ integrationId, phoneNumbers, templates, onSave, onBack
 };
 
 // ─────────────────────────────────────────────
-//  MAIN IwentaModal (unchanged)
+//  MAIN IwentaModal
 // ─────────────────────────────────────────────
-const IwentaModal = ({ integrationId, onClose, onSaveCredentials, onSaveSelection, getWhatsAppSettings, onAutoLoad }) => {
-  const [step, setStep]                 = useState(1);
-  const [iwentaData, setIwentaData]     = useState(null);
+const IwentaModal = ({ integrationId, onClose, onSaveCredentials, onSaveSelection, getWhatsAppSettings }) => {
+  const [step, setStep]                   = useState(1);
+  const [iwentaData, setIwentaData]       = useState(null);
   const [isAutoLoading, setIsAutoLoading] = useState(true);
 
   useEffect(() => {
@@ -465,10 +530,10 @@ const IwentaModal = ({ integrationId, onClose, onSaveCredentials, onSaveSelectio
 
         if (!accessToken) { setIsAutoLoading(false); return; }
 
-        // ── helper: جيب phone_numbers + templates + savedSettings ──
         const loadData = async (token) => {
-          const [{ phone_numbers, templates }, nsRes] = await Promise.all([
-            fetchPhoneAndTemplates(token),
+          // جيب phone numbers فقط — الـ templates هتتحمل لما يختار phone
+          const [phone_numbers, nsRes] = await Promise.all([
+            fetchPhoneNumbers(token),
             whatsappId
               ? axiosInstance.get(`/whatsapp/notification-settings/${whatsappId}`)
               : Promise.resolve(null),
@@ -485,48 +550,33 @@ const IwentaModal = ({ integrationId, onClose, onSaveCredentials, onSaveSelectio
               ? String(arr[0].phone_number_id) : '';
           }
 
-          return { phone_numbers, templates, savedSettings };
+          return { phone_numbers, savedSettings };
         };
 
-        // ── جرب الـ token الحالي ──
         try {
-          const { phone_numbers, templates, savedSettings } = await loadData(accessToken);
-          setIwentaData({ phone_numbers, templates, access_token: accessToken, savedSettings });
+          const { phone_numbers, savedSettings } = await loadData(accessToken);
+          setIwentaData({ phone_numbers, access_token: accessToken, savedSettings });
           setStep(2);
 
         } catch (tokenErr) {
-          // Token منتهي — جيب token جديد تلقائياً
-          if (!clientId || !clientSecret) {
-            console.warn('No credentials saved, redirecting to Step 1');
-            return;
-          }
+          if (!clientId || !clientSecret) { return; }
 
           try {
-            const authRes  = await axios.post(`${IWNTA_BASE_URL}/auth/token`, {
+            const authRes    = await axios.post(`${IWNTA_BASE_URL}/auth/token`, {
               client_id:     clientId,
               client_secret: clientSecret,
             });
-
             const freshToken = authRes.data?.access_token || authRes.data?.data?.access_token || null;
+            if (!freshToken) return;
 
-            if (!freshToken) {
-              console.warn('Token refresh failed, redirecting to Step 1');
-              return;
-            }
-
-            // احفظ الـ token الجديد في الـ DB
             await onSaveCredentials({
               integration_id: integrationId,
               status: 1,
-              data: {
-                client_id:     clientId,
-                client_secret: clientSecret,
-                access_token:  freshToken,
-              },
+              data: { client_id: clientId, client_secret: clientSecret, access_token: freshToken },
             });
 
-            const { phone_numbers, templates, savedSettings } = await loadData(freshToken);
-            setIwentaData({ phone_numbers, templates, access_token: freshToken, savedSettings });
+            const { phone_numbers, savedSettings } = await loadData(freshToken);
+            setIwentaData({ phone_numbers, access_token: freshToken, savedSettings });
             setStep(2);
 
           } catch (refreshErr) {
@@ -541,8 +591,8 @@ const IwentaModal = ({ integrationId, onClose, onSaveCredentials, onSaveSelectio
     tryAutoLoad();
   }, [integrationId]);
 
-  const handleCredentialsSuccess = (data) => {
-    setIwentaData(data);
+  const handleCredentialsSuccess = ({ phone_numbers, access_token }) => {
+    setIwentaData({ phone_numbers, access_token, savedSettings: null });
     setStep(2);
   };
 
@@ -565,6 +615,7 @@ const IwentaModal = ({ integrationId, onClose, onSaveCredentials, onSaveSelectio
       onClose={onClose}
       wide={step === 2}
     >
+      {/* Step indicator */}
       <div className="flex items-center gap-2 mb-5">
         <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
           step >= 1 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-500'
@@ -592,7 +643,7 @@ const IwentaModal = ({ integrationId, onClose, onSaveCredentials, onSaveSelectio
         <Step2Selection
           integrationId={integrationId}
           phoneNumbers={iwentaData.phone_numbers || []}
-          templates={iwentaData.templates || []}
+          accessToken={iwentaData.access_token}
           onSave={handleSaveSelection}
           onBack={() => setStep(1)}
           onClose={onClose}

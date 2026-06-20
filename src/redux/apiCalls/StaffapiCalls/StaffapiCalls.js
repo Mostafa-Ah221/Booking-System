@@ -32,7 +32,7 @@ export function satff_FetchAppointments(queryParams = {}, force = false) {
       });
 
       const queryString = searchParams.toString();
-      const url = `https://backend-booking.appointroll.com/api/staff/appointments?${queryString}`;
+      const url = `https://api.appointroll.com/api/staff/appointments?${queryString}`;
 
       const response = await axios.get(url, {
         headers: {
@@ -63,7 +63,7 @@ export function staff_GetAppointmentById(id) {
         const token = localStorage.getItem("access_token");
   
         const response = await axios.get(
-          `https://backend-booking.appointroll.com/api/staff/appointments/${id}`,
+          `https://api.appointroll.com/api/staff/appointments/${id}`,
           {
             headers: {
                 "Content-Type": "application/json",
@@ -92,7 +92,7 @@ export function getDetailsStaff() {
             const Token = localStorage.getItem("access_token");
             
             const response = await axios.get(
-                `https://backend-booking.appointroll.com/api/staff/edit`,
+                `https://api.appointroll.com/api/staff/edit`,
                 {
                     headers: {
                         "Content-Type": "application/json",
@@ -131,7 +131,7 @@ export function getDetailsStaff() {
       const token = localStorage.getItem("access_token");
 
       const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/staff/appointments/${id}/status`,
+        `https://api.appointroll.com/api/staff/appointments/${id}/status`,
         statusData,
         {
           headers: {
@@ -181,7 +181,7 @@ export function getDetailsStaff() {
       
   
         const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/staff/appointments/${id}/approve`,
+          `https://api.appointroll.com/api/staff/appointments/${id}/approve`,
           data,
           {
             headers: {
@@ -246,7 +246,7 @@ export function getDetailsStaff() {
         const token = localStorage.getItem("access_token");
   
         const response = await axios.post(
-          `https://backend-booking.appointroll.com/api/staff/appointments/${id}/reschedule`,
+          `https://api.appointroll.com/api/staff/appointments/${id}/reschedule`,
           data,
           {
             headers: {
@@ -302,7 +302,7 @@ export function getDetailsStaff() {
         const token = localStorage.getItem("access_token");
   
         const response = await axios.delete(
-          `https://backend-booking.appointroll.com/api/staff/appointments/${id}`,
+          `https://api.appointroll.com/api/staff/appointments/${id}`,
           {
             headers: {
                 "Content-Type": "application/json",
@@ -353,7 +353,7 @@ export function staff_FetchInterviews(queryParams = {}) {
       dispatch(staffApisActions.setError(null));
 
       const Token = localStorage.getItem("access_token");
-      let url = "https://backend-booking.appointroll.com/api/staff/interview/index";
+      let url = "https://api.appointroll.com/api/staff/interview/index";
 
       const params = new URLSearchParams();
       
@@ -412,7 +412,7 @@ export function editInterviewStaffById(id) {
       
       // ✅ استخدم axios العادي زي باقي الـ functions
       const response = await axios.get(
-        `https://backend-booking.appointroll.com/api/staff/interview/edit/${id}`,
+        `https://api.appointroll.com/api/staff/interview/edit/${id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -460,7 +460,7 @@ export function staff_GetWorkspaces({ force = false } = {}) {
       dispatch(staffApisActions.setLoading(true));
 
       const Token = localStorage.getItem("access_token");
-      const url = "https://backend-booking.appointroll.com/api/staff/workspace/index";
+      const url = "https://api.appointroll.com/api/staff/workspace/index";
 
       const response = await axios.get(url, {
         headers: {
@@ -526,7 +526,7 @@ export function updateAvailabil_DashboardStaff(formData) {
       console.log('updateAvailabil_DashboardStaff - requestBody:', requestBody);
 
       const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/staff/availability/update`,
+        `https://api.appointroll.com/api/staff/availability/update`,
         requestBody,
         {
           headers: {
@@ -602,7 +602,7 @@ export function updateUnAvailabil_DashboardStaff(formData) {
       }
 
       const response = await axios.post(
-        `https://backend-booking.appointroll.com/api/staff/unavailability/update`,
+        `https://api.appointroll.com/api/staff/unavailability/update`,
         requestBody,
         {
           headers: {
@@ -655,7 +655,7 @@ export const updateShareLink_DashboardStaff = (newShareLink) => {
     dispatch(staffApisActions.setLoading(true)); 
     try {
       const token = localStorage.getItem("access_token");
-      const url = `https://backend-booking.appointroll.com/api/staff/regenerate-staff-share-link`;
+      const url = `https://api.appointroll.com/api/staff/regenerate-staff-share-link`;
 
     
       const requestBody = newShareLink ? { share_link: newShareLink } : {};
@@ -701,7 +701,7 @@ export const UpdateEmailSettings_Staff = (payload) => {
       const token = localStorage.getItem("access_token");
 
       const response = await axios.patch(
-        "https://backend-booking.appointroll.com/api/staff/notifications/email-settings",
+        "https://api.appointroll.com/api/staff/notifications/email-settings",
         payload,
         {
           headers: {
@@ -746,7 +746,7 @@ export const getPreferences_Staff = () => {
       const token = localStorage.getItem("access_token");
 
       const response = await axios.get(
-        "https://backend-booking.appointroll.com/api/staff/notifications/email-settings",
+        "https://api.appointroll.com/api/staff/notifications/email-settings",
         {
           headers: {
             Authorization: token,

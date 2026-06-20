@@ -252,7 +252,7 @@ const InterviewFormFields = ({
         )}
       </div>
 
-      {/* ── online/inperson → extra_modes checkboxes ── */}
+      {/* online/inperson → extra_modes checkboxes */}
       {formData.mode === 'online/inperson' && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
@@ -260,9 +260,9 @@ const InterviewFormFields = ({
           </label>
           <div className="flex gap-6 flex-wrap p-3 border rounded-lg">
             {[
-              { value: 'online',   label: 'Online'   },
-              { value: 'inhouse',  label: 'In House'  },
-              { value: 'athome',   label: 'At Home'   },
+              { value: 'online',  label: 'Online'   },
+              { value: 'inhouse', label: 'In House'  },
+              { value: 'athome',  label: 'At Home'   },
             ].map(({ value, label }) => (
               <label key={value} className="flex items-center gap-2 cursor-pointer select-none">
                 <input
@@ -295,15 +295,11 @@ const InterviewFormFields = ({
       )}
 
       {/* Location field */}
-{(formData.inperson_mode === 'inhouse' || 
-  (formData.mode === 'online/inperson' && formData.extra_modes?.includes('inhouse'))) && (
+      {(formData.inperson_mode === 'inhouse' ||
+        (formData.mode === 'online/inperson' && formData.extra_modes?.includes('inhouse'))) && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Location{
-              (formData.inperson_mode === 'inhouse' ||
-                (formData.mode === 'online/inperson' && formData.extra_modes?.includes('inhouse')))
-              && <span className="text-red-500"> *</span>
-            }
+            Location <span className="text-red-500">*</span>
           </label>
           <textarea
             name="location"
@@ -314,6 +310,24 @@ const InterviewFormFields = ({
             className={`w-full outline-none p-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.location ? 'border-red-500' : ''}`}
           />
           {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+        </div>
+      )}
+
+      {/* ── Travel Time — يظهر فقط عند athome ── */}
+      {(formData.inperson_mode === 'athome' ||
+        (formData.mode === 'online/inperson' && formData.extra_modes?.includes('athome'))) && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">Travel Time (Minutes)</label>
+          <input
+            type="number"
+            name="travel_time"
+            value={formData.travel_time}
+            onChange={handleInputChange}
+            placeholder="Enter travel time"
+            min="0"
+            className={`w-full outline-none p-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.travel_time ? 'border-red-500' : ''}`}
+          />
+          {errors.travel_time && <p className="text-red-500 text-sm mt-1">{errors.travel_time}</p>}
         </div>
       )}
 
@@ -400,6 +414,8 @@ const InterviewFormFields = ({
             onChange={handleInputChange}
             placeholder="Maximum Clients per Time Slot"
             min="1"
+            step="1"
+            onKeyDown={(e) => ['.', 'e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
             className="w-full outline-none p-2.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>

@@ -137,34 +137,59 @@ const ProfilePage = () => {
       photo: null
     }));
   };
+const handleSave = async () => {
+  const formData = new FormData();
+  
+  Object.keys(profileData).forEach(key => {
+    if (profileData[key] !== '' && profileData[key] !== null) {
+      formData.append(key, profileData[key]);
+    }
+  });
 
-  const handleSave = async () => {
-    const formData = new FormData();
-    
-    Object.keys(profileData).forEach(key => {
-      if (profileData[key] !== '' && profileData[key] !== null) {
-        formData.append(key, profileData[key]);
-      }
+  if (removePhoto) {
+    formData.append('remove_photo', 1);
+  }
+
+  let result;
+  if (userType === 'staff') {
+    result = await dispatch(StaffUpdateProfileData(formData));
+  } else {
+    result = await dispatch(updateProfileData(formData));
+  }
+
+  if (result?.success) {
+    setIsEditing(false);
+    setRemovePhoto(false);
+  } else {
+    resetFormToOriginal();
+  }
+};
+
+const resetFormToOriginal = () => {
+  if (currentProfile?.user) {
+    const userData = currentProfile.user;
+    setProfileData({
+      name: userData.name || '',
+      email: userData.email || '',
+      code_phone: userData.code_phone || '',
+      phone: userData.phone || '',
+      password: '',
+      new_password: '',
+      new_password_confirmation: '',
+      photo: null,
+      over_time: userData.over_time || 0
     });
 
-    // ✅ append remove_photo if user clicked X
-    if (removePhoto) {
-      formData.append('remove_photo', 1);
+    if (userData.code_phone && userData.phone) {
+      setPhoneValue(`${userData.code_phone?.replace('+', '')}${userData.phone}`);
+    } else {
+      setPhoneValue('');
     }
 
-    try {
-      if (userType === 'staff') {
-        await dispatch(StaffUpdateProfileData(formData));
-      } else {
-        await dispatch(updateProfileData(formData));
-      }
-      setIsEditing(false);
-      setRemovePhoto(false); // ✅ reset after save
-    } catch (error) {
-      console.error('Error updating profile:', error);
-    }
-  };
-
+    setDisplayImage(userData.photo || null);
+    setRemovePhoto(false);
+  }
+};
   const handleCancel = () => {
     if (currentProfile?.user) {
       const userData = currentProfile.user;
@@ -309,7 +334,7 @@ const ProfilePage = () => {
             <div className="flex flex-col sm:flex-row items-center justify-between mb-6 text-sm">
               <div className="flex items-center gap-4 mb-3">
 
-                {/* ✅ Image container with X button */}
+                {/*  Image container with X button */}
                 <div className="relative mr-2">
                   <div 
                     className={`relative w-24 h-24 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-700 font-bold shadow-sm overflow-hidden transition-all duration-200 ${isEditing ? 'cursor-pointer hover:bg-indigo-200' : ''}`}

@@ -1,37 +1,55 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Share2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useParams } from 'react-router-dom';
 import WorkspaceAvailability from './WorkspaceFolder/WorkspaceAvailability';
 import AssignWorkSpToStaff from './AssignWorkSpToStaff';
-import ShareModalProfile from '../Profile_Page/ShareModalPrpfile';
-import { updateShareLinkWorkspace ,editWorkspaceById} from '../../../redux/apiCalls/workspaceCallApi';
 import ShareBookingModal from '../Profile_Page/ShareModalPrpfile';
+import { updateShareLinkWorkspace, editWorkspaceById, getWorkspace } from '../../../redux/apiCalls/workspaceCallApi';
+import { workspaceAction } from '../../../redux/slices/workspaceSlice';
 
 export default function WorkspaceDetails() {
   const [activeTab, setActiveTab] = useState('availability');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const { id } = useParams();
 
-  const { workspace } = useSelector(state => state.workspace);
-  const id = workspace ? workspace.id : 0;
   const dispatch = useDispatch();
-  
-   const handleUpdateShareLink = async (newShareLink,id) => {
-      try {
-        await dispatch(updateShareLinkWorkspace(newShareLink,id));
-        dispatch(editWorkspaceById(id))
-        setIsShareModalOpen(false);
-      } catch (error) {
-        console.error('Error updating share link:', error);
-      }
-    };
-  // Handle share button click
+  const { workspace: reduxWorkspace, workspaces } = useSelector(state => state.workspace);
+
+  const workspace = reduxWorkspace?.id
+    ? reduxWorkspace
+    : workspaces?.find(ws => ws.id === parseInt(id));
+
+  // جيب الـ workspaces لو مفيش في Redux (بعد refresh)
+  useEffect(() => {
+    if (!workspaces || workspaces.length === 0) {
+      dispatch(getWorkspace({ force: true }));
+    }
+  }, []);
+
+  // بعد ما workspaces اترجعت، set الـ workspace في Redux
+  useEffect(() => {
+    if (workspaces && id && !reduxWorkspace?.id) {
+      const found = workspaces.find(ws => ws.id === parseInt(id));
+      if (found) dispatch(workspaceAction.setWorkspace(found));
+    }
+  }, [workspaces, id]);
+
+  const handleUpdateShareLink = async (newShareLink, id) => {
+    try {
+      await dispatch(updateShareLinkWorkspace(newShareLink, id));
+      dispatch(editWorkspaceById(id));
+      setIsShareModalOpen(false);
+    } catch (error) {
+      console.error('Error updating share link:', error);
+    }
+  };
+
   const handleShareClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsShareModalOpen(true);
   };
-
-  
 
   return (
     <div className="w-full mt-7">
@@ -58,9 +76,8 @@ export default function WorkspaceDetails() {
             Assign Recruiter
           </button>
         </div>
-        
-        {/* Share Button */}
-        <button 
+
+        <button
           onClick={handleShareClick}
           className="flex items-center gap-1 text-sm mb-2 mr-7 px-4 py-1 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
           title='Share Link'
@@ -76,7 +93,7 @@ export default function WorkspaceDetails() {
             <WorkspaceAvailability />
           </div>
         )}
-        
+
         {activeTab === 'assignStaff' && (
           <div className="text-gray-700">
             <AssignWorkSpToStaff />
@@ -84,15 +101,13 @@ export default function WorkspaceDetails() {
         )}
       </div>
 
-      
-
-       <ShareBookingModal
-              isOpen={isShareModalOpen} 
-              onClose={() => setIsShareModalOpen(false)} 
-              shareLink={`w/${workspace?.share_link}`}
-              profile={workspace}
-              onUpdateLink={handleUpdateShareLink}
-            />
+      <ShareBookingModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        shareLink={`w/${workspace?.share_link}`}
+        profile={workspace}
+        onUpdateLink={handleUpdateShareLink}
+      />
     </div>
   );
 }

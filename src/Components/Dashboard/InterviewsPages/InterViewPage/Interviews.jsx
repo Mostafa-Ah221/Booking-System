@@ -1,18 +1,19 @@
 import { useEffect, useState, useRef } from 'react';
-import { Share2, MoreVertical, Trash2, ExternalLink, Plus, Wifi, User, Phone, Pencil, Pin, PinOff, Copy } from 'lucide-react';
+import { Share2, MoreVertical, Trash2, ExternalLink, Plus, Wifi, User, Phone, Pencil, Pin, PinOff, Copy, ArrowUpDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchInterviews, deleteInterview, updateShareLinkIntreview, updateInterview, duplicateInterview } from '../../../../redux/apiCalls/interviewCallApi';
+import { fetchInterviews, deleteInterview, updateShareLinkIntreview, updateInterview, duplicateInterview, fetchAllInterviews } from '../../../../redux/apiCalls/interviewCallApi';
 
 import Loader from '../../../Loader';
 import { interviewAction } from '../../../../redux/slices/interviewsSlice';
 import ShareBookingModal from '../../Profile_Page/ShareModalPrpfile';
 import { usePermission } from '../../../hooks/usePermission';
 import { getWorkspace } from '../../../../redux/apiCalls/workspaceCallApi';
+import ReorderInterviewsModal from './Reorderinterviewsmodal';
 
 const Interviews = () => {
   const dispatch = useDispatch();
-  const { interviews, loading = false, currentWorkspaceId, currentType } = useSelector(state => state.interview);
+const { interviews, loading = false, currentWorkspaceId, currentType, allInterviews } = useSelector(state => state.interview);
   const { profile: profileData } = useSelector(state => state.profileData);
   const { workspace } = useSelector(state => state.workspace);
   const workspaceId = workspace ? workspace.id : 0;
@@ -25,12 +26,15 @@ const Interviews = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pinningId, setPinningId] = useState(null);
   const [copyingId, setCopyingId] = useState(null);
+  const [isReorderOpen, setIsReorderOpen] = useState(false);
+
   const interviewsPerPage = 9;
   const org_share_link = profileData?.user.share_link;
   const menuRef = useRef(null);
-
-  const pinnedCount = interviews?.filter(i => i.is_pinned == 1).length || 0;
-
+  
+const pinnedCount = allInterviews?.filter(i => i.is_pinned == 1).length 
+  ?? interviews?.filter(i => i.is_pinned == 1).length 
+  ?? 0;
   const sortedInterviews = [...(interviews || [])].sort((a, b) => {
     if (b.is_pinned == 1 && a.is_pinned != 1) return 1;
     if (a.is_pinned == 1 && b.is_pinned != 1) return -1;
@@ -40,18 +44,21 @@ const Interviews = () => {
   useEffect(() => {
     dispatch(getWorkspace({ force: true }));
   }, [dispatch]);
+useEffect(() => {
+  dispatch(fetchAllInterviews({ force: true }));
+}, [dispatch]);
 
   useEffect(() => {
-    if (currentWorkspaceId !== null && currentWorkspaceId !== workspaceId) {
-      dispatch(interviewAction.clearInterviews());
-    }
-    if (currentType !== null) {
-      dispatch(interviewAction.clearInterviews());
-    }
-    if (workspaceId != null) {
-      dispatch(fetchInterviews({ work_space_id: workspaceId }));
-    }
-  }, [workspaceId, currentWorkspaceId, currentType, dispatch]);
+  if (currentWorkspaceId !== null && currentWorkspaceId !== workspaceId) {
+    dispatch(interviewAction.clearInterviews());
+  }
+  if (currentType !== null) {
+    dispatch(interviewAction.clearInterviews());
+  }
+  if (workspaceId != null) {
+    dispatch(fetchInterviews({ work_space_id: workspaceId, force: true })); // ← أضف force: true
+  }
+}, [workspaceId, currentWorkspaceId, currentType, dispatch]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -110,6 +117,8 @@ const Interviews = () => {
   setPinningId(interview.id);
   try {
     await dispatch(updateInterview(interview.id, { is_pinned: newPinValue }));
+    // ← هنا الإضافة
+    await dispatch(fetchInterviews({ work_space_id: workspaceId }));
   } catch (error) {
     dispatch(interviewAction.updateInterviewPin({ id: interview.id, is_pinned: interview.is_pinned }));
     console.error('Error updating pin:', error);
@@ -214,17 +223,35 @@ const Interviews = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-semibold">
-          All Interviews
-          <span className="bg-gray-200 px-2 py-1 rounded-md text-sm ml-2">
-            {interviews?.length || 0}
-          </span>
-        </h1>
-        <Link to={"/create_interview"} className='text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2'>
-          <Plus size={18} />
-          <span>Create Interview</span>
-        </Link>
-      </div>
+  <h1 className="text-xl font-semibold">
+    All Interviews
+    <span className="bg-gray-200 px-2 py-1 rounded-md text-sm ml-2">
+      {interviews?.length || 0}
+    </span>
+  </h1>
+ 
+  <div className="flex items-center gap-2">
+    {/* ── Reorder button ── */}
+    {interviews?.length > 1 && (
+      <button
+        onClick={() => setIsReorderOpen(true)}
+        className="text-sm px-4 py-2 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors"
+      >
+        <ArrowUpDown size={16} />
+        <span>Reorder</span>
+      </button>
+    )}
+ 
+    <Link
+      to={"/create_interview"}
+      className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+    >
+      <Plus size={18} />
+      <span>Create Interview</span>
+    </Link>
+  </div>
+</div>
+ 
 
       {!loading && interviews?.length === 0 ? (
         <div className="text-center py-20">
@@ -361,7 +388,11 @@ const Interviews = () => {
         loading={loading}
         canShowEdit={canEditInterviewf}
       />
-
+      <ReorderInterviewsModal
+        isOpen={isReorderOpen}
+        onClose={() => setIsReorderOpen(false)}
+        interviews={interviews || []}
+      />
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-96 mx-4 transform transition-all duration-200 scale-100">

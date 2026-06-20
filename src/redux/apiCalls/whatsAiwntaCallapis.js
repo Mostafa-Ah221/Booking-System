@@ -8,17 +8,13 @@ import { createOrUpdateWhatsAppSettings } from "./whatsAppCallApi";
 const IWNTA_BASE_URL = "https://iwnta.com/api/v1";
 
 // ============================================================
-// helper — جيب phone numbers + templates من IWNTA
 // ============================================================
 const fetchPhoneAndTemplates = async (accessToken) => {
   const headers = { Authorization: `Bearer ${accessToken}`, Accept: "application/json" };
-  const [phoneRes, templatesRes] = await Promise.all([
-    axios.get(`${IWNTA_BASE_URL}/phone-numbers`, { headers }),
-    axios.get(`${IWNTA_BASE_URL}/templates`,     { headers }),
-  ]);
+  const phoneRes = await axios.get(`${IWNTA_BASE_URL}/phone-numbers`, { headers });
   return {
-    phone_numbers: phoneRes.data?.data    || [],
-    templates:     templatesRes.data?.data || [],
+    phone_numbers: phoneRes.data?.data || [],
+    templates: [],
   };
 };
 

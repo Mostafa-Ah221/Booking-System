@@ -121,8 +121,9 @@ export function updateTheme(data) {
       const response = await axiosInstance.post(`/theme/update`, data);
 
       if (response.data.status) {
+        console.log('API response.data.data:', response.data.data); // ✅ شوف الشكل
         dispatch(themeActions.updateTheme(response.data.data));
-        
+
         toast.success(response.data.message || "Theme updated successfully", {
           position: "top-center",
           duration: 4000,
@@ -166,6 +167,7 @@ export function updateTheme(data) {
     }
   };
 }
+
 export function updateThemeStaff(data) {
   return async (dispatch) => {
     

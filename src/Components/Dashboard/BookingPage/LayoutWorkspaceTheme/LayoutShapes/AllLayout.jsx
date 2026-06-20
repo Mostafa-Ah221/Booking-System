@@ -6,13 +6,13 @@ import FreshLayout from './FreshLayout';
 import ModernWebLayout from './ModernWebLayout';
 import NewLayout from './NewLayout';
 import { Menu, X } from 'lucide-react';
-import WorkspaceThemePanel from '../WorkspaceThemePanal';
 import Footer from './Footer';
 import { Link, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { getTheme } from '../../../../../redux/apiCalls/ThemeCallApi';
 import { LAYOUT_TO_THEME } from './themeMapping';
 import { FaArrowLeft } from "react-icons/fa";
+import WorkspaceThemePanel from '../WorkspaceThemePanel';
 
 export default function AllLayout() {
   const dispatch = useDispatch();
@@ -34,6 +34,7 @@ export default function AllLayout() {
 const [themeData, setThemeData] = useState({
   color: '',
   textColor: '', 
+  removeBrand: false,
   header: { title: '', logo: null, visibleTitle: true, visibleLogo: true },
   pageProperties: { title: 'Welcome', description: '', visibleTitle: true, visibleDescription: true },
   workspaceProperties: { name: 'Ahmed', description: '' },

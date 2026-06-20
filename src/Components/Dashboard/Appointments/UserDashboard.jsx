@@ -1,10 +1,8 @@
-// الـ state والـ logic بس، بدون أي JSX للجدول أو الهيدر
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { CalendarDays, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
-
 import {
   fetchAppointments, getAppointmentById,
   deleteAppointment, statusAppointment, rescheduleAppointment,
@@ -13,7 +11,6 @@ import { fetchInterviews } from '../../../redux/apiCalls/interviewCallApi';
 import { getCustomers } from '../../../redux/apiCalls/CustomerCallApi';
 import { usePermission } from '../../hooks/usePermission';
 import { useConfirmationToast } from './useConfirmationToast';
-
 import AppointmentsHeader   from './AppointmentsHeader';
 import AppointmentsTable    from './AppointmentsTable';
 import FilterSidebar        from './FilterSidebar';
@@ -29,14 +26,10 @@ const getTabDateRange = (tab) => {
   const todayStr = fmt(today);
 
   if (tab === 'upcoming') {
-    const future = new Date(today);
-    future.setMonth(future.getMonth() + 12);
-    return { start_date: todayStr, end_date: fmt(future) };
+    return { start_date: todayStr };           
   }
   if (tab === 'past') {
-    const past = new Date(today);
-    past.setMonth(past.getMonth() - 12);
-    return { start_date: fmt(past), end_date: todayStr };
+    return { end_date: todayStr };            
   }
   return {};
 };

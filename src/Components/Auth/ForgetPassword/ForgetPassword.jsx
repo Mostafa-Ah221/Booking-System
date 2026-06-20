@@ -27,7 +27,7 @@ console.log(from?.userType);
     try {
       const formData = new FormData();
       formData.append("email", values.email);
-      const endPoint=from?.userType === 'customer' ? "https://backend-booking.appointroll.com/api/forgot-password" : "https://backend-booking.appointroll.com/api/staff/forgot-password";
+      const endPoint=from?.userType === 'customer' ? "https://api.appointroll.com/api/forgot-password" : "https://api.appointroll.com/api/staff/forgot-password";
       const response = await axios.post(
         endPoint,
         formData,

@@ -168,11 +168,13 @@ const buttonTextColor = getTextColor(secondColor);
     handleScheduleAppointment,
     isTimeDisabled,
     selectedType,  
+    displayedTimes,
     setSelectedType,
     totalPrice,
     numberOfSlots,
-    // noAvailability
+    noAvailability
   } = useBookingLogic(bookingId, navigate, isInterviewMode, selectedInterview?.id, idCustomer || idSpace || idAdmin, isStaff, setTheme,theme);
+
 
   
   useEffect(() => {
@@ -215,11 +217,20 @@ const buttonTextColor = getTextColor(secondColor);
     }
   }, [interviews]);
         useEffect(() => {
-          if (bookingData?.extra_modes && bookingData.extra_modes.length === 1 && !selectedType) {
-            setSelectedType(bookingData.extra_modes[0]);
-          }
-        }, [bookingData?.extra_modes]);
-
+  if (!selectedType && bookingData) {
+    if (bookingData.extra_modes && bookingData.extra_modes.length === 1) {
+      setSelectedType(bookingData.extra_modes[0]);
+    } else if (!bookingData.extra_modes?.length && bookingData.inperson_mode) {
+      setSelectedType(bookingData.inperson_mode);
+    }
+  }
+}, [bookingData?.extra_modes, bookingData?.inperson_mode]);
+useEffect(() => {
+  if (!displayedTimes.length) return;
+  if (selectedTime && !displayedTimes.includes(selectedTime)) {
+    setSelectedTime(displayedTimes[0]);
+  }
+}, [displayedTimes]);
   useEffect(() => {
     const fetchData = async () => {
       setIsInitialLoading(true);
@@ -252,7 +263,7 @@ const buttonTextColor = getTextColor(secondColor);
   const fetchWorkspaces = async () => {
     setWorkspacesLoading(true);
     try {
-      const response = await fetch(`https://backend-booking.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
+      const response = await fetch(`https://api.appointroll.com/api/public/book/resource?customer_share_link=${idAdmin}`);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -303,16 +314,24 @@ const buttonTextColor = getTextColor(secondColor);
       setWorkspacesLoading(false);
     }
   };
-
+const to12Hour = (time24) => {
+  if (!time24) return '';
+  const [hourStr, minute] = time24.split(':');
+  let hour = parseInt(hourStr, 10);
+  const period = hour >= 12 ? 'PM' : 'AM';
+  if (hour === 0) hour = 12;
+  else if (hour > 12) hour -= 12;
+  return `${hour}:${minute} ${period}`;
+};
   const fetchInterviews = async (resourceId, mode) => {
     setInterviewsLoading(true);
     try {
       let apiUrl;
       
       if (mode === 'customer') {
-        apiUrl = `https://backend-booking.appointroll.com/api/public/book/resource?staff_share_link=${resourceId}`;
+        apiUrl = `https://api.appointroll.com/api/public/book/resource?staff_share_link=${resourceId}`;
       } else {
-        apiUrl = `https://backend-booking.appointroll.com/api/public/book/resource?workspace_share_link=${resourceId}`;
+        apiUrl = `https://api.appointroll.com/api/public/book/resource?workspace_share_link=${resourceId}`;
       }
       
       const response = await fetch(apiUrl);
@@ -413,29 +432,32 @@ const buttonTextColor = getTextColor(secondColor);
     manualSelections.current.staffGroup = group;
   };
 
-  const isBookButtonDisabled = () => {
-    if (idAdmin && !selectedWorkspace) return true;
-    if (idAdmin && !selectedInterview) return true;
-    if ((idSpace || idCustomer) && !selectedInterview) return true;
-    
-    if (availableStaffGroups && availableStaffGroups.length > 0 && !selectedStaffGroup) return true;
-    if (!availableStaffGroups?.length && availableStaff && availableStaff.length > 0 && !selectedStaff) return true;
-    
-    if (availableResources && availableResources.length > 0 && !selectedResource) return true;
-    
-    if (!selectedDate || !selectedTime) return true;
-    if (isTimeDisabled(selectedDate, selectedTime, bookingData?.disabled_times)) return true;
-    if (bookingData?.mode === 'online/inperson' && !selectedType) return true;
-  if (bookingData?.require_staff_select && availableStaff.length === 0 && !selectedStaff) return true;
+ const isBookButtonDisabled = () => {
+  if (idAdmin && !selectedWorkspace) return true;
+  if (idAdmin && !selectedInterview) return true;
+  if ((idSpace || idCustomer) && !selectedInterview) return true;
+  
+  if (availableStaffGroups && availableStaffGroups.length > 0 && !selectedStaffGroup) return true;
+  if (!availableStaffGroups?.length && availableStaff && availableStaff.length > 0 && !selectedStaff) return true;
+  
+  if (availableResources && availableResources.length > 0 && !selectedResource) return true;
+  
+  if (!selectedDate || !selectedTime) return true;
+  if (isTimeDisabled(selectedDate, selectedTime, bookingData?.disabled_times)) return true;
+  if (bookingData?.mode === 'online/inperson' && !selectedType) return true;
+  if (bookingData?.require_staff_select && (availableStaff?.length ?? 0) === 0 && !selectedStaff) return true;
 
-    return false;
-  };
+  // ✅ جديد
+  if (bookingData?.interview_type === 'collective-booking' && (availableStaffGroups?.length ?? 0) === 0 && !selectedStaffGroup) return true;
 
-  const getBookButtonText = () => {
+  return false;
+};
+
+ const getBookButtonText = () => {
   if (idAdmin && !selectedWorkspace) return 'Select Workspace';
   if (idAdmin && !selectedInterview) return 'Select Interview';
   if ((idSpace || idCustomer) && !selectedInterview) return 'Select Interview';
-  if (bookingData?.require_staff_select && availableStaff.length === 0 && !selectedStaff) return 'No Staff Available';
+  if (bookingData?.require_staff_select && (availableStaff?.length ?? 0) === 0 && !selectedStaff) return 'No Staff Available';
 
   if (availableStaffGroups && availableStaffGroups.length > 0 && !selectedStaffGroup) return 'Select Staff Group';
   if (!availableStaffGroups?.length && availableStaff && availableStaff.length > 0 && !selectedStaff) return 'Select Staff';
@@ -445,6 +467,9 @@ const buttonTextColor = getTextColor(secondColor);
   if (!selectedDate || !selectedTime) return 'Select Date & Time';
   if (isTimeDisabled(selectedDate, selectedTime, bookingData?.disabled_times)) return 'Time Not Available';
   if (bookingData?.mode === 'online/inperson' && !selectedType) return 'Select Type';
+
+  // ✅ جديد
+  if (bookingData?.interview_type === 'collective-booking' && (availableStaffGroups?.length ?? 0) === 0 && !selectedStaffGroup) return 'No Staff Group Available';
 
   return theme?.book_button || 'Book Appointment';
 };
@@ -461,7 +486,9 @@ if (isInitialLoading) {
     return <NotFound />;
   }
   
-
+if (!loading && noAvailability && bookingData) {
+  return <NoAppointments themeColor={theme} />;
+}
 return (
   <div className="min-h-screen !text-sm" style={{ background: firstColor }}>
     <div className="max-w-6xl mx-auto p-8 pt-20">
@@ -697,7 +724,7 @@ return (
                 )}
               </div>
             </div>
-            {showStaffGroupDropdown && availableStaffGroups.length > 1 && (
+               {showStaffGroupDropdown && (availableStaffGroups?.length ?? 0) > 1 && (
               <div className="absolute top-full left-0 right-0 mt-1 z-50">
                 <div className="shadow-lg max-h-60 overflow-y-auto border" style={{ background: firstColor, borderColor: `${firstColor}40` }}>
                   {availableStaffGroups.map((group) => (
@@ -715,7 +742,7 @@ return (
                             <p className="text-xs mt-1" style={{ color: `${textColor}80` }}>{group.group_description}</p>
                           )}
                           <p className="text-xs mt-1" style={{ color: `${textColor}80` }}>
-                            {group.staff.length} staff member{group.staff.length > 1 ? 's' : ''}
+                           {(group.staff?.length ?? 0)} staff member{(group.staff?.length ?? 0) > 1 ? 's' : ''}
                           </p>
                         </div>
                       </div>
@@ -910,55 +937,59 @@ return (
                   <span
                     className={`font-medium ${
                       selectedTime && isTimeDisabled(selectedDate, selectedTime, bookingData?.disabled_times)
-                        ? 'text-red-600 line-through'
-                        : ''
+                        ? 'text-red-600 line-through' : ''
                     }`}
                     style={{ color: selectedTime && !isTimeDisabled(selectedDate, selectedTime, bookingData?.disabled_times) ? textColor : undefined }}
                   >
-                    {selectedTime || '--:--'}
+                    {selectedTime ? to12Hour(selectedTime) : '--:--'}
                   </span>
                   <span style={{ color: `${textColor}80` }}>to</span>
                   <span className="font-medium" style={{ color: textColor }}>
-                    {selectedEndTime || '--:--'}
+                    {selectedEndTime ? to12Hour(selectedEndTime) : '--:--'}
                   </span>
                 </div>
               ) : (
                 <span
                   className={`font-medium ${
                     selectedTime && isTimeDisabled(selectedDate, selectedTime, bookingData?.disabled_times)
-                      ? 'text-red-600 line-through'
-                      : ''
+                      ? 'text-red-600 line-through' : ''
                   }`}
                   style={{ color: selectedTime && !isTimeDisabled(selectedDate, selectedTime, bookingData?.disabled_times) ? textColor : undefined }}
                 >
-                  {selectedTime || 'Select Time'}
+                  {selectedTime && displayedTimes.includes(selectedTime)
+                    ? to12Hour(selectedTime)
+                    : displayedTimes.length > 0
+                      ? to12Hour(displayedTimes[0])
+                      : 'Select Time'}
                 </span>
-              )}
-              {selectedTime && isTimeDisabled(selectedDate, selectedTime, bookingData?.disabled_times) && (
-                <span className="text-xs ml-2 text-red-600">(Booked)</span>
               )}
             </div>
             <ChevronsUpDown className="w-5 h-5" style={{ color: secondColor }} />
           </div>
         </div>
-{bookingData?.require_staff_select && availableStaff.length === 0 && (
-  <div className="p-3 rounded-lg text-center text-sm" style={{ background: `${textColor}15`, color: textColor }}>
-    ⚠️ This service requires a staff member to be assigned before booking.
-  </div>
-)}
+            {bookingData?.require_staff_select && (availableStaff?.length ?? 0) === 0 && (
+              <div className="p-3 rounded-lg text-center text-sm" style={{ background: `${textColor}15`, color: textColor }}>
+                ⚠️ This service requires a staff member to be assigned before booking.
+              </div>
+            )}
+            {bookingData?.interview_type === 'collective-booking' && (availableStaffGroups?.length ?? 0) === 0 && (
+              <div className="p-3 rounded-lg text-center text-sm" style={{ background: `${textColor}15`, color: textColor }}>
+                ⚠️ This service requires a staff group to be assigned before booking.
+              </div>
+            )}
         {/* Book Button */}
        <button
-  className={`flex overflow-hidden font-medium shadow-lg transition-opacity ${
-    isBookButtonDisabled() ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'
-  }`}
-  style={{ background: secondColor, color: buttonTextColor }}
-  onClick={handleBookAppointment}
-  disabled={isBookButtonDisabled()}
->
-  <div className="flex-1 p-4 flex justify-center items-center">
-    {getBookButtonText()}
-  </div>
-</button>
+          className={`flex overflow-hidden font-medium shadow-lg transition-opacity ${
+            isBookButtonDisabled() ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 cursor-pointer'
+          }`}
+          style={{ background: secondColor, color: buttonTextColor }}
+          onClick={handleBookAppointment}
+          disabled={isBookButtonDisabled()}
+        >
+          <div className="flex-1 p-4 flex justify-center items-center">
+            {getBookButtonText()}
+          </div>
+        </button>
 
       </div>
     </div>
